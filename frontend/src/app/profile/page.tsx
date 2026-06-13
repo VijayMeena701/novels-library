@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, Novel, NovelStatus } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { NovelCard } from '../../components/NovelCard';
@@ -22,16 +23,6 @@ export default function Dashboard() {
   const [newCoverUrl, setNewCoverUrl] = useState('');
   const [newRawSourceUrl, setNewRawSourceUrl] = useState('');
   const [newRawOriginalLanguage, setNewRawOriginalLanguage] = useState('');
-  const [newStatus, setNewStatus] = useState<NovelStatus>('reading');
-  const [newChRead, setNewChRead] = useState(0);
-  const [newCompletedAt, setNewCompletedAt] = useState('');
-  const [newRating, setNewRating] = useState(0);
-  const [newReview, setNewReview] = useState('');
-  const [newNotes, setNewNotes] = useState('');
-  const [newRawLegacyEntry, setNewRawLegacyEntry] = useState('');
-  const [newCharacterNotes, setNewCharacterNotes] = useState('');
-  const [newRelationshipNotes, setNewRelationshipNotes] = useState('');
-  const [newPersonalTags, setNewPersonalTags] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -100,23 +91,13 @@ export default function Dashboard() {
 
     setSubmitting(true);
     try {
-      await api.createNovel({
+      const created = await api.createNovel({
         title: newTitle,
         author: newAuthor,
         sourceUrl: newUrl,
         coverUrl: newCoverUrl,
         rawSourceUrl: newRawSourceUrl,
         rawOriginalLanguage: newRawOriginalLanguage,
-        status: newStatus,
-        chaptersRead: newChRead,
-        completedAt: newCompletedAt ? new Date(newCompletedAt).toISOString() : null,
-        rating: newRating,
-        review: newReview,
-        personalNotes: newNotes,
-        rawLegacyEntry: newRawLegacyEntry,
-        characterNotes: newCharacterNotes,
-        relationshipNotes: newRelationshipNotes,
-        personalTags: newPersonalTags.split(',').map((tag) => tag.trim()).filter(Boolean),
       });
 
       // Reset form & reload
@@ -126,18 +107,8 @@ export default function Dashboard() {
       setNewCoverUrl('');
       setNewRawSourceUrl('');
       setNewRawOriginalLanguage('');
-      setNewStatus('reading');
-      setNewChRead(0);
-      setNewCompletedAt('');
-      setNewRating(0);
-      setNewReview('');
-      setNewNotes('');
-      setNewRawLegacyEntry('');
-      setNewCharacterNotes('');
-      setNewRelationshipNotes('');
-      setNewPersonalTags('');
       setIsModalOpen(false);
-      await fetchNovels();
+      window.location.href = `/novels/${created._id}`;
     } catch (err: any) {
       setSubmitError(err.message || 'Failed to create novel entry.');
     } finally {
@@ -182,12 +153,18 @@ export default function Dashboard() {
         <div>
           <h1 className="page-title">Personal Library</h1>
           <p className="page-subtitle">
-            Track reading logs, archive online chapters, and manage offline access.
+            Track reading status, personal notes, rereads, characters, and recall details.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          + Add New Novel
-        </button>
+        {user?.role === 'admin' ? (
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            + Create Catalog Novel
+          </button>
+        ) : (
+          <Link href="/" className="btn btn-primary">
+            Browse Catalog
+          </Link>
+        )}
       </div>
 
       <div className="stat-grid">
@@ -240,9 +217,15 @@ export default function Dashboard() {
           <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
             {search || statusFilter !== 'all' ? 'No novels match your filter query.' : 'Your reading library is empty.'}
           </p>
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            + Add Your First Novel
-          </button>
+          {user?.role === 'admin' ? (
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+              + Create Catalog Novel
+            </button>
+          ) : (
+            <Link href="/" className="btn btn-primary">
+              Browse Catalog
+            </Link>
+          )}
         </div>
       ) : (
         <div className="novel-grid">
@@ -270,7 +253,7 @@ export default function Dashboard() {
         <div className="modal-backdrop">
           <div className="glass-card modal-panel">
             <div className="flex-between">
-              <h2 style={{ fontSize: '1.5rem' }}>Add New Novel</h2>
+              <h2 style={{ fontSize: '1.5rem' }}>Create Catalog Novel</h2>
               <button 
                 onClick={() => { setIsModalOpen(false); setSubmitError(''); }}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
@@ -369,124 +352,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="grid-cols-3" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Status</label>
-                  <select 
-                    className="form-select"
-                    value={newStatus}
-                    onChange={(e) => setNewStatus(e.target.value as NovelStatus)}
-                  >
-                    <option value="reading">📖 Reading</option>
-                    <option value="completed">✅ Completed</option>
-                    <option value="on_hold">⏳ On Hold</option>
-                    <option value="dropped">🛑 Dropped</option>
-                    <option value="planning">📋 Planning</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Chapters Read</label>
-                  <input 
-                    type="number" 
-                    className="form-input" 
-                    min="0"
-                    value={newChRead}
-                    onChange={(e) => setNewChRead(Math.max(0, parseInt(e.target.value) || 0))}
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Rating (1-5)</label>
-                  <select 
-                    className="form-select"
-                    value={newRating}
-                    onChange={(e) => setNewRating(parseInt(e.target.value))}
-                  >
-                    <option value="0">Unrated</option>
-                    <option value="1">⭐ (Poor)</option>
-                    <option value="2">⭐⭐ (Average)</option>
-                    <option value="3">⭐⭐⭐ (Good)</option>
-                    <option value="4">⭐⭐⭐⭐ (Excellent)</option>
-                    <option value="5">⭐⭐⭐⭐⭐ (Masterpiece)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Completed At (Optional)</label>
-                <input
-                  type="datetime-local"
-                  className="form-input"
-                  value={newCompletedAt}
-                  onChange={(e) => setNewCompletedAt(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">What did you like? Review notes (Optional)</label>
-                <textarea 
-                  className="form-textarea" 
-                  rows={2}
-                  placeholder="Summarize your opinion..."
-                  value={newReview}
-                  onChange={(e) => setNewReview(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Personal Reading Details (Optional)</label>
-                <textarea 
-                  className="form-textarea" 
-                  rows={3}
-                  placeholder="Where did you find it? Important elements, characters, settings..."
-                  value={newNotes}
-                  onChange={(e) => setNewNotes(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Personal Tags (Optional)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Comma-separated recall/filter tags"
-                  value={newPersonalTags}
-                  onChange={(e) => setNewPersonalTags(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Original Legacy Entry (Optional)</label>
-                <textarea
-                  className="form-textarea"
-                  rows={3}
-                  placeholder="Paste the old full record here so nothing is lost."
-                  value={newRawLegacyEntry}
-                  onChange={(e) => setNewRawLegacyEntry(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Character Notes (Optional)</label>
-                <textarea
-                  className="form-textarea"
-                  rows={3}
-                  placeholder="Names, aliases, powers, roles, memory hooks..."
-                  value={newCharacterNotes}
-                  onChange={(e) => setNewCharacterNotes(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Relationship Notes (Optional)</label>
-                <textarea
-                  className="form-textarea"
-                  rows={3}
-                  placeholder="Romance, family, factions, enemies, mentors..."
-                  value={newRelationshipNotes}
-                  onChange={(e) => setNewRelationshipNotes(e.target.value)}
-                />
-              </div>
-
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
                 <button 
                   type="button" 
@@ -501,7 +366,7 @@ export default function Dashboard() {
                   className="btn btn-primary"
                   disabled={submitting}
                 >
-                  {submitting ? <span className="spinner"></span> : 'Add Novel'}
+                  {submitting ? <span className="spinner"></span> : 'Create Catalog Novel'}
                 </button>
               </div>
             </form>

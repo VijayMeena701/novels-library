@@ -57,6 +57,16 @@ async function runTest() {
     }
     console.log('✅ Full catalogue discovery test passed.');
 
+    const jsCatalogUrl = 'https://benign-novel-site.local/book/js-catalog/9000.html';
+    console.log(`\nTesting JavaScript catalogue button discovery for: ${jsCatalogUrl}`);
+    const jsCatalogMeta = await ScraperService.scrapeMetadata(jsCatalogUrl);
+    console.log(`- JS catalogue chapters found: ${jsCatalogMeta.chapters.length}`);
+    if (jsCatalogMeta.chapters.length !== 4) throw new Error('JavaScript catalogue button discovery failed!');
+    if (jsCatalogMeta.chapters[3]?.number !== 4 || !jsCatalogMeta.chapters[3]?.title.includes('第4章')) {
+      throw new Error('JavaScript catalogue chapter order failed!');
+    }
+    console.log('✅ JavaScript catalogue discovery test passed.');
+
     const chapterUrl = 'https://benign-novel-site.local/novels/test-story/chapters/1';
     console.log(`\nTesting chapter content scraper for: ${chapterUrl}`);
     const ch = await ScraperService.scrapeChapter(chapterUrl);
@@ -77,7 +87,36 @@ async function runTest() {
 }
 
 function mockFetchHtml(url: string) {
-    if (url.includes('/book/azure-sky/catalog')) {
+    if (url.includes('/txt/9000') || url.includes('/book/js-catalog/9000/catalog')) {
+      return Promise.resolve(`
+          <!DOCTYPE html>
+          <html>
+            <head><title>JS目录</title></head>
+            <body>
+              <div class="catalog-body">
+                <a href="/txt/9000/1.html">第1章 第一刀</a>
+                <a href="/txt/9000/2.html">第2章 第二刀</a>
+                <a href="/txt/9000/3.html">第3章 第三刀</a>
+                <a href="/txt/9000/4.html">第4章 第四刀</a>
+              </div>
+            </body>
+          </html>
+        `);
+    } else if (url.includes('/book/js-catalog/9000')) {
+      return Promise.resolve(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta property="og:title" content="JS Catalogue Novel" />
+              <title>JS Catalogue Novel</title>
+            </head>
+            <body>
+              <h1>JS Catalogue Novel</h1>
+              <button onclick="window.location.href='/book/js-catalog/9000/catalog.html'">完整目录</button>
+            </body>
+          </html>
+        `);
+    } else if (url.includes('/book/azure-sky/catalog')) {
       return Promise.resolve(`
           <!DOCTYPE html>
           <html>

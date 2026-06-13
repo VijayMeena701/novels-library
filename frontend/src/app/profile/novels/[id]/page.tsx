@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, getNovelCoverUrl, Novel, ReadingSession, ChapterContent, ChapterVisit, BackgroundJob, NovelStatus } from '../../../../utils/api';
+import { api, getNovelCoverUrl, Novel, ReadingSession, ChapterContent, ChapterVisit, NovelStatus } from '../../../../utils/api';
 import { useAuth } from '../../../../context/AuthContext';
 
 function splitListInput(value: string): string[] {
@@ -42,23 +42,11 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
   const [novel, setNovel] = useState<Novel | null>(null);
   const [chapters, setChapters] = useState<Omit<ChapterContent, 'content'>[]>([]);
   const [chapterVisits, setChapterVisits] = useState<ChapterVisit[]>([]);
-  const [jobs, setJobs] = useState<BackgroundJob[]>([]);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncingCover, setSyncingCover] = useState(false);
 
   // Edit form state
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editAuthor, setEditAuthor] = useState('');
-  const [editAuthorRealName, setEditAuthorRealName] = useState('');
-  const [editAlternativeNames, setEditAlternativeNames] = useState('');
-  const [editGenres, setEditGenres] = useState('');
-  const [editOriginalSource, setEditOriginalSource] = useState('');
-  const [editPublicationStatus, setEditPublicationStatus] = useState('');
-  const [editCoverUrl, setEditCoverUrl] = useState('');
-  const [editRawSourceUrl, setEditRawSourceUrl] = useState('');
-  const [editRawOriginalLanguage, setEditRawOriginalLanguage] = useState('');
   const [editStatus, setEditStatus] = useState<NovelStatus>('reading');
   const [editChRead, setEditChRead] = useState(0);
   const [editCompletedAt, setEditCompletedAt] = useState('');
@@ -79,30 +67,18 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
   // Load all novel-related data
   const loadData = async () => {
     try {
-      const [novelData, chaptersData, chapterVisitsData, jobsData, sessionsData] = await Promise.all([
+      const [novelData, chaptersData, chapterVisitsData, sessionsData] = await Promise.all([
         api.getNovel(novelId),
         api.getChapters(novelId),
         api.getChapterVisits(novelId),
-        api.getNovelJobs(novelId),
         api.getSessions(novelId)
       ]);
       setNovel(novelData);
       setChapters(chaptersData);
       setChapterVisits(chapterVisitsData);
-      setJobs(jobsData);
       setSessions(sessionsData);
 
       // Populate edit form
-      setEditTitle(novelData.title);
-      setEditAuthor(novelData.authorPenName || novelData.author);
-      setEditAuthorRealName(novelData.authorRealName || '');
-      setEditAlternativeNames((novelData.alternativeNames || []).join(', '));
-      setEditGenres((novelData.genres || []).join(', '));
-      setEditOriginalSource(novelData.originalSource || '');
-      setEditPublicationStatus(novelData.publicationStatus || '');
-      setEditCoverUrl(novelData.coverUrl || '');
-      setEditRawSourceUrl(novelData.rawSourceUrl || '');
-      setEditRawOriginalLanguage(novelData.rawOriginalLanguage || '');
       setEditStatus(novelData.status);
       setEditChRead(novelData.chaptersRead);
       setEditCompletedAt(formatDateTimeLocal(novelData.completedAt));
@@ -126,47 +102,12 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
     }
   }, [user, novelId]);
 
-  // Dynamic status poll for active scraper jobs
-  useEffect(() => {
-    if (!user || !novelId) return;
-
-    const hasActiveJobs = jobs.some(j => j.status === 'pending' || j.status === 'processing');
-    if (hasActiveJobs) {
-      const timer = setInterval(async () => {
-        const jobsData = await api.getNovelJobs(novelId);
-        setJobs(jobsData);
-        
-        // If a job just completed, refresh other details (like chapters and novel total count)
-        const updatedActive = jobsData.some(j => j.status === 'pending' || j.status === 'processing');
-        if (!updatedActive) {
-          const novelData = await api.getNovel(novelId);
-          const chaptersData = await api.getChapters(novelId);
-          setNovel(novelData);
-          setChapters(chaptersData);
-        }
-      }, 3000);
-
-      return () => clearInterval(timer);
-    }
-  }, [jobs, user, novelId]);
-
   // Handle Edit Submit
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       const updated = await api.updateNovel(novelId, {
-        title: editTitle,
-        author: editAuthor,
-        authorPenName: editAuthor,
-        authorRealName: editAuthorRealName,
-        alternativeNames: splitListInput(editAlternativeNames),
-        genres: splitListInput(editGenres),
-        originalSource: editOriginalSource,
-        publicationStatus: editPublicationStatus,
-        coverUrl: editCoverUrl,
-        rawSourceUrl: editRawSourceUrl,
-        rawOriginalLanguage: editRawOriginalLanguage,
         status: editStatus,
         chaptersRead: editChRead,
         completedAt: editCompletedAt ? new Date(editCompletedAt).toISOString() : null,
@@ -188,44 +129,9 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
     }
   };
 
-  // Trigger manual Scraper Run
-  const handleTriggerSync = async (type: BackgroundJob['type']) => {
-    try {
-      await api.triggerScrape(novelId, type);
-      const jobsData = await api.getNovelJobs(novelId);
-      setJobs(jobsData);
-    } catch (err: any) {
-      alert(err.message || 'Scrape trigger failed.');
-    }
-  };
-
-  const handleSyncCover = async () => {
-    setSyncingCover(true);
-    try {
-      const updated = await api.syncCover(novelId, editCoverUrl || undefined);
-      setNovel(updated);
-      setEditCoverUrl(updated.coverUrl || '');
-    } catch (err: any) {
-      alert(err.message || 'Cover sync failed.');
-    } finally {
-      setSyncingCover(false);
-    }
-  };
-
-  // Scraper Retry helper
-  const handleRetryJob = async (jobId: string) => {
-    try {
-      await api.retryJob(jobId);
-      const jobsData = await api.getNovelJobs(novelId);
-      setJobs(jobsData);
-    } catch (err) {
-      console.error('Failed to retry job:', err);
-    }
-  };
-
   // Delete Novel Cascade
   const handleDeleteNovel = async () => {
-    if (!confirm('Are you absolutely sure you want to delete this novel? This will permanently delete all logs, notes, and scraped chapter contents.')) {
+    if (!confirm('Remove this novel from your profile library? The shared catalog and archived chapters will stay in the system.')) {
       return;
     }
 
@@ -350,10 +256,10 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
         </Link>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)}>
-            {isEditing ? 'Cancel Edit' : 'Edit Details'}
+            {isEditing ? 'Cancel Edit' : 'Edit My Details'}
           </button>
           <button className="btn btn-danger" onClick={handleDeleteNovel}>
-            Delete
+            Remove from Library
           </button>
         </div>
       </div>
@@ -419,80 +325,8 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
           {/* EDIT FORM (Conditionally Rendered) */}
           {isEditing ? (
             <div className="glass-card" style={{ padding: '2rem' }}>
-              <h3 style={{ marginBottom: '1.25rem', fontSize: '1.2rem' }}>Edit Details</h3>
+              <h3 style={{ marginBottom: '1.25rem', fontSize: '1.2rem' }}>Edit My Reading Details</h3>
               <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Novel Title</label>
-                  <input type="text" className="form-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Author Name</label>
-                  <input type="text" className="form-input" value={editAuthor} onChange={(e) => setEditAuthor(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Author Real Name</label>
-                  <input type="text" className="form-input" value={editAuthorRealName} onChange={(e) => setEditAuthorRealName(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Alternative Novel Names</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editAlternativeNames}
-                    onChange={(e) => setEditAlternativeNames(e.target.value)}
-                    placeholder="Comma-separated names"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Genres</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editGenres}
-                    onChange={(e) => setEditGenres(e.target.value)}
-                    placeholder="Comma-separated genres"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Cover Image URL</label>
-                  <input
-                    type="url"
-                    className="form-input"
-                    value={editCoverUrl}
-                    onChange={(e) => setEditCoverUrl(e.target.value)}
-                    placeholder="https://example.com/covers/title.jpg"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Raw Source URL</label>
-                  <input
-                    type="url"
-                    className="form-input"
-                    value={editRawSourceUrl}
-                    onChange={(e) => setEditRawSourceUrl(e.target.value)}
-                    placeholder="Original-language source URL"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Raw Original Language</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editRawOriginalLanguage}
-                    onChange={(e) => setEditRawOriginalLanguage(e.target.value)}
-                    placeholder="Chinese, Korean, Japanese..."
-                  />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Novel Source</label>
-                    <input type="text" className="form-input" value={editOriginalSource} onChange={(e) => setEditOriginalSource(e.target.value)} />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Publication Status</label>
-                    <input type="text" className="form-input" value={editPublicationStatus} onChange={(e) => setEditPublicationStatus(e.target.value)} />
-                  </div>
-                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Reading Status</label>
@@ -620,14 +454,6 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                             <span style={{ color: 'var(--text-secondary)' }}>{novel.publicationStatus}</span>
                           </div>
                         )}
-                      </div>
-                    )}
-                    {(novel.rawSourceUrl || novel.rawOriginalLanguage || novel.rawChaptersTotal > 0) && (
-                      <div>
-                        <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Raw Source</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>
-                          {novel.rawOriginalLanguage || 'Original language'} · {novel.rawChaptersTotal || 0} indexed raw chapters
-                        </span>
                       </div>
                     )}
                   </div>
@@ -782,98 +608,8 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
 
         </div>
 
-        {/* RIGHT COLUMN: Scraper sync status & Table of Contents */}
+        {/* RIGHT COLUMN: Personal reading table of contents */}
         <div className="detail-column">
-          
-          {/* Background Jobs Sync Box */}
-          {(novel.sourceUrl || novel.coverUrl || novel.rawSourceUrl) && (
-            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="flex-between">
-                <h3 style={{ fontSize: '1.2rem' }}>Archiving / Sync Center</h3>
-                <div className="sync-actions">
-                  {novel.sourceUrl && (
-                    <>
-                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleTriggerSync('scrape_metadata')}>
-                        Index Ch. List
-                      </button>
-                      <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleTriggerSync('scrape_chapters')}>
-                        Archive Content
-                      </button>
-                    </>
-                  )}
-                  {novel.coverUrl && (
-                    <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={handleSyncCover} disabled={syncingCover}>
-                      {syncingCover ? <span className="spinner"></span> : 'Sync Cover'}
-                    </button>
-                  )}
-                  {novel.rawSourceUrl && (
-                    <>
-                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleTriggerSync('scrape_raw_metadata')}>
-                        Index Raw
-                      </button>
-                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleTriggerSync('scrape_raw_chapters')}>
-                        Archive Raw
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Display active job progress if available */}
-              {jobs.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {jobs.slice(0, 2).map((job) => {
-                    const total = job.progress?.total || 0;
-                    const current = job.progress?.current || 0;
-                    const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
-                    
-                    return (
-                      <div key={job._id} style={{ 
-                        border: '1px solid var(--border-color)', 
-                        borderRadius: 'var(--radius-md)', 
-                        padding: '1rem',
-                        backgroundColor: 'var(--surface-2)'
-                      }}>
-                        <div className="flex-between" style={{ margin: '0 0 0.5rem 0' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'capitalize' }}>
-                            {job.type.replace(/_/g, ' ')}
-                          </span>
-                          <span className={`badge badge-${job.status}`} style={{ fontSize: '0.7rem' }}>
-                            {job.status}
-                          </span>
-                        </div>
-
-                        {job.status === 'failed' && job.error ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <p style={{ color: 'var(--danger)', fontSize: '0.8rem' }}>⚠️ {job.error.message}</p>
-                            <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', alignSelf: 'flex-start' }} onClick={() => handleRetryJob(job._id)}>
-                              Retry Sync
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <div className="flex-between" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              <span>{job.progress?.message || 'Queued in background...'}</span>
-                              {total > 0 && <span>{pct}%</span>}
-                            </div>
-                            {total > 0 && (
-                              <div style={{ width: '100%', height: '4px', backgroundColor: 'var(--surface-3)', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{ width: `${pct}%`, height: '100%', backgroundColor: 'var(--primary)', transition: 'width 0.3s ease' }}></div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <Link href="/scraper" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
-                    View complete sync history →
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Table of Contents / Scraped Chapters List */}
           <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
@@ -888,13 +624,9 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
                   No chapters have been archived locally yet.
                 </p>
-                {novel.sourceUrl ? (
-                  <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleTriggerSync('scrape_metadata')}>
-                    Scrape Chapter Links Index
-                  </button>
-                ) : (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Add a source link to enable automated chapter downloads.</span>
-                )}
+                <Link href={`/novels/${novelId}`} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                  View Catalog Page
+                </Link>
               </div>
             ) : (
               <div className="chapter-list">

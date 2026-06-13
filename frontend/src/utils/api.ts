@@ -4,6 +4,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  role?: 'user' | 'admin';
   avatarUrl?: string;
   authProvider?: 'password' | 'google' | 'both';
 }
@@ -136,6 +137,7 @@ export interface ChapterContent {
   title: string;
   content: string;
   sourceUrl: string;
+  language?: string;
   scrapedAt: string;
 }
 
@@ -153,7 +155,8 @@ export interface ChapterVisit {
 }
 
 export type JobType = 'scrape_metadata' | 'scrape_chapters' | 'scrape_raw_metadata' | 'scrape_raw_chapters';
-export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'requires_manual_intervention';
+export type SourceKind = 'translated' | 'raw';
 
 export interface BackgroundJob {
   _id: string;
@@ -168,6 +171,10 @@ export interface BackgroundJob {
   error?: {
     message: string;
     stack?: string;
+    code?: string;
+    url?: string;
+    chapterNumber?: number;
+    sourceKind?: 'translated' | 'raw';
   };
   retryCount: number;
   createdAt: string;
@@ -417,12 +424,42 @@ class ApiClient {
     return this.request<ChapterContent>(`/novels/${novelId}/chapters/${chapterNumber}`);
   }
 
+  async getRawChapters(novelId: string): Promise<Omit<ChapterContent, 'content'>[]> {
+    return this.request<Omit<ChapterContent, 'content'>[]>(`/novels/${novelId}/raw-chapters`);
+  }
+
+  async getRawChapter(novelId: string, chapterNumber: number): Promise<ChapterContent> {
+    return this.request<ChapterContent>(`/novels/${novelId}/raw-chapters/${chapterNumber}`);
+  }
+
+  async translateRawChapter(
+    novelId: string,
+    chapterNumber: number,
+    data: { targetLanguage?: string; overwrite?: boolean } = {}
+  ): Promise<{ success: boolean; message: string; chapter: ChapterContent; model?: string; reusedExisting: boolean }> {
+    return this.request<{ success: boolean; message: string; chapter: ChapterContent; model?: string; reusedExisting: boolean }>(
+      `/novels/${novelId}/raw-chapters/${chapterNumber}/translate`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
   async getPublicChapters(novelId: string): Promise<Omit<ChapterContent, 'content'>[]> {
     return this.request<Omit<ChapterContent, 'content'>[]>(`/public/novels/${novelId}/chapters`);
   }
 
   async getPublicChapter(novelId: string, chapterNumber: number): Promise<ChapterContent> {
     return this.request<ChapterContent>(`/public/novels/${novelId}/chapters/${chapterNumber}`);
+  }
+
+  async getPublicRawChapters(novelId: string): Promise<Omit<ChapterContent, 'content'>[]> {
+    return this.request<Omit<ChapterContent, 'content'>[]>(`/public/novels/${novelId}/raw-chapters`);
+  }
+
+  async getPublicRawChapter(novelId: string, chapterNumber: number): Promise<ChapterContent> {
+    return this.request<ChapterContent>(`/public/novels/${novelId}/raw-chapters/${chapterNumber}`);
   }
 
   async getChapterVisits(novelId: string, limit = 100): Promise<ChapterVisit[]> {
@@ -451,11 +488,83 @@ class ApiClient {
     });
   }
 
+  async openManualIntervention(jobId: string): Promise<{ success: boolean; message: string; url: string }> {
+    return this.request<{ success: boolean; message: string; url: string }>(`/jobs/${jobId}/manual-intervention`, {
+      method: 'POST',
+    });
+  }
+
+  async importRawHtmlIndex(
+    novelId: string,
+    data: { html: string; pageUrl?: string }
+  ): Promise<{ success: boolean; message: string; chaptersFound: number; novel: Novel; job: BackgroundJob }> {
+    return this.request<{ success: boolean; message: string; chaptersFound: number; novel: Novel; job: BackgroundJob }>(
+      `/jobs/novel/${novelId}/import-raw-html`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async importHtmlIndex(
+    novelId: string,
+    data: { sourceKind: SourceKind; html: string; pageUrl?: string }
+  ): Promise<{ success: boolean; message: string; sourceKind: SourceKind; chaptersFound: number; novel: Novel; job: BackgroundJob }> {
+    return this.request<{ success: boolean; message: string; sourceKind: SourceKind; chaptersFound: number; novel: Novel; job: BackgroundJob }>(
+      `/jobs/novel/${novelId}/import-html-index`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async importFailedChapterHtml(
+    jobId: string,
+    data: { html: string; pageUrl?: string }
+  ): Promise<{ success: boolean; message: string; chapterNumber: number; title: string; sourceUrl: string; job: BackgroundJob }> {
+    return this.request<{ success: boolean; message: string; chapterNumber: number; title: string; sourceUrl: string; job: BackgroundJob }>(
+      `/jobs/${jobId}/import-chapter-html`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async importChapterHtml(
+    novelId: string,
+    data: { sourceKind: SourceKind; chapterNumber: number; html: string; pageUrl?: string }
+  ): Promise<{ success: boolean; message: string; sourceKind: SourceKind; chapterNumber: number; title: string; sourceUrl: string }> {
+    return this.request<{ success: boolean; message: string; sourceKind: SourceKind; chapterNumber: number; title: string; sourceUrl: string }>(
+      `/jobs/novel/${novelId}/import-chapter-html`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
   async triggerScrape(novelId: string, type: JobType): Promise<{ success: boolean; message: string; job: BackgroundJob }> {
     return this.request<{ success: boolean; message: string; job: BackgroundJob }>(`/jobs/novel/${novelId}/scrape`, {
       method: 'POST',
       body: JSON.stringify({ type }),
     });
+  }
+
+  async runScrapeNow(
+    novelId: string,
+    type: JobType,
+    data: { limit?: number; chapterNumber?: number } = {}
+  ): Promise<{ success: boolean; message: string; result: unknown; novel: Novel; job: BackgroundJob }> {
+    return this.request<{ success: boolean; message: string; result: unknown; novel: Novel; job: BackgroundJob }>(
+      `/jobs/novel/${novelId}/scrape-now`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ type, ...data }),
+      }
+    );
   }
 }
 

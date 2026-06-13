@@ -143,9 +143,6 @@ NovelSchema.pre('validate', function normalizeFilterFields(next) {
   if (!this.addedByUserId && this.userId) {
     this.addedByUserId = this.userId;
   }
-  if (!this.userId && this.addedByUserId) {
-    this.userId = this.addedByUserId;
-  }
   if ((!this.authorIds || this.authorIds.length === 0) && this.authorId) {
     this.authorIds = [this.authorId];
   }

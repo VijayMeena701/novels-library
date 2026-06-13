@@ -10,6 +10,10 @@ export default function ScraperMonitor() {
   const [jobs, setJobs] = useState<BackgroundJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(3000); // Poll every 3s when processing
+  const [chapterHtmlJob, setChapterHtmlJob] = useState<BackgroundJob | null>(null);
+  const [chapterHtmlPageUrl, setChapterHtmlPageUrl] = useState('');
+  const [chapterHtmlContent, setChapterHtmlContent] = useState('');
+  const [importingChapterHtml, setImportingChapterHtml] = useState(false);
 
   const fetchJobs = async () => {
     try {
@@ -23,14 +27,16 @@ export default function ScraperMonitor() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user?.role === 'admin') {
       fetchJobs();
+    } else if (user) {
+      setLoading(false);
     }
   }, [user]);
 
   // Auto-refresh when jobs are active
   useEffect(() => {
-    if (!user) return;
+    if (user?.role !== 'admin') return;
     
     const hasActiveJobs = jobs.some(j => j.status === 'pending' || j.status === 'processing');
     
@@ -60,12 +66,67 @@ export default function ScraperMonitor() {
     }
   };
 
+  const handleOpenManualIntervention = async (jobId: string) => {
+    try {
+      const result = await api.openManualIntervention(jobId);
+      alert(result.message);
+      await fetchJobs();
+    } catch (err) {
+      console.error('Failed to open manual browser:', err);
+      alert('Error opening manual browser: ' + (err as any).message);
+    }
+  };
+
+  const openChapterHtmlImport = (job: BackgroundJob) => {
+    setChapterHtmlJob(job);
+    setChapterHtmlPageUrl(job.error?.url || '');
+    setChapterHtmlContent('');
+  };
+
+  const handleImportChapterHtml = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!chapterHtmlJob) return;
+
+    setImportingChapterHtml(true);
+    try {
+      const result = await api.importFailedChapterHtml(chapterHtmlJob._id, {
+        html: chapterHtmlContent,
+        pageUrl: chapterHtmlPageUrl || chapterHtmlJob.error?.url,
+      });
+      setChapterHtmlJob(null);
+      setChapterHtmlContent('');
+      alert(`${result.message} Retry the job to continue archiving.`);
+      await fetchJobs();
+    } catch (err) {
+      console.error('Failed to import chapter HTML:', err);
+      alert('Error importing chapter HTML: ' + (err as any).message);
+    } finally {
+      setImportingChapterHtml(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
           <span style={{ color: 'var(--text-secondary)' }}>Loading background tasks registry...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role !== 'admin') {
+    return (
+      <div className="container">
+        <div className="glass-card empty-state">
+          <h1>Admin Access Required</h1>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+            Scraper jobs, raw imports, and archive controls are catalog administration tools.
+          </p>
+          <Link href="/profile" className="btn btn-secondary" style={{ marginTop: '1rem' }}>
+            Back to Profile
+          </Link>
         </div>
       </div>
     );
@@ -109,6 +170,12 @@ export default function ScraperMonitor() {
           <div className="stat-label">Failed</div>
           <div className="stat-value" style={{ color: 'var(--danger)' }}>
             {jobs.filter(j => j.status === 'failed').length}
+          </div>
+        </div>
+        <div className="glass-card stat-card">
+          <div className="stat-label">Needs Manual</div>
+          <div className="stat-value" style={{ color: '#b45309' }}>
+            {jobs.filter(j => j.status === 'requires_manual_intervention').length}
           </div>
         </div>
       </div>
@@ -175,7 +242,11 @@ export default function ScraperMonitor() {
                           <div style={{ 
                             width: `${percent}%`, 
                             height: '100%', 
-                            backgroundColor: job.status === 'failed' ? 'var(--danger)' : 'var(--primary)', 
+                            backgroundColor: job.status === 'failed'
+                              ? 'var(--danger)'
+                              : job.status === 'requires_manual_intervention'
+                                ? '#b45309'
+                                : 'var(--primary)', 
                             borderRadius: '2px',
                             transition: 'width 0.3s ease'
                           }}></div>
@@ -184,11 +255,18 @@ export default function ScraperMonitor() {
                     </td>
 
                     {/* Progress message / Error Message */}
-                    <td style={{ padding: '1rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {job.status === 'failed' && job.error ? (
-                        <span style={{ color: 'var(--danger)', fontSize: '0.85rem', fontWeight: '500' }} title={job.error.message}>
-                          {job.error.message}
-                        </span>
+                    <td style={{ padding: '1rem', maxWidth: '360px' }}>
+                      {(job.status === 'failed' || job.status === 'requires_manual_intervention') && job.error ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          <span style={{ color: job.status === 'failed' ? 'var(--danger)' : '#b45309', fontSize: '0.85rem', fontWeight: '500' }} title={job.error.message}>
+                            {job.error.message}
+                          </span>
+                          {job.error.url && (
+                            <a href={job.error.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', wordBreak: 'break-all' }}>
+                              {job.error.sourceKind === 'raw' ? 'Raw' : 'Translated'} chapter {job.error.chapterNumber || ''}: {job.error.url}
+                            </a>
+                          )}
+                        </div>
                       ) : (
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }} title={job.progress?.message}>
                           {job.progress?.message || 'Queued...'}
@@ -198,14 +276,51 @@ export default function ScraperMonitor() {
 
                     {/* Actions */}
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      {job.status === 'failed' ? (
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderColor: 'rgba(239, 68, 68, 0.25)', color: 'var(--danger)' }}
-                          onClick={() => handleRetry(job._id)}
-                        >
-                          Retry Job
-                        </button>
+                      {job.status === 'requires_manual_intervention' ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                            onClick={() => handleOpenManualIntervention(job._id)}
+                          >
+                            Open Browser
+                          </button>
+                          {job.error?.chapterNumber && job.error?.url && (
+                            <button 
+                              className="btn btn-secondary" 
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                              onClick={() => openChapterHtmlImport(job)}
+                            >
+                              Import HTML
+                            </button>
+                          )}
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderColor: 'rgba(180, 83, 9, 0.25)', color: '#b45309' }}
+                            onClick={() => handleRetry(job._id)}
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : job.status === 'failed' ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          {job.error?.chapterNumber && job.error?.url && (
+                            <button 
+                              className="btn btn-secondary" 
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                              onClick={() => openChapterHtmlImport(job)}
+                            >
+                              Import HTML
+                            </button>
+                          )}
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderColor: 'rgba(239, 68, 68, 0.25)', color: 'var(--danger)' }}
+                            onClick={() => handleRetry(job._id)}
+                          >
+                            Retry Job
+                          </button>
+                        </div>
                       ) : (
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                           {job.status === 'completed' ? 'Synced' : 'Running...'}
@@ -220,6 +335,63 @@ export default function ScraperMonitor() {
           </table>
         )}
       </div>
+
+      {chapterHtmlJob && (
+        <div className="modal-backdrop">
+          <div className="glass-card modal-panel" style={{ maxWidth: '720px' }}>
+            <div className="flex-between">
+              <h2 style={{ fontSize: '1.4rem' }}>
+                Import {chapterHtmlJob.error?.sourceKind === 'raw' ? 'Raw ' : ''}Chapter {chapterHtmlJob.error?.chapterNumber || ''}
+              </h2>
+              <button
+                onClick={() => setChapterHtmlJob(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleImportChapterHtml} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Chapter Page URL</label>
+                <input
+                  type="url"
+                  className="form-input"
+                  value={chapterHtmlPageUrl}
+                  onChange={(e) => setChapterHtmlPageUrl(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Saved Chapter HTML</label>
+                <textarea
+                  className="form-textarea"
+                  rows={14}
+                  value={chapterHtmlContent}
+                  onChange={(e) => setChapterHtmlContent(e.target.value)}
+                  placeholder="<html>..."
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setChapterHtmlJob(null)}
+                  disabled={importingChapterHtml}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={importingChapterHtml}>
+                  {importingChapterHtml ? 'Importing...' : 'Save Chapter'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

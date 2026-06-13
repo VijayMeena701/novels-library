@@ -13,6 +13,9 @@ const publicLinks = [
 
 const privateLinks = [
   { href: '/profile', label: 'Profile', match: (pathname: string) => pathname.startsWith('/profile') },
+];
+
+const adminLinks = [
   { href: '/scraper', label: 'Scrapers', match: (pathname: string) => pathname === '/scraper' },
 ];
 
@@ -22,7 +25,9 @@ export default function Header() {
 
   if (pathname === '/login') return null;
 
-  const links = user ? [...publicLinks, ...privateLinks] : publicLinks;
+  const links = user
+    ? [...publicLinks, ...privateLinks, ...(user.role === 'admin' ? adminLinks : [])]
+    : publicLinks;
 
   return (
     <header className="sticky top-0 z-[100] border-b border-border bg-[rgba(255,253,248,0.88)] shadow-[0_2px_18px_rgba(48,39,28,0.04)] backdrop-blur-[18px]">

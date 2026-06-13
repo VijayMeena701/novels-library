@@ -3,11 +3,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api, type Novel, type ChapterContent, type ReaderSettings, type ReaderTheme, type ReaderWidth } from '../../../../../utils/api';
+import { api, type Novel, type ChapterContent, type JobType, type ReaderSettings, type ReaderTheme, type ReaderWidth, type SourceKind } from '../../../../../utils/api';
 import { useAuth } from '../../../../../context/AuthContext';
 
 type TtsStatus = 'idle' | 'playing' | 'paused';
 type ReaderPanelTab = 'read' | 'display' | 'speech' | 'settings' | 'more';
+type ReaderSource = 'translated' | 'raw';
 
 const SPEECH_RATE_MIN = 0.5;
 const SPEECH_RATE_MAX = 4;
@@ -21,6 +22,7 @@ interface CatalogChapter {
   number: number;
   title: string;
   archived: boolean;
+  sourceUrl?: string;
   scrapedAt?: string;
 }
 
@@ -107,12 +109,20 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
   const chapterNumber = parseInt(chNumStr, 10);
   const shouldResumeTtsFromRoute = searchParams.get('tts') === '1';
+  const readingSource: ReaderSource = searchParams.get('source') === 'raw' ? 'raw' : 'translated';
+  const isRawReader = readingSource === 'raw';
 
   const [novel, setNovel] = useState<Novel | null>(null);
   const [chapter, setChapter] = useState<ChapterContent | null>(null);
   const [chapters, setChapters] = useState<Omit<ChapterContent, 'content'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [translatingRawChapter, setTranslatingRawChapter] = useState(false);
+  const [adminActionMessage, setAdminActionMessage] = useState('');
+  const [adminScrapingChapter, setAdminScrapingChapter] = useState(false);
+  const [chapterHtmlPageUrl, setChapterHtmlPageUrl] = useState('');
+  const [chapterHtmlContent, setChapterHtmlContent] = useState('');
+  const [importingChapterHtml, setImportingChapterHtml] = useState(false);
 
   const [theme, setTheme] = useState<ReaderTheme>('sepia');
   const [fontSize, setFontSize] = useState<number>(18);
@@ -380,39 +390,52 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
       if (!novelId || Number.isNaN(chapterNumber)) return;
       setLoading(true);
       setError('');
+      setChapter(null);
+      setAdminActionMessage('');
 
       try {
-        const [novelData, chapterData, chaptersData] = await Promise.all([
-          api.getPublicNovel(novelId),
-          api.getPublicChapter(novelId, chapterNumber),
-          api.getPublicChapters(novelId),
-        ]);
-
+        const [novelData, chaptersData] = isRawReader
+          ? await Promise.all([
+            api.getPublicNovel(novelId),
+            api.getPublicRawChapters(novelId),
+          ])
+          : await Promise.all([
+            api.getPublicNovel(novelId),
+            api.getPublicChapters(novelId),
+          ]);
         setNovel(novelData);
-        setChapter(chapterData);
         setChapters(chaptersData);
 
-        if (user) {
-          void api.recordChapterVisit(novelId, chapterData.chapterNumber).catch((visitErr) => {
-            console.error('Failed to record chapter revisit:', visitErr);
-          });
+        try {
+          const chapterData = isRawReader
+            ? await api.getPublicRawChapter(novelId, chapterNumber)
+            : await api.getPublicChapter(novelId, chapterNumber);
+          setChapter(chapterData);
 
-          if (chapterData.chapterNumber > novelData.chaptersRead) {
-            void api.updateNovel(novelId, { chaptersRead: chapterData.chapterNumber }).catch((updateErr) => {
-              console.error('Failed to update reading progress:', updateErr);
+          if (user && !isRawReader) {
+            void api.recordChapterVisit(novelId, chapterData.chapterNumber).catch((visitErr) => {
+              console.error('Failed to record chapter revisit:', visitErr);
             });
+
+            if (chapterData.chapterNumber > novelData.chaptersRead) {
+              void api.updateNovel(novelId, { chaptersRead: chapterData.chapterNumber }).catch((updateErr) => {
+                console.error('Failed to update reading progress:', updateErr);
+              });
+            }
           }
+        } catch (chapterErr: any) {
+          setError(chapterErr.message || 'This chapter has not been archived yet.');
         }
       } catch (err: any) {
         console.error('Failed to load chapter content:', err);
-        setError(err.message || 'Could not fetch archived chapter. Check scraper logs.');
+        setError(err.message || 'Could not load this reader page.');
       } finally {
         setLoading(false);
       }
     }
 
     loadChapter();
-  }, [user, novelId, chapterNumber]);
+  }, [isRawReader, user, novelId, chapterNumber]);
 
   const catalogItems = useMemo<CatalogChapter[]>(() => {
     if (!novel) return [];
@@ -421,13 +444,16 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
     const seen = new Set<number>();
     const items: CatalogChapter[] = [];
 
-    for (const indexed of novel.chaptersList || []) {
+    const indexedChapters = isRawReader ? novel.rawChaptersList || [] : novel.chaptersList || [];
+
+    for (const indexed of indexedChapters) {
       if (!indexed.number || seen.has(indexed.number)) continue;
       const archived = archivedByNumber.get(indexed.number);
       items.push({
         number: indexed.number,
         title: resolveChapterTitle(novel.title, indexed.number, archived?.title, indexed.title),
         archived: Boolean(archived),
+        sourceUrl: archived?.sourceUrl || indexed.url,
         scrapedAt: archived?.scrapedAt,
       });
       seen.add(indexed.number);
@@ -439,13 +465,14 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
         number: archived.chapterNumber,
         title: resolveChapterTitle(novel.title, archived.chapterNumber, archived.title),
         archived: true,
+        sourceUrl: archived.sourceUrl,
         scrapedAt: archived.scrapedAt,
       });
       seen.add(archived.chapterNumber);
     }
 
     return items.sort((a, b) => a.number - b.number);
-  }, [novel, chapters]);
+  }, [isRawReader, novel, chapters]);
 
   const filteredCatalogItems = useMemo(() => {
     const query = catalogSearch.trim().toLowerCase();
@@ -461,6 +488,16 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
     () => catalogItems.findIndex((item) => item.number === chapterNumber),
     [catalogItems, chapterNumber]
   );
+  const currentCatalogItem = currentCatalogIndex >= 0 ? catalogItems[currentCatalogIndex] : undefined;
+  const readerSourceKind: SourceKind = isRawReader ? 'raw' : 'translated';
+  const archiveJobType: JobType = isRawReader ? 'scrape_raw_chapters' : 'scrape_chapters';
+  const currentSourceUrl = currentCatalogItem?.sourceUrl || chapter?.sourceUrl || '';
+  const missingChapterTitle = currentCatalogItem?.title || `${isRawReader ? 'Raw chapter' : 'Chapter'} ${chapterNumber}`;
+
+  useEffect(() => {
+    setChapterHtmlPageUrl(currentSourceUrl);
+    setChapterHtmlContent('');
+  }, [chapterNumber, currentSourceUrl, readingSource]);
 
   const previousChapterNumber = currentCatalogIndex > 0
     ? catalogItems[currentCatalogIndex - 1].number
@@ -471,11 +508,12 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
   const hasPreviousChapter = currentCatalogIndex >= 0 ? currentCatalogIndex > 0 : chapterNumber > 1;
   const hasNextChapter = currentCatalogIndex >= 0
     ? currentCatalogIndex < catalogItems.length - 1
-    : Boolean(novel && !(novel.chaptersTotal > 0 && chapterNumber >= novel.chaptersTotal));
+    : Boolean(novel && !((isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal) > 0 && chapterNumber >= (isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal)));
 
   const indexedCurrentTitle = useMemo(() => {
-    return novel?.chaptersList?.find((item) => item.number === chapterNumber)?.title;
-  }, [novel, chapterNumber]);
+    const indexedChapters = isRawReader ? novel?.rawChaptersList : novel?.chaptersList;
+    return indexedChapters?.find((item) => item.number === chapterNumber)?.title;
+  }, [isRawReader, novel, chapterNumber]);
 
   const displayChapterTitle = useMemo(() => {
     if (!novel || !chapter) return `Chapter ${chapterNumber}`;
@@ -483,9 +521,89 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
   }, [chapter, chapterNumber, indexedCurrentTitle, novel]);
 
   const navigateToChapter = useCallback((nextChNum: number, options?: { resumeTts?: boolean }) => {
-    const resumeQuery = options?.resumeTts ? '?tts=1' : '';
-    router.push(`/novels/${novelId}/reader/${nextChNum}${resumeQuery}`);
-  }, [novelId, router]);
+    const query = new URLSearchParams();
+    if (readingSource === 'raw') query.set('source', 'raw');
+    if (options?.resumeTts) query.set('tts', '1');
+    const queryString = query.toString();
+    router.push(`/novels/${novelId}/reader/${nextChNum}${queryString ? `?${queryString}` : ''}`);
+  }, [novelId, readingSource, router]);
+
+  const switchReaderSource = useCallback((source: ReaderSource) => {
+    const query = new URLSearchParams();
+    if (source === 'raw') query.set('source', 'raw');
+    router.push(`/novels/${novelId}/reader/${chapterNumber}${query.toString() ? `?${query.toString()}` : ''}`);
+  }, [chapterNumber, novelId, router]);
+
+  const handleGenerateTranslation = useCallback(async () => {
+    if (!novelId || !chapter) return;
+    setTranslatingRawChapter(true);
+    setError('');
+
+    try {
+      await api.translateRawChapter(novelId, chapter.chapterNumber, { targetLanguage: 'English' });
+      router.push(`/novels/${novelId}/reader/${chapter.chapterNumber}`);
+    } catch (err: any) {
+      setError(err.message || 'Could not generate translated chapter.');
+    } finally {
+      setTranslatingRawChapter(false);
+    }
+  }, [chapter, novelId, router]);
+
+  const reloadCurrentChapter = useCallback(async () => {
+    const [chapterData, chaptersData] = isRawReader
+      ? await Promise.all([
+        api.getPublicRawChapter(novelId, chapterNumber),
+        api.getPublicRawChapters(novelId),
+      ])
+      : await Promise.all([
+        api.getPublicChapter(novelId, chapterNumber),
+        api.getPublicChapters(novelId),
+      ]);
+
+    setChapter(chapterData);
+    setChapters(chaptersData);
+    setError('');
+  }, [chapterNumber, isRawReader, novelId]);
+
+  const handleScrapeCurrentChapterNow = useCallback(async () => {
+    if (!novel) return;
+
+    setAdminScrapingChapter(true);
+    setAdminActionMessage('');
+    try {
+      const result = await api.runScrapeNow(novelId, archiveJobType, { chapterNumber });
+      setNovel(result.novel);
+      await reloadCurrentChapter();
+      setAdminActionMessage(result.message || 'Chapter archived.');
+    } catch (err: any) {
+      setAdminActionMessage(err.message || 'Could not archive this chapter.');
+    } finally {
+      setAdminScrapingChapter(false);
+    }
+  }, [archiveJobType, chapterNumber, novel, novelId, reloadCurrentChapter]);
+
+  const handleImportCurrentChapterHtml = useCallback(async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!novel) return;
+
+    setImportingChapterHtml(true);
+    setAdminActionMessage('');
+    try {
+      const result = await api.importChapterHtml(novelId, {
+        sourceKind: readerSourceKind,
+        chapterNumber,
+        pageUrl: chapterHtmlPageUrl || currentSourceUrl,
+        html: chapterHtmlContent,
+      });
+      await reloadCurrentChapter();
+      setAdminActionMessage(result.message || 'Chapter HTML imported.');
+      setChapterHtmlContent('');
+    } catch (err: any) {
+      setAdminActionMessage(err.message || 'Could not import chapter HTML.');
+    } finally {
+      setImportingChapterHtml(false);
+    }
+  }, [chapterHtmlContent, chapterHtmlPageUrl, chapterNumber, currentSourceUrl, novel, novelId, readerSourceKind, reloadCurrentChapter]);
 
   const speakQueuedChunk = useCallback((index: number) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -752,20 +870,96 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
     return (
       <div className="container">
         <div className="glass-card empty-state">
-          <h2 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>Archiving Error</h2>
+          <h2 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>
+            {missingChapterTitle}
+          </h2>
           <p style={{ maxWidth: '520px', color: 'var(--text-secondary)', margin: '0 auto 2rem' }}>
-            {error || 'This chapter has not been archived yet. Make sure the background job finishes running.'}
+            {error || 'This chapter has not been archived yet.'}
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href={`/novels/${novelId}`} className="btn btn-secondary">
               Back to Book Index
             </Link>
-            {novel?.sourceUrl && (
-              <a href={novel.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
-                Read on Original Site
+            {currentSourceUrl && (
+              <a href={currentSourceUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+                Open Source Page
               </a>
             )}
           </div>
+
+          {user?.role === 'admin' && novel && (
+            <div
+              className="glass-card"
+              style={{
+                width: 'min(820px, 100%)',
+                margin: '2rem auto 0',
+                padding: '1.5rem',
+                textAlign: 'left',
+              }}
+            >
+              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>Admin Recovery</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                Archive this {isRawReader ? 'raw' : 'translated'} chapter now, or paste the saved HTML for this source page.
+              </p>
+
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleScrapeCurrentChapterNow}
+                  disabled={adminScrapingChapter || !currentCatalogItem?.sourceUrl}
+                >
+                  {adminScrapingChapter ? 'Scraping...' : 'Scrape This Chapter Now'}
+                </button>
+                {currentSourceUrl && (
+                  <a href={currentSourceUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                    Open Source
+                  </a>
+                )}
+              </div>
+
+              <form onSubmit={handleImportCurrentChapterHtml} style={{ display: 'grid', gap: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Chapter Page URL</label>
+                  <input
+                    type="url"
+                    className="form-input"
+                    value={chapterHtmlPageUrl}
+                    onChange={(event) => setChapterHtmlPageUrl(event.target.value)}
+                    placeholder="https://example.com/chapter"
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Saved Chapter HTML</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={10}
+                    value={chapterHtmlContent}
+                    onChange={(event) => setChapterHtmlContent(event.target.value)}
+                    placeholder="<html>..."
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    {readerSourceKind === 'raw' ? 'Raw chapter' : 'Translated chapter'} {chapterNumber}
+                  </span>
+                  <button type="submit" className="btn btn-primary" disabled={importingChapterHtml}>
+                    {importingChapterHtml ? 'Importing...' : 'Import HTML'}
+                  </button>
+                </div>
+              </form>
+
+              {adminActionMessage && (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '1rem' }}>
+                  {adminActionMessage}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -793,6 +987,23 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
         </div>
 
         <div className="reader-toolbar-actions">
+          {novel.rawChaptersTotal > 0 && (
+            <div className="reader-segmented" aria-label="Reader source">
+              <button
+                className={!isRawReader ? 'active' : ''}
+                onClick={() => switchReaderSource('translated')}
+              >
+                Translated
+              </button>
+              <button
+                className={isRawReader ? 'active' : ''}
+                onClick={() => switchReaderSource('raw')}
+              >
+                Raw
+              </button>
+            </div>
+          )}
+
           <div className="reader-control-group">
             <button
               className="reader-tool-button"
@@ -884,7 +1095,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
             <div className="reader-catalog-header">
               <div>
                 <h2>Catalogue</h2>
-                <p>{catalogItems.length} chapters indexed, {chapters.length} archived.</p>
+                <p>{isRawReader ? 'Raw' : 'Translated'} · {catalogItems.length} chapters indexed, {chapters.length} archived.</p>
               </div>
               <button className="reader-tool-button" onClick={() => setIsCatalogOpen(false)}>
                 Close
@@ -924,13 +1135,25 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
             <h1>{displayChapterTitle}</h1>
             <div className="reader-chapter-meta">
               <span>{novel.title}</span>
-              <span>Chapter {chapter.chapterNumber} {novel.chaptersTotal ? `of ${novel.chaptersTotal}` : ''}</span>
+              <span>{isRawReader ? 'Raw' : 'Translated'} chapter {chapter.chapterNumber} {(isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal) ? `of ${isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal}` : ''}</span>
               {chapter.sourceUrl && (
                 <a href={chapter.sourceUrl} target="_blank" rel="noreferrer">
                   Original Source
                 </a>
               )}
             </div>
+            {isRawReader && user?.role === 'admin' && (
+              <div className="reader-status-line" style={{ marginTop: '1rem' }}>
+                <span>Raw source view</span>
+                <button
+                  className="reader-tool-button"
+                  onClick={handleGenerateTranslation}
+                  disabled={translatingRawChapter}
+                >
+                  {translatingRawChapter ? 'Generating...' : 'Generate English Translation'}
+                </button>
+              </div>
+            )}
           </header>
 
           <div

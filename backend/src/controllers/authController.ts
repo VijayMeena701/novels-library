@@ -222,7 +222,7 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
     if (!user) {
       return reply.status(404).send({ error: 'User not found.' });
     }
-    return reply.send({ user });
+    return reply.send({ user: serializeUser(user) });
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error fetching user.' });

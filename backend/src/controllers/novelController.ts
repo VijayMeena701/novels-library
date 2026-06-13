@@ -15,7 +15,7 @@ import { isAdminRequest } from '../services/permissions.js';
 const VALID_NOVEL_STATUSES = new Set<NovelStatus>(['reading', 'completed', 'on_hold', 'dropped', 'planning']);
 
 async function syncUserNovelFromLegacyNovel(novel: any) {
-  const ownerId = novel?.addedByUserId || novel?.userId;
+  const ownerId = novel?.userId;
   if (!ownerId || !novel?._id) return;
 
   await UserNovel.updateOne(
@@ -331,19 +331,13 @@ export async function createNovelHandler(request: FastifyRequest, reply: Fastify
     sourceUrl,
     rawSourceUrl,
     rawOriginalLanguage,
-    status,
-    chaptersRead,
-    rating,
-    review,
-    personalNotes,
-    rawLegacyEntry,
-    characterNotes,
-    relationshipNotes,
-    personalTags,
-    completedAt,
   } = request.body as any;
 
   try {
+    if (!(await isAdminRequest(request))) {
+      return reply.status(403).send({ error: 'Admin access is required to create catalog novels.' });
+    }
+
     // If no title is given, but URL is provided, we can assign a placeholder that updates on scrape
     const finalTitle = title || (sourceUrl ? 'Pending Scrape' : 'Untitled Novel');
     const linkedAuthorIds = await resolveAuthorIds({
@@ -360,7 +354,6 @@ export async function createNovelHandler(request: FastifyRequest, reply: Fastify
     const resolvedPublicationStatus = await resolvePublicationStatus({ publicationStatusId, publicationStatus });
 
     const novel = await Novel.create({
-      userId: new mongoose.Types.ObjectId(userId),
       addedByUserId: new mongoose.Types.ObjectId(userId),
       authorId: linkedAuthorIds[0],
       authorIds: linkedAuthorIds,
@@ -384,21 +377,6 @@ export async function createNovelHandler(request: FastifyRequest, reply: Fastify
       chaptersList: []
     });
 
-    const userNovel = await UserNovel.create({
-      userId: new mongoose.Types.ObjectId(userId),
-      novelId: novel._id,
-      status: status || 'reading',
-      chaptersRead: chaptersRead || 0,
-      rating: rating || 0,
-      review: review || '',
-      personalNotes: personalNotes || '',
-      rawLegacyEntry: rawLegacyEntry || '',
-      characterNotes: characterNotes || '',
-      relationshipNotes: relationshipNotes || '',
-      personalTags: Array.isArray(personalTags) ? personalTags : [],
-      completedAt: completedAt || (status === 'completed' ? new Date() : undefined),
-    });
-
     // If sourceUrl is provided, trigger a background metadata job
     if (sourceUrl) {
       await BackgroundJob.create({
@@ -409,7 +387,7 @@ export async function createNovelHandler(request: FastifyRequest, reply: Fastify
       });
     }
 
-    return reply.status(201).send(serializeNovelForUser(novel, userNovel));
+    return reply.status(201).send(novel);
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error creating novel.' });
@@ -467,7 +445,7 @@ export async function getNovelHandler(request: FastifyRequest, reply: FastifyRep
     let userNovel = await UserNovel.findOne({ novelId: id, userId });
     let novel = await Novel.findById(id);
 
-    if (!userNovel && (novel?.userId?.toString() === userId || novel?.addedByUserId?.toString() === userId)) {
+    if (!userNovel && novel?.userId?.toString() === userId) {
       await syncUserNovelFromLegacyNovel(novel);
       userNovel = await UserNovel.findOne({ novelId: id, userId });
     }
@@ -523,7 +501,7 @@ export async function updateNovelHandler(request: FastifyRequest, reply: Fastify
       return reply.status(404).send({ error: 'Novel not found or unauthorized.' });
     }
 
-    const ownsLegacyNovel = novel.userId?.toString() === userId || novel.addedByUserId?.toString() === userId;
+    const ownsLegacyNovel = novel.userId?.toString() === userId;
     if (!userNovel && ownsLegacyNovel) {
       await syncUserNovelFromLegacyNovel(novel);
       userNovel = await UserNovel.findOne({ novelId: id, userId });
@@ -625,7 +603,7 @@ export async function deleteNovelHandler(request: FastifyRequest, reply: Fastify
     }
 
     let userNovel = await UserNovel.findOne({ novelId: id, userId });
-    const ownsLegacyNovel = novel.userId?.toString() === userId || novel.addedByUserId?.toString() === userId;
+    const ownsLegacyNovel = novel.userId?.toString() === userId;
     if (!userNovel && ownsLegacyNovel) {
       await syncUserNovelFromLegacyNovel(novel);
       userNovel = await UserNovel.findOne({ novelId: id, userId });
@@ -701,7 +679,7 @@ export async function startReadingSessionHandler(request: FastifyRequest, reply:
   try {
     const novel = await Novel.findById(novelId);
     let userNovel = await UserNovel.findOne({ novelId, userId });
-    if (!userNovel && (novel?.userId?.toString() === userId || novel?.addedByUserId?.toString() === userId)) {
+    if (!userNovel && novel?.userId?.toString() === userId) {
       await syncUserNovelFromLegacyNovel(novel);
       userNovel = await UserNovel.findOne({ novelId, userId });
     }

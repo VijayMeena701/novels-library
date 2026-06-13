@@ -33,17 +33,28 @@ import {
 import {
   listChaptersHandler,
   getChapterHandler,
+  listRawChaptersHandler,
+  getRawChapterHandler,
   listPublicChaptersHandler,
   getPublicChapterHandler,
+  listPublicRawChaptersHandler,
+  getPublicRawChapterHandler,
   listChapterVisitsHandler,
-  recordChapterVisitHandler
+  recordChapterVisitHandler,
+  translateRawChapterHandler
 } from '../controllers/chapterController.js';
 import { getPublicNovelCoverHandler, syncNovelCoverHandler } from '../controllers/coverController.js';
 import { getUserSettingsHandler, updateUserSettingsHandler } from '../controllers/settingsController.js';
 import { 
+  importFailedChapterHtmlHandler,
+  importChapterHtmlHandler,
   listJobsHandler, 
   getJobsForNovelHandler, 
+  importMetadataHtmlHandler,
+  importRawMetadataHtmlHandler,
+  openManualInterventionHandler,
   retryJobHandler, 
+  runScrapeNowHandler,
   triggerScrapeHandler 
 } from '../controllers/jobController.js';
 
@@ -69,6 +80,8 @@ export async function apiRoutes(fastify: FastifyInstance) {
   fastify.get('/public/novels/:id', getCatalogNovelHandler);
   fastify.get('/public/novels/:id/chapters', listPublicChaptersHandler);
   fastify.get('/public/novels/:id/chapters/:chapterNumber', getPublicChapterHandler);
+  fastify.get('/public/novels/:id/raw-chapters', listPublicRawChaptersHandler);
+  fastify.get('/public/novels/:id/raw-chapters/:chapterNumber', getPublicRawChapterHandler);
   fastify.get('/public/authors', listAuthorsHandler);
   fastify.get('/public/authors/:id', getAuthorHandler);
   fastify.get('/public/genres', listGenresHandler);
@@ -122,6 +135,9 @@ export async function apiRoutes(fastify: FastifyInstance) {
     // Archived Chapters Content Routes
     protectedGroup.get('/novels/:id/chapters', listChaptersHandler);
     protectedGroup.get('/novels/:id/chapters/:chapterNumber', getChapterHandler);
+    protectedGroup.get('/novels/:id/raw-chapters', listRawChaptersHandler);
+    protectedGroup.get('/novels/:id/raw-chapters/:chapterNumber', getRawChapterHandler);
+    protectedGroup.post('/novels/:id/raw-chapters/:chapterNumber/translate', translateRawChapterHandler);
     protectedGroup.get('/novels/:id/chapter-visits', listChapterVisitsHandler);
     protectedGroup.post('/novels/:id/chapters/:chapterNumber/visits', recordChapterVisitHandler);
 
@@ -129,6 +145,12 @@ export async function apiRoutes(fastify: FastifyInstance) {
     protectedGroup.get('/jobs', listJobsHandler);
     protectedGroup.get('/jobs/novel/:novelId', getJobsForNovelHandler);
     protectedGroup.post('/jobs/:jobId/retry', retryJobHandler);
+    protectedGroup.post('/jobs/:jobId/manual-intervention', openManualInterventionHandler);
+    protectedGroup.post('/jobs/:jobId/import-chapter-html', { bodyLimit: 20 * 1024 * 1024 }, importFailedChapterHtmlHandler);
+    protectedGroup.post('/jobs/novel/:novelId/import-html-index', { bodyLimit: 20 * 1024 * 1024 }, importMetadataHtmlHandler);
+    protectedGroup.post('/jobs/novel/:novelId/import-raw-html', { bodyLimit: 20 * 1024 * 1024 }, importRawMetadataHtmlHandler);
+    protectedGroup.post('/jobs/novel/:novelId/import-chapter-html', { bodyLimit: 20 * 1024 * 1024 }, importChapterHtmlHandler);
+    protectedGroup.post('/jobs/novel/:novelId/scrape-now', runScrapeNowHandler);
     protectedGroup.post('/jobs/novel/:novelId/scrape', triggerScrapeHandler);
   });
 }
