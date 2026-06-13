@@ -1,0 +1,160 @@
+import { FastifyReply, FastifyRequest } from 'fastify';
+import mongoose from 'mongoose';
+import { Genre } from '../models/Genre.js';
+import { PublicationStatus } from '../models/PublicationStatus.js';
+import { Novel, normalizeFilterKey } from '../models/Novel.js';
+import { backfillNovelTaxonomy } from '../services/taxonomy.js';
+import { isAdminRequest } from '../services/permissions.js';
+
+export async function listGenresHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    await backfillNovelTaxonomy();
+    const genres = await Genre.find().sort({ name: 1 });
+    const counts = await Novel.aggregate([
+      { $unwind: '$genreIds' },
+      { $group: { _id: '$genreIds', novelCount: { $sum: 1 } } },
+    ]);
+    const countByGenreId = new Map(counts.map((item) => [item._id.toString(), item.novelCount]));
+
+    return reply.send(genres.map((genre) => ({
+      ...genre.toObject(),
+      novelCount: countByGenreId.get(genre._id.toString()) || 0,
+    })));
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error listing genres.' });
+  }
+}
+
+export async function getGenreHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { keyOrId } = request.params as any;
+
+  try {
+    const genre = mongoose.Types.ObjectId.isValid(keyOrId)
+      ? await Genre.findById(keyOrId)
+      : await Genre.findOne({ key: normalizeFilterKey(keyOrId) });
+
+    if (!genre) {
+      return reply.status(404).send({ error: 'Genre not found.' });
+    }
+
+    const novels = await Novel.find({
+      $or: [
+        { genreIds: genre._id },
+        { genreKeys: genre.key },
+      ],
+    }).sort({ updatedAt: -1 });
+
+    return reply.send({ genre, novels });
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error fetching genre.' });
+  }
+}
+
+export async function upsertGenreHandler(request: FastifyRequest, reply: FastifyReply) {
+  if (!(await isAdminRequest(request))) {
+    return reply.status(403).send({ error: 'Admin access is required to manage genres.' });
+  }
+
+  const { id } = request.params as any;
+  const { name, key, aliases, description } = request.body as any;
+  const patch = {
+    ...(name !== undefined ? { name } : {}),
+    ...(key !== undefined ? { key } : {}),
+    ...(aliases !== undefined ? { aliases } : {}),
+    ...(description !== undefined ? { description } : {}),
+  };
+
+  try {
+    const genre = id && mongoose.Types.ObjectId.isValid(id)
+      ? await Genre.findByIdAndUpdate(id, patch, { new: true, runValidators: true })
+      : await Genre.create(patch);
+
+    if (!genre) {
+      return reply.status(404).send({ error: 'Genre not found.' });
+    }
+
+    return reply.status(id ? 200 : 201).send(genre);
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error saving genre.' });
+  }
+}
+
+export async function listPublicationStatusesHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    await backfillNovelTaxonomy();
+    const statuses = await PublicationStatus.find().sort({ sortOrder: 1, name: 1 });
+    const counts = await Novel.aggregate([
+      { $match: { publicationStatusId: { $ne: null } } },
+      { $group: { _id: '$publicationStatusId', novelCount: { $sum: 1 } } },
+    ]);
+    const countByStatusId = new Map(counts.map((item) => [item._id.toString(), item.novelCount]));
+
+    return reply.send(statuses.map((status) => ({
+      ...status.toObject(),
+      novelCount: countByStatusId.get(status._id.toString()) || 0,
+    })));
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error listing publication statuses.' });
+  }
+}
+
+export async function getPublicationStatusHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { keyOrId } = request.params as any;
+
+  try {
+    const status = mongoose.Types.ObjectId.isValid(keyOrId)
+      ? await PublicationStatus.findById(keyOrId)
+      : await PublicationStatus.findOne({ key: normalizeFilterKey(keyOrId) });
+
+    if (!status) {
+      return reply.status(404).send({ error: 'Publication status not found.' });
+    }
+
+    const novels = await Novel.find({
+      $or: [
+        { publicationStatusId: status._id },
+        { publicationStatusKey: status.key },
+      ],
+    }).sort({ updatedAt: -1 });
+
+    return reply.send({ status, novels });
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error fetching publication status.' });
+  }
+}
+
+export async function upsertPublicationStatusHandler(request: FastifyRequest, reply: FastifyReply) {
+  if (!(await isAdminRequest(request))) {
+    return reply.status(403).send({ error: 'Admin access is required to manage publication statuses.' });
+  }
+
+  const { id } = request.params as any;
+  const { name, key, aliases, color, sortOrder } = request.body as any;
+  const patch = {
+    ...(name !== undefined ? { name } : {}),
+    ...(key !== undefined ? { key } : {}),
+    ...(aliases !== undefined ? { aliases } : {}),
+    ...(color !== undefined ? { color } : {}),
+    ...(sortOrder !== undefined ? { sortOrder } : {}),
+  };
+
+  try {
+    const status = id && mongoose.Types.ObjectId.isValid(id)
+      ? await PublicationStatus.findByIdAndUpdate(id, patch, { new: true, runValidators: true })
+      : await PublicationStatus.create(patch);
+
+    if (!status) {
+      return reply.status(404).send({ error: 'Publication status not found.' });
+    }
+
+    return reply.status(id ? 200 : 201).send(status);
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error saving publication status.' });
+  }
+}
