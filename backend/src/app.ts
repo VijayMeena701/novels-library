@@ -22,7 +22,7 @@ app.server.on("connection", (socket) => {
 });
 
 const defaultCorsOrigins = [
-	"novels-library.vijaymeena.dev",
+	"https://novels-library.vijaymeena.dev",
 	"http://localhost:3000",
 	"http://127.0.0.1:3000",
 	"http://localhost:3001",
