@@ -23,7 +23,7 @@ const SPEECH_RATE_MIN = 0.5;
 const SPEECH_RATE_MAX = 4;
 const SPEECH_PITCH_MIN = 0.5;
 const SPEECH_PITCH_MAX = 2;
-const SPEECH_BLOCK_SELECTOR = "p, li, blockquote, h1, h2, h3, h4";
+const SPEECH_BLOCK_SELECTOR = "p, li, blockquote, h1, h2, h3, h4, div";
 const SPEECH_RATE_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 const SPEECH_PITCH_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -43,6 +43,16 @@ interface SpeechQueueItem {
 interface SpeechBlock {
 	element: HTMLElement;
 	text: string;
+}
+
+function isSpeechLeafBlock(element: HTMLElement): boolean {
+	if (element.tagName !== "DIV") return true;
+
+	// Ignore wrapper containers so playback follows real content blocks.
+	return !Array.from(element.children).some((child) => {
+		if (!(child instanceof HTMLElement)) return false;
+		return ["P", "LI", "BLOCKQUOTE", "H1", "H2", "H3", "H4", "DIV"].includes(child.tagName);
+	});
 }
 
 function normalizeTitle(value: string): string {
@@ -140,6 +150,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const [selectedVoiceURI, setSelectedVoiceURI] = useState("");
 	const [speechError, setSpeechError] = useState("");
 	const [speechPortalPosition, setSpeechPortalPosition] = useState({ x: 24, y: 120 });
+	const [isCompactLayout, setIsCompactLayout] = useState(false);
 
 	const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 	const speechStartTimerRef = useRef<number | null>(null);
@@ -309,11 +320,25 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		}
 	}, []);
 
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+
+		const mediaQuery = window.matchMedia("(max-width: 860px)");
+		const applyLayout = () => setIsCompactLayout(mediaQuery.matches);
+		applyLayout();
+		mediaQuery.addEventListener?.("change", applyLayout);
+
+		return () => {
+			mediaQuery.removeEventListener?.("change", applyLayout);
+		};
+	}, []);
+
 	const buildSpeechBlocks = useCallback((): SpeechBlock[] => {
 		const root = readerContentRef.current;
 		if (!root) return [];
 
 		return Array.from(root.querySelectorAll<HTMLElement>(SPEECH_BLOCK_SELECTOR))
+			.filter((element) => isSpeechLeafBlock(element))
 			.map((element) => ({
 				element,
 				text: (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim(),
@@ -354,10 +379,16 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			activeSpeechBlockIndexRef.current = blockIndex;
 			block.element.classList.add("reader-speaking-block");
 			activeSpeechElementRef.current = block.element;
-			block.element.scrollIntoView({
-				behavior: "auto",
-				block: "center",
-			});
+
+			const rect = block.element.getBoundingClientRect();
+			const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+			const topSafe = 120;
+			const bottomSafe = 72;
+			const isOutOfView = rect.top < topSafe || rect.bottom > viewportHeight - bottomSafe;
+			if (isOutOfView) {
+				const targetTop = Math.max(0, window.scrollY + rect.top - topSafe);
+				window.scrollTo({ top: targetTop, behavior: "smooth" });
+			}
 		},
 		[clearSpeakingBlock, getSpeechBlocks],
 	);
@@ -865,6 +896,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	};
 
 	const handlePortalPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (isCompactLayout) return;
+
 		portalDragRef.current = {
 			pointerId: event.pointerId,
 			startX: event.clientX,
@@ -878,6 +911,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	};
 
 	const handlePortalPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (isCompactLayout) return;
+
 		const drag = portalDragRef.current;
 		if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -905,7 +940,15 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		}
 	}, []);
 
+	const handleCloseSpeechPortal = useCallback(() => {
+		clearPortalDragState();
+		portalDragRef.current = null;
+		setIsSpeechPortalOpen(false);
+	}, [clearPortalDragState]);
+
 	const handlePortalPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (isCompactLayout) return;
+
 		const drag = portalDragRef.current;
 		if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -918,6 +961,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	};
 
 	const handlePortalPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (isCompactLayout) return;
+
 		const drag = portalDragRef.current;
 		if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -939,11 +984,12 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		const target = event.target as HTMLElement | null;
 		if (!root || !target) return;
 
-		const block = target.closest("p, li, blockquote, h1, h2, h3, h4") as HTMLElement | null;
+		const block = target.closest(SPEECH_BLOCK_SELECTOR) as HTMLElement | null;
 		if (!block || !root.contains(block)) return;
+		if (!isSpeechLeafBlock(block)) return;
 
-		const blocks = Array.from(root.querySelectorAll<HTMLElement>("p, li, blockquote, h1, h2, h3, h4")).filter(
-			(element) => (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim().length > 0,
+		const blocks = Array.from(root.querySelectorAll<HTMLElement>(SPEECH_BLOCK_SELECTOR)).filter(
+			(element) => isSpeechLeafBlock(element) && (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim().length > 0,
 		);
 		const blockIndex = blocks.indexOf(block);
 		if (blockIndex < 0) return;
@@ -1068,100 +1114,27 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 	return (
 		<div className={`${themeClass} reader-shell`}>
-			<div className="reader-toolbar">
-				<div className="reader-toolbar-primary">
+			<div className="reader-toolbar max-[860px]:gap-2 max-[860px]:px-3 max-[860px]:py-[0.65rem]">
+				<div className="reader-toolbar-primary w-full flex-wrap justify-between">
 					<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
 						Catalogue
 					</button>
 					<Link href={`/novels/${novelId}`} className="reader-back-link">
 						← {novel.title.length > 24 ? `${novel.title.substring(0, 24)}...` : novel.title}
 					</Link>
-				</div>
-
-				<div className="reader-toolbar-actions">
-					{novel.rawChaptersTotal > 0 && (
-						<div className="reader-segmented" aria-label="Reader source">
-							<button className={!isRawReader ? "active" : ""} onClick={() => switchReaderSource("translated")}>
-								Translated
-							</button>
-							<button className={isRawReader ? "active" : ""} onClick={() => switchReaderSource("raw")}>
-								Raw
-							</button>
-						</div>
-					)}
-
-					<div className="reader-control-group">
-						<button
-							className="reader-tool-button"
-							onClick={handlePlaySpeech}
-							disabled={!speechSupported}
-							title={speechSupported ? "Read this chapter aloud" : "Text to speech is unavailable in this browser"}
-						>
-							{ttsStatus === "paused" ? "Resume" : ttsStatus === "playing" ? "Restart" : "Read Aloud"}
-						</button>
-						{ttsStatus === "playing" && (
-							<button className="reader-tool-button" onClick={handlePauseSpeech}>
-								Pause
-							</button>
-						)}
-						{ttsStatus !== "idle" && (
-							<button className="reader-tool-button" onClick={() => stopSpeech()}>
-								Stop
-							</button>
-						)}
-						<select
-							className="reader-select"
-							value={speechRate}
-							onChange={(event) => handleSpeechRateChange(Number(event.target.value))}
-							aria-label="Speech rate"
-						>
-							{!hasSpeechRatePreset && <option value={speechRate}>{formatSpeechValue(speechRate)}x</option>}
-							{SPEECH_RATE_PRESETS.map((preset) => (
-								<option key={preset} value={preset}>
-									{formatSpeechValue(preset)}x
-								</option>
-							))}
-						</select>
-						<button className="reader-tool-button" onClick={() => setIsSpeechPortalOpen(true)}>
-							Portal
-						</button>
-					</div>
-
-					<label className="reader-switch">
-						<input type="checkbox" checked={autoOpenNext} onChange={(event) => handleAutoOpenNextChange(event.target.checked)} />
-						<span></span>
-						<strong>TTS auto next</strong>
-					</label>
-
-					<div className="reader-segmented" aria-label="Reader theme">
-						{(["light", "sepia", "dark"] as const).map((item) => (
-							<button key={item} className={theme === item ? "active" : ""} onClick={() => handleThemeChange(item)}>
-								{item}
-							</button>
-						))}
-					</div>
-
-					<div className="reader-control-group">
-						<button className="reader-tool-button compact" onClick={() => handleFontSizeChange(false)}>
-							A-
-						</button>
-						<span className="reader-value">{fontSize}px</span>
-						<button className="reader-tool-button compact" onClick={() => handleFontSizeChange(true)}>
-							A+
-						</button>
-					</div>
-
-					<div className="reader-segmented" aria-label="Reader width">
-						{(["narrow", "medium", "wide"] as const).map((item) => (
-							<button key={item} className={readWidth === item ? "active" : ""} onClick={() => handleWidthChange(item)}>
-								{item}
-							</button>
-						))}
-					</div>
+					<button
+						className="reader-tool-button"
+						onClick={() => {
+							setReaderPanelTab("display");
+							setIsReaderPanelOpen(true);
+						}}
+					>
+						Controls
+					</button>
 				</div>
 			</div>
 
-			{speechError && <div className="reader-status-line">{speechError}</div>}
+			{speechError && <div className="reader-status-line max-[860px]:max-w-[calc(100vw-16px)]">{speechError}</div>}
 
 			{isCatalogOpen && (
 				<div className="reader-catalog-backdrop" onClick={() => setIsCatalogOpen(false)}>
@@ -1205,11 +1178,11 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				</div>
 			)}
 
-			<main className="reader-page">
+			<main className="reader-page max-[860px]:px-3 max-[860px]:py-5">
 				<article className="reader-article" style={{ maxWidth: widthStyle }}>
 					<header className="reader-chapter-header">
 						<h1>{displayChapterTitle}</h1>
-						<div className="reader-chapter-meta">
+						<div className="reader-chapter-meta max-[860px]:flex-col max-[860px]:items-start">
 							<span>{novel.title}</span>
 							<span>
 								{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}{" "}
@@ -1263,9 +1236,13 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			</main>
 
 			{isSpeechPortalOpen && (
-				<div ref={speechPortalRef} className="reader-speech-portal" style={{ left: speechPortalPosition.x, top: speechPortalPosition.y }}>
+				<div
+					ref={speechPortalRef}
+					className="reader-speech-portal max-[860px]:bottom-[74px] max-[860px]:left-2 max-[860px]:right-2 max-[860px]:top-auto max-[860px]:w-auto max-[860px]:max-h-[calc(100vh-140px)] max-[860px]:overflow-auto"
+					style={isCompactLayout ? undefined : { left: speechPortalPosition.x, top: speechPortalPosition.y }}
+				>
 					<div
-						className="reader-speech-portal-header"
+						className="reader-speech-portal-header max-[860px]:cursor-default max-[860px]:active:cursor-default"
 						onPointerDown={handlePortalPointerDown}
 						onPointerMove={handlePortalPointerMove}
 						onPointerUp={handlePortalPointerUp}
@@ -1274,7 +1251,14 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					>
 						<span className={`reader-speech-status-dot ${ttsStatus}`}></span>
 						<strong>{ttsStatus === "idle" ? "Ready" : ttsStatus === "paused" ? "Paused" : "Reading"}</strong>
-						<button type="button" onClick={() => setIsSpeechPortalOpen(false)}>
+						<button
+							type="button"
+							onPointerDown={(event) => event.stopPropagation()}
+							onClick={(event) => {
+								event.stopPropagation();
+								handleCloseSpeechPortal();
+							}}
+						>
 							Close
 						</button>
 					</div>
@@ -1297,47 +1281,17 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 						</button>
 					</div>
 
-					<div className="reader-speech-field">
-						<label>Voice</label>
-						<select value={selectedVoiceURI} onChange={(event) => handleVoiceChange(event.target.value)}>
-							<option value="">Browser default</option>
-							{availableVoices.map((voice) => (
-								<option key={voice.voiceURI} value={voice.voiceURI}>
-									{voice.name} {voice.lang ? `(${voice.lang})` : ""}
-								</option>
-							))}
-						</select>
-					</div>
-
-					<div className="reader-speech-field">
-						<label>Speed {formatSpeechValue(speechRate)}x</label>
-						<input
-							type="range"
-							min={SPEECH_RATE_MIN}
-							max={SPEECH_RATE_MAX}
-							step="0.1"
-							value={speechRate}
-							onChange={(event) => handleSpeechRateChange(Number(event.target.value))}
-						/>
-					</div>
-
-					<div className="reader-speech-field">
-						<label>Pitch {formatSpeechValue(speechPitch)}x</label>
-						<input
-							type="range"
-							min={SPEECH_PITCH_MIN}
-							max={SPEECH_PITCH_MAX}
-							step="0.05"
-							value={speechPitch}
-							onChange={(event) => handleSpeechPitchChange(Number(event.target.value))}
-						/>
-					</div>
-
-					<label className="reader-switch dock-switch">
-						<input type="checkbox" checked={autoOpenNext} onChange={(event) => handleAutoOpenNextChange(event.target.checked)} />
-						<span></span>
-						<strong>Continue into next chapter</strong>
-					</label>
+					<button
+						type="button"
+						className="reader-tool-button"
+						onClick={() => {
+							setReaderPanelTab("speech");
+							setIsReaderPanelOpen(true);
+							handleCloseSpeechPortal();
+						}}
+					>
+						Open Speech Settings
+					</button>
 				</div>
 			)}
 
@@ -1351,7 +1305,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				</button>
 
 				{isReaderPanelOpen && (
-					<div className="reader-dock-panel">
+					<div className="reader-dock-panel max-[860px]:max-h-[44vh] max-[860px]:overflow-auto max-[860px]:p-3">
 						{readerPanelTab === "read" && (
 							<div className="reader-dock-grid">
 								<button className="reader-dock-action" disabled={!hasPreviousChapter} onClick={() => navigateToChapter(previousChapterNumber)}>
@@ -1482,6 +1436,19 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 						{readerPanelTab === "settings" && (
 							<div className="reader-settings-grid">
+								{novel.rawChaptersTotal > 0 && (
+									<div>
+										<label>Reader Source</label>
+										<div className="reader-segmented wide" aria-label="Reader source">
+											<button className={!isRawReader ? "active" : ""} onClick={() => switchReaderSource("translated")}>
+												Translated
+											</button>
+											<button className={isRawReader ? "active" : ""} onClick={() => switchReaderSource("raw")}>
+												Raw
+											</button>
+										</div>
+									</div>
+								)}
 								<label className="reader-switch dock-switch">
 									<input type="checkbox" checked={autoOpenNext} onChange={(event) => handleAutoOpenNextChange(event.target.checked)} />
 									<span></span>
@@ -1519,7 +1486,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					</div>
 				)}
 
-				<nav className="reader-dock-tabs">
+				<nav className="reader-dock-tabs max-[860px]:[&>button]:min-h-12 max-[860px]:[&>button]:text-[0.69rem]">
 					{(["read", "display", "speech", "settings", "more"] as const).map((tab) => (
 						<button
 							key={tab}
