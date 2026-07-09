@@ -11,6 +11,8 @@ export interface User {
 
 export type ReaderTheme = "dark" | "light" | "sepia";
 export type ReaderWidth = "narrow" | "medium" | "wide";
+export type ReaderHighlightMode = "off" | "paragraph" | "word";
+export type ReaderAutoScrollBehavior = "smooth" | "instant";
 
 export interface ReaderSettings {
 	theme: ReaderTheme;
@@ -24,6 +26,14 @@ export interface ReaderSettings {
 		x: number;
 		y: number;
 	};
+	highlightMode: ReaderHighlightMode;
+	highlightParagraph: boolean;
+	paragraphHighlightColor: string;
+	wordHighlightColor: string;
+	sentenceHighlightOpacity: number;
+	autoScrollDuringSpeech: boolean;
+	autoScrollBehavior: ReaderAutoScrollBehavior;
+	autoScrollOffset: number;
 }
 
 export interface UserSettings {

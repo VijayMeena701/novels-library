@@ -1970,6 +1970,9 @@ h4 {
 	color: var(--reader-text);
 	font-family: inherit;
 	line-break: anywhere;
+	--reader-highlight-paragraph: #f5d67a;
+	--reader-highlight-word: #f59e0b;
+	--reader-sentence-opacity: 0.2;
 }
 
 .reader-content p,
@@ -1994,8 +1997,20 @@ h4 {
 }
 
 .reader-speaking-block {
-	background: color-mix(in srgb, var(--reader-accent) 18%, transparent);
-	box-shadow: -4px 0 0 var(--reader-accent);
+	background: color-mix(in srgb, var(--reader-highlight-paragraph) 32%, transparent);
+	box-shadow: -5px 0 0 var(--reader-highlight-paragraph);
+}
+
+.reader-speaking-sentence {
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--reader-highlight-word) 55%, transparent);
+	background: color-mix(in srgb, var(--reader-highlight-word) calc(var(--reader-sentence-opacity) * 100%), transparent);
+}
+
+.reader-speaking-word {
+	background: color-mix(in srgb, var(--reader-highlight-word) 55%, transparent);
+	border-radius: 0.28em;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--reader-highlight-word) 75%, transparent);
+	padding: 0 0.06em;
 }
 
 .reader-content p {
@@ -2005,114 +2020,6 @@ h4 {
 .reader-content img {
 	max-width: 100%;
 	height: auto;
-}
-
-.reader-speech-portal {
-	position: fixed;
-	z-index: 1100;
-	width: min(340px, calc(100vw - 16px));
-	display: grid;
-	gap: 0.75rem;
-	padding: 0.8rem;
-	border: 1px solid var(--reader-border);
-	border-radius: var(--radius-lg);
-	background: var(--reader-surface);
-	color: var(--reader-text);
-	box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
-}
-
-.reader-speech-portal-header {
-	display: flex;
-	align-items: center;
-	gap: 0.55rem;
-	cursor: grab;
-	user-select: none;
-}
-
-.reader-speech-portal-header:active {
-	cursor: grabbing;
-}
-
-.reader-speech-portal-header strong {
-	flex: 1;
-	color: var(--reader-text);
-}
-
-.reader-speech-portal-header button {
-	border: 0;
-	background: transparent;
-	color: var(--reader-muted);
-	cursor: pointer;
-	font-weight: 900;
-}
-
-.reader-speech-status-dot {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	background: var(--reader-muted);
-}
-
-.reader-speech-status-dot.playing {
-	background: var(--success);
-}
-
-.reader-speech-status-dot.paused {
-	background: var(--warning);
-}
-
-.reader-speech-portal-controls {
-	display: grid;
-	grid-template-columns: repeat(5, 1fr);
-	border: 1px solid var(--reader-border);
-	border-radius: var(--radius-md);
-	overflow: hidden;
-}
-
-.reader-speech-portal-controls button {
-	min-height: 40px;
-	border: 0;
-	border-right: 1px solid var(--reader-border);
-	background: var(--reader-bg);
-	color: var(--reader-text);
-	cursor: pointer;
-	font-size: 1rem;
-	font-weight: 900;
-}
-
-.reader-speech-portal-controls button:last-child {
-	border-right: 0;
-}
-
-.reader-speech-portal-controls button:disabled {
-	cursor: not-allowed;
-	opacity: 0.45;
-}
-
-.reader-speech-field {
-	display: grid;
-	gap: 0.35rem;
-}
-
-.reader-speech-field label {
-	color: var(--reader-muted);
-	font-size: 0.72rem;
-	font-weight: 900;
-	text-transform: uppercase;
-}
-
-.reader-speech-field select,
-.reader-speech-field input[type="range"] {
-	width: 100%;
-}
-
-.reader-speech-field select {
-	min-height: 36px;
-	border: 1px solid var(--reader-border);
-	border-radius: var(--radius-md);
-	background: var(--reader-bg);
-	color: var(--reader-text);
-	padding: 0.45rem 0.55rem;
 }
 
 .reader-footer {
@@ -2255,6 +2162,20 @@ h4 {
 	border-right: 1px solid var(--reader-border);
 }
 
+.reader-dock-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 0.8rem;
+	padding-bottom: 0.6rem;
+	border-bottom: 1px solid var(--reader-border);
+	color: var(--reader-muted);
+	font-size: 0.8rem;
+	font-weight: 900;
+	text-transform: uppercase;
+}
+
 .reader-dock-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -2327,7 +2248,7 @@ h4 {
 	width: min(100%, 1120px);
 	margin: 0 auto;
 	display: grid;
-	grid-template-columns: repeat(5, 1fr);
+	grid-template-columns: repeat(4, 1fr);
 	border-left: 1px solid var(--reader-border);
 	border-right: 1px solid var(--reader-border);
 }

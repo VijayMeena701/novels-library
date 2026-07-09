@@ -9,14 +9,17 @@ import {
 	type ChapterContent,
 	type JobType,
 	type ReaderSettings,
+	type ReaderAutoScrollBehavior,
+	type ReaderHighlightMode,
 	type ReaderTheme,
 	type ReaderWidth,
 	type SourceKind,
 } from "../../../../../utils/api";
 import { useAuth } from "../../../../../context/AuthContext";
+import { SpeechWidget } from "../../../../../components/reader/SpeechWidget";
 
 type TtsStatus = "idle" | "playing" | "paused";
-type ReaderPanelTab = "read" | "display" | "speech" | "settings" | "more";
+type ReaderPanelTab = "read" | "display" | "settings" | "more";
 type ReaderSource = "translated" | "raw";
 
 const SPEECH_RATE_MIN = 0.5;
@@ -24,8 +27,16 @@ const SPEECH_RATE_MAX = 4;
 const SPEECH_PITCH_MIN = 0.5;
 const SPEECH_PITCH_MAX = 2;
 const SPEECH_BLOCK_SELECTOR = "p, li, blockquote, h1, h2, h3, h4, div";
-const SPEECH_RATE_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
-const SPEECH_PITCH_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const HIGHLIGHT_MODES: ReaderHighlightMode[] = ["off", "paragraph", "word"];
+const AUTOSCROLL_BEHAVIORS: ReaderAutoScrollBehavior[] = ["smooth", "instant"];
+const DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR = "#f5d67a";
+const DEFAULT_WORD_HIGHLIGHT_COLOR = "#f59e0b";
+const TTS_SESSION_FLAG = "novels_reader_user_started_tts";
+
+interface SpeechChunk {
+	text: string;
+	startOffset: number;
+}
 
 interface CatalogChapter {
 	number: number;
@@ -38,11 +49,30 @@ interface CatalogChapter {
 interface SpeechQueueItem {
 	text: string;
 	blockIndex: number;
+	startOffset: number;
 }
 
 interface SpeechBlock {
 	element: HTMLElement;
 	text: string;
+}
+
+function getScrollParent(node: HTMLElement | null): HTMLElement | Window {
+	if (!node) {
+		return window;
+	}
+	let parent = node.parentElement;
+	while (parent) {
+		if (parent.tagName === "BODY" || parent.tagName === "HTML") {
+			return window;
+		}
+		const style = window.getComputedStyle(parent);
+		if (/(auto|scroll)/.test(style.overflow + style.overflowY + style.overflowX)) {
+			return parent;
+		}
+		parent = parent.parentElement;
+	}
+	return window;
 }
 
 function isSpeechLeafBlock(element: HTMLElement): boolean {
@@ -75,12 +105,13 @@ function resolveChapterTitle(novelTitle: string, chapterNumber: number, archived
 	return archived || indexed || `Chapter ${chapterNumber}`;
 }
 
-function splitSpeechText(text: string, maxLength = 1800): string[] {
+function splitSpeechTextWithOffsets(text: string, maxLength = 1800): SpeechChunk[] {
 	const normalized = text.replace(/\s+/g, " ").trim();
 	if (!normalized) return [];
 
-	const chunks: string[] = [];
+	const chunks: SpeechChunk[] = [];
 	let remaining = normalized;
+	let consumed = 0;
 
 	while (remaining.length > maxLength) {
 		const punctuationBreak = Math.max(
@@ -92,24 +123,53 @@ function splitSpeechText(text: string, maxLength = 1800): string[] {
 		);
 		const wordBreak = remaining.lastIndexOf(" ", maxLength);
 		const breakAt = punctuationBreak > maxLength * 0.45 ? punctuationBreak + 1 : wordBreak > maxLength * 0.45 ? wordBreak : maxLength;
-
-		chunks.push(remaining.slice(0, breakAt).trim());
+		const chunk = remaining.slice(0, breakAt).trim();
+		if (chunk) {
+			const exactStart = normalized.indexOf(chunk, consumed);
+			chunks.push({
+				text: chunk,
+				startOffset: exactStart !== -1 ? exactStart : consumed,
+			});
+		}
+		consumed += breakAt;
 		remaining = remaining.slice(breakAt).trim();
 	}
 
 	if (remaining) {
-		chunks.push(remaining);
+		const exactStart = normalized.indexOf(remaining, consumed);
+		chunks.push({
+			text: remaining,
+			startOffset: exactStart !== -1 ? exactStart : consumed,
+		});
 	}
 
 	return chunks;
 }
 
-function formatSpeechValue(value: number): string {
-	return value.toFixed(2).replace(/\.?0+$/, "");
+function normalizeHexColor(value: string, fallback: string): string {
+	const normalized = value.trim().toLowerCase();
+	return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : fallback;
 }
 
-export default function ReaderView({ params }: { params: Promise<{ id: string; chapterNumber: string }> }) {
-	const { id: novelId, chapterNumber: chNumStr } = use(params);
+function getErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+
+	if (typeof error === "object" && error && "message" in error) {
+		const maybeMessage = (error as { message?: unknown }).message;
+		if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+			return maybeMessage;
+		}
+	}
+
+	return fallback;
+}
+
+export default function ReaderView({ params }: { params: Promise<{ id: string; chapterNumber: string }> | { id: string; chapterNumber: string } }) {
+	const resolvedParams = params instanceof Promise ? use(params) : params;
+	const { id: novelId, chapterNumber: chNumStr } = resolvedParams;
+
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { user, loading: authLoading } = useAuth();
@@ -137,7 +197,6 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const [autoOpenNext, setAutoOpenNext] = useState(false);
 	const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 	const [isReaderPanelOpen, setIsReaderPanelOpen] = useState(false);
-	const [isSpeechPortalOpen, setIsSpeechPortalOpen] = useState(false);
 	const [readerSettingsReady, setReaderSettingsReady] = useState(false);
 	const [readerPanelTab, setReaderPanelTab] = useState<ReaderPanelTab>("read");
 	const [catalogSearch, setCatalogSearch] = useState("");
@@ -149,16 +208,27 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 	const [selectedVoiceURI, setSelectedVoiceURI] = useState("");
 	const [speechError, setSpeechError] = useState("");
+	const [highlightMode, setHighlightMode] = useState<ReaderHighlightMode>("paragraph");
+	const [highlightParagraph, setHighlightParagraph] = useState(true);
+	const [paragraphHighlightColor, setParagraphHighlightColor] = useState(DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR);
+	const [wordHighlightColor, setWordHighlightColor] = useState(DEFAULT_WORD_HIGHLIGHT_COLOR);
+	const [sentenceHighlightOpacity, setSentenceHighlightOpacity] = useState(0.2);
+	const [autoScrollDuringSpeech, setAutoScrollDuringSpeech] = useState(true);
+	const [autoScrollBehavior, setAutoScrollBehavior] = useState<ReaderAutoScrollBehavior>("smooth");
+	const [autoScrollOffset, setAutoScrollOffset] = useState(120);
 	const [speechPortalPosition, setSpeechPortalPosition] = useState({ x: 24, y: 120 });
-	const [isCompactLayout, setIsCompactLayout] = useState(false);
 
 	const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 	const speechStartTimerRef = useRef<number | null>(null);
 	const speechQueueRef = useRef<SpeechQueueItem[]>([]);
 	const speechBlocksRef = useRef<SpeechBlock[]>([]);
 	const activeSpeechElementRef = useRef<HTMLElement | null>(null);
+	const activeWordHighlightRef = useRef<HTMLElement | null>(null);
 	const speechIndexRef = useRef(0);
 	const activeSpeechBlockIndexRef = useRef<number | null>(null);
+	const activeQueueItemRef = useRef<SpeechQueueItem | null>(null);
+	const hasUserInteractedRef = useRef(false);
+	const speakQueuedChunkRef = useRef<(index: number) => void>(() => undefined);
 	const ttsStatusRef = useRef<TtsStatus>("idle");
 	const speechConfigRef = useRef({
 		rate: 1,
@@ -171,17 +241,6 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const readerContentRef = useRef<HTMLDivElement | null>(null);
 	const pendingReaderSettingsRef = useRef<Partial<ReaderSettings>>({});
 	const settingsSaveTimerRef = useRef<number | null>(null);
-	const portalDragRef = useRef<{
-		pointerId: number;
-		startX: number;
-		startY: number;
-		originX: number;
-		originY: number;
-		currentX: number;
-		currentY: number;
-	} | null>(null);
-	const speechPortalRef = useRef<HTMLDivElement | null>(null);
-	const portalRafRef = useRef<number | null>(null);
 
 	const flushReaderSettings = useCallback(() => {
 		if (!user) return;
@@ -256,8 +315,20 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			try {
 				const settings = await api.getSettings();
 				if (cancelled) return;
+				const loadedPortalPosition = {
+					x: Math.max(8, settings.reader.speechPortalPosition?.x ?? 24),
+					y: Math.max(8, settings.reader.speechPortalPosition?.y ?? 120),
+				};
 				const nextSpeechRate = Math.min(SPEECH_RATE_MAX, Math.max(SPEECH_RATE_MIN, settings.reader.speechRate));
 				const nextSpeechPitch = Math.min(SPEECH_PITCH_MAX, Math.max(SPEECH_PITCH_MIN, settings.reader.speechPitch));
+				const nextHighlightMode = HIGHLIGHT_MODES.includes(settings.reader.highlightMode) ? settings.reader.highlightMode : "paragraph";
+				const nextParagraphHighlightColor = normalizeHexColor(settings.reader.paragraphHighlightColor || "", DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR);
+				const nextWordHighlightColor = normalizeHexColor(settings.reader.wordHighlightColor || "", DEFAULT_WORD_HIGHLIGHT_COLOR);
+				const nextSentenceHighlightOpacity = Math.min(0.6, Math.max(0.05, settings.reader.sentenceHighlightOpacity ?? 0.2));
+				const nextAutoScrollBehavior = AUTOSCROLL_BEHAVIORS.includes(settings.reader.autoScrollBehavior)
+					? settings.reader.autoScrollBehavior
+					: "smooth";
+				const nextAutoScrollOffset = Math.round(Math.min(260, Math.max(48, settings.reader.autoScrollOffset ?? 120)));
 
 				setTheme(settings.reader.theme);
 				setFontSize(Math.min(32, Math.max(12, settings.reader.fontSize)));
@@ -266,15 +337,20 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				setSpeechRate(nextSpeechRate);
 				setSpeechPitch(nextSpeechPitch);
 				setSelectedVoiceURI(settings.reader.voiceURI);
+				setHighlightMode(nextHighlightMode);
+				setHighlightParagraph(settings.reader.highlightParagraph ?? true);
+				setParagraphHighlightColor(nextParagraphHighlightColor);
+				setWordHighlightColor(nextWordHighlightColor);
+				setSentenceHighlightOpacity(nextSentenceHighlightOpacity);
+				setAutoScrollDuringSpeech(settings.reader.autoScrollDuringSpeech ?? true);
+				setAutoScrollBehavior(nextAutoScrollBehavior);
+				setAutoScrollOffset(nextAutoScrollOffset);
 				speechConfigRef.current = {
 					rate: nextSpeechRate,
 					pitch: nextSpeechPitch,
 					voiceURI: settings.reader.voiceURI,
 				};
-				setSpeechPortalPosition({
-					x: Math.max(8, settings.reader.speechPortalPosition?.x ?? 24),
-					y: Math.max(8, settings.reader.speechPortalPosition?.y ?? 120),
-				});
+				setSpeechPortalPosition(loadedPortalPosition);
 			} catch (err) {
 				console.error("Failed to load reader settings:", err);
 			} finally {
@@ -323,13 +399,19 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	useEffect(() => {
 		if (typeof window === "undefined") return;
 
-		const mediaQuery = window.matchMedia("(max-width: 860px)");
-		const applyLayout = () => setIsCompactLayout(mediaQuery.matches);
-		applyLayout();
-		mediaQuery.addEventListener?.("change", applyLayout);
+		hasUserInteractedRef.current = window.sessionStorage.getItem(TTS_SESSION_FLAG) === "1";
+
+		const markInteracted = () => {
+			hasUserInteractedRef.current = true;
+			window.sessionStorage.setItem(TTS_SESSION_FLAG, "1");
+		};
+
+		window.addEventListener("pointerdown", markInteracted, { passive: true });
+		window.addEventListener("keydown", markInteracted, { passive: true });
 
 		return () => {
-			mediaQuery.removeEventListener?.("change", applyLayout);
+			window.removeEventListener("pointerdown", markInteracted);
+			window.removeEventListener("keydown", markInteracted);
 		};
 	}, []);
 
@@ -341,33 +423,57 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			.filter((element) => isSpeechLeafBlock(element))
 			.map((element) => ({
 				element,
-				text: (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim(),
+				text: (element.textContent || "").replace(/\s+/g, " ").trim(),
 			}))
 			.filter((block) => block.text.length > 0);
 	}, []);
 
 	const getSpeechBlocks = useCallback((): SpeechBlock[] => {
-		if (speechBlocksRef.current.length > 0) {
-			return speechBlocksRef.current;
+		// Bulletproof self-healing cache: If cached nodes are detached from DOM, force update
+		const isCacheStale = speechBlocksRef.current.length === 0 || speechBlocksRef.current.some((block) => !document.body.contains(block.element));
+
+		if (isCacheStale) {
+			const blocks = buildSpeechBlocks();
+			speechBlocksRef.current = blocks;
+			return blocks;
 		}
 
-		const blocks = buildSpeechBlocks();
-		speechBlocksRef.current = blocks;
-		return blocks;
+		return speechBlocksRef.current;
 	}, [buildSpeechBlocks]);
 
 	const clearSpeakingBlock = useCallback(() => {
+		// O(1) clearance using persistent reference to prevent redundant DOM queries
 		if (activeSpeechElementRef.current) {
 			activeSpeechElementRef.current.classList.remove("reader-speaking-block");
+			activeSpeechElementRef.current.classList.remove("reader-speaking-sentence");
 			activeSpeechElementRef.current = null;
+		}
+	}, []);
+
+	const clearSpeakingWord = useCallback(() => {
+		const activeWord = activeWordHighlightRef.current;
+		if (!activeWord) return;
+
+		const parent = activeWord.parentNode;
+		if (!parent) {
+			activeWordHighlightRef.current = null;
 			return;
 		}
 
-		const root = readerContentRef.current;
-		root?.querySelectorAll(".reader-speaking-block").forEach((element) => {
-			element.classList.remove("reader-speaking-block");
-		});
+		while (activeWord.firstChild) {
+			parent.insertBefore(activeWord.firstChild, activeWord);
+		}
+		parent.removeChild(activeWord);
+		if (parent instanceof HTMLElement) {
+			parent.normalize();
+		}
+		activeWordHighlightRef.current = null;
 	}, []);
+
+	const clearSpeakingHighlights = useCallback(() => {
+		clearSpeakingWord();
+		clearSpeakingBlock();
+	}, [clearSpeakingBlock, clearSpeakingWord]);
 
 	const highlightSpeechBlock = useCallback(
 		(blockIndex: number) => {
@@ -375,22 +481,107 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			const block = blocks[blockIndex];
 			if (!block) return;
 
+			clearSpeakingWord();
 			clearSpeakingBlock();
 			activeSpeechBlockIndexRef.current = blockIndex;
-			block.element.classList.add("reader-speaking-block");
+
+			const shouldHighlightParagraph = highlightMode !== "off" && highlightParagraph;
+			if (shouldHighlightParagraph) {
+				block.element.classList.add("reader-speaking-block");
+			}
+			if (highlightMode === "word") {
+				block.element.classList.add("reader-speaking-sentence");
+			}
 			activeSpeechElementRef.current = block.element;
 
+			if (!autoScrollDuringSpeech) return;
+
 			const rect = block.element.getBoundingClientRect();
-			const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-			const topSafe = 120;
-			const bottomSafe = 72;
-			const isOutOfView = rect.top < topSafe || rect.bottom > viewportHeight - bottomSafe;
-			if (isOutOfView) {
-				const targetTop = Math.max(0, window.scrollY + rect.top - topSafe);
-				window.scrollTo({ top: targetTop, behavior: "smooth" });
+			const scrollContainer = getScrollParent(block.element);
+
+			// Center element calculation: Target is always centering the current block in the screen
+			if (scrollContainer === window) {
+				const elementCenterInPage = window.scrollY + rect.top + rect.height / 2;
+				const viewportHeight = window.innerHeight;
+				const targetScrollY = elementCenterInPage - viewportHeight / 2;
+				window.scrollTo({
+					top: Math.max(0, targetScrollY),
+					behavior: autoScrollBehavior === "smooth" ? "smooth" : "auto",
+				});
+			} else {
+				const containerElement = scrollContainer as HTMLElement;
+				const containerRect = containerElement.getBoundingClientRect();
+				const relativeElementCenter = rect.top - containerRect.top + rect.height / 2;
+				const targetScrollTop = containerElement.scrollTop + relativeElementCenter - containerRect.height / 2;
+				containerElement.scrollTo({
+					top: Math.max(0, targetScrollTop),
+					behavior: autoScrollBehavior === "smooth" ? "smooth" : "auto",
+				});
 			}
 		},
-		[clearSpeakingBlock, getSpeechBlocks],
+		[autoScrollBehavior, autoScrollDuringSpeech, clearSpeakingBlock, clearSpeakingWord, getSpeechBlocks, highlightMode, highlightParagraph],
+	);
+
+	const highlightSpeechWord = useCallback(
+		(blockIndex: number, absoluteCharIndex: number) => {
+			if (highlightMode !== "word") return;
+			const blocks = getSpeechBlocks();
+			const block = blocks[blockIndex];
+			if (!block || !block.element) return;
+
+			const text = block.text;
+			const safeIndex = Math.max(0, Math.min(absoluteCharIndex, Math.max(0, text.length - 1)));
+			let start = safeIndex;
+			let end = safeIndex;
+			const isWordChar = (char: string) => /[^\s.,!?;:()[\]{}"'`]/.test(char);
+
+			while (start > 0 && isWordChar(text[start - 1] || "")) start -= 1;
+			while (end < text.length && isWordChar(text[end] || "")) end += 1;
+			if (start >= end) return;
+
+			clearSpeakingWord();
+
+			let accumulated = 0;
+			let startNode: Text | null = null;
+			let endNode: Text | null = null;
+			let startOffsetInNode = 0;
+			let endOffsetInNode = 0;
+
+			const walker = document.createTreeWalker(block.element, NodeFilter.SHOW_TEXT);
+			for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+				const textNode = node as Text;
+				const nodeLength = textNode.nodeValue?.length ?? 0;
+				if (!startNode && start >= accumulated && start <= accumulated + nodeLength) {
+					startNode = textNode;
+					startOffsetInNode = Math.max(0, start - accumulated);
+				}
+				if (end >= accumulated && end <= accumulated + nodeLength) {
+					endNode = textNode;
+					endOffsetInNode = Math.max(0, end - accumulated);
+					break;
+				}
+				accumulated += nodeLength;
+			}
+
+			// Block highlights across multiple textual element boundaries to avoid DOM breakage
+			if (!startNode || !endNode || startNode !== endNode || endOffsetInNode <= startOffsetInNode) {
+				return;
+			}
+
+			const range = document.createRange();
+			range.setStart(startNode, startOffsetInNode);
+			range.setEnd(endNode, endOffsetInNode);
+
+			const highlight = document.createElement("span");
+			highlight.className = "reader-speaking-word";
+			try {
+				range.surroundContents(highlight);
+				activeWordHighlightRef.current = highlight;
+			} catch {
+				highlight.remove();
+			}
+		},
+		[clearSpeakingWord, getSpeechBlocks, highlightMode],
 	);
 
 	const createSpeechQueueFromBlock = useCallback(
@@ -400,8 +591,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			const queue: SpeechQueueItem[] = [];
 
 			for (let blockIndex = safeStartIndex; blockIndex < blocks.length; blockIndex += 1) {
-				for (const text of splitSpeechText(blocks[blockIndex].text)) {
-					queue.push({ text, blockIndex });
+				for (const chunk of splitSpeechTextWithOffsets(blocks[blockIndex].text)) {
+					queue.push({ text: chunk.text, blockIndex, startOffset: chunk.startOffset });
 				}
 			}
 
@@ -424,17 +615,24 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				speechRestartTimerRef.current = null;
 			}
 			if (typeof window !== "undefined" && "speechSynthesis" in window) {
-				activeUtteranceRef.current = null;
-				window.speechSynthesis.cancel();
+				// CRITICAL PREVENT autoplay block: Keep the speech engine talking (not cancelled)
+				// when unmounting and transitioning to the next chapter so session remains active.
+				if (!options?.preserveContinuation) {
+					activeUtteranceRef.current = null;
+					window.speechSynthesis.cancel();
+				}
 			}
 			speechQueueRef.current = [];
 			speechIndexRef.current = 0;
 			activeSpeechBlockIndexRef.current = null;
-			clearSpeakingBlock();
-			ttsStatusRef.current = "idle";
-			setTtsStatus("idle");
+			activeQueueItemRef.current = null;
+			clearSpeakingHighlights();
+			if (!options?.preserveContinuation) {
+				ttsStatusRef.current = "idle";
+				setTtsStatus("idle");
+			}
 		},
-		[clearSpeakingBlock],
+		[clearSpeakingHighlights],
 	);
 
 	useEffect(() => {
@@ -488,14 +686,14 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 							});
 						}
 					}
-				} catch (chapterErr: any) {
+				} catch (chapterErr: unknown) {
 					if (cancelled) return;
-					setError(chapterErr.message || "This chapter has not been archived yet.");
+					setError(getErrorMessage(chapterErr, "This chapter has not been archived yet."));
 				}
-			} catch (err: any) {
+			} catch (err: unknown) {
 				if (cancelled) return;
 				console.error("Failed to load chapter content:", err);
-				setError(err.message || "Could not load this reader page.");
+				setError(getErrorMessage(err, "Could not load this reader page."));
 			} finally {
 				if (!cancelled) {
 					setLoading(false);
@@ -503,21 +701,19 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			}
 		}
 
-		loadChapter();
+		void loadChapter();
 
 		return () => {
 			cancelled = true;
 		};
 	}, [isRawReader, user, novelId, chapterNumber]);
 
+	// Instantly clear blocks on navigation or new contents to prevent stale tracking
 	useEffect(() => {
-		if (!chapter) {
-			speechBlocksRef.current = [];
-			return;
-		}
-
-		speechBlocksRef.current = buildSpeechBlocks();
-	}, [buildSpeechBlocks, chapter?.content, chapterNumber]);
+		speechBlocksRef.current = [];
+		activeSpeechElementRef.current = null;
+		activeWordHighlightRef.current = null;
+	}, [chapter?.content, chapterNumber]);
 
 	const catalogItems = useMemo<CatalogChapter[]>(() => {
 		if (!novel) return [];
@@ -628,8 +824,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		try {
 			await api.translateRawChapter(novelId, chapter.chapterNumber, { targetLanguage: "English" });
 			router.push(`/novels/${novelId}/reader/${chapter.chapterNumber}`);
-		} catch (err: any) {
-			setError(err.message || "Could not generate translated chapter.");
+		} catch (err: unknown) {
+			setError(getErrorMessage(err, "Could not generate translated chapter."));
 		} finally {
 			setTranslatingRawChapter(false);
 		}
@@ -655,8 +851,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			setNovel(result.novel);
 			await reloadCurrentChapter();
 			setAdminActionMessage(result.message || "Chapter archived.");
-		} catch (err: any) {
-			setAdminActionMessage(err.message || "Could not archive this chapter.");
+		} catch (err: unknown) {
+			setAdminActionMessage(getErrorMessage(err, "Could not archive this chapter."));
 		} finally {
 			setAdminScrapingChapter(false);
 		}
@@ -679,8 +875,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				await reloadCurrentChapter();
 				setAdminActionMessage(result.message || "Chapter HTML imported.");
 				setChapterHtmlContent("");
-			} catch (err: any) {
-				setAdminActionMessage(err.message || "Could not import chapter HTML.");
+			} catch (err: unknown) {
+				setAdminActionMessage(getErrorMessage(err, "Could not import chapter HTML."));
 			} finally {
 				setImportingChapterHtml(false);
 			}
@@ -698,16 +894,39 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				speechIndexRef.current = 0;
 				speechQueueRef.current = [];
 				activeSpeechBlockIndexRef.current = null;
-				clearSpeakingBlock();
-				ttsStatusRef.current = "idle";
-				setTtsStatus("idle");
+				activeQueueItemRef.current = null;
+				clearSpeakingHighlights();
+
 				if (shouldContinueSpeechRef.current && hasNextChapter) {
+					// CRITICAL keep-alive queue continuation:
+					// Before letting the speech queue completely clear and navigating (which marks speech session as idle),
+					// play a transient, natural keep-alive voice indicator. This keeps the global SpeechSynthesis engine
+					// actively talking, meaning when the next page mounts programmatically, the engine can be hijacked
+					// and updated without losing the user gesture authorization boundary or triggering "not-allowed".
+					const transitionalPrompt = new SpeechSynthesisUtterance("Loading next chapter.");
+					transitionalPrompt.rate = speechConfigRef.current.rate;
+					transitionalPrompt.pitch = speechConfigRef.current.pitch;
+					const selectedVoice = availableVoices.find((voice) => voice.voiceURI === speechConfigRef.current.voiceURI);
+					if (selectedVoice) {
+						transitionalPrompt.voice = selectedVoice;
+					}
+					window.speechSynthesis.speak(transitionalPrompt);
+
 					navigateToChapter(nextChapterNumber, { resumeTts: true });
 				} else {
+					speechQueueRef.current = [];
+					speechIndexRef.current = 0;
+					activeSpeechBlockIndexRef.current = null;
+					activeQueueItemRef.current = null;
+					clearSpeakingHighlights();
+					ttsStatusRef.current = "idle";
+					setTtsStatus("idle");
 					shouldContinueSpeechRef.current = false;
 				}
 				return;
 			}
+
+			activeQueueItemRef.current = speechItem;
 
 			if (activeSpeechBlockIndexRef.current !== speechItem.blockIndex) {
 				highlightSpeechBlock(speechItem.blockIndex);
@@ -728,15 +947,33 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			};
 			utterance.onend = () => {
 				if (activeUtteranceRef.current !== utterance) return;
+				if (highlightMode === "word") {
+					clearSpeakingWord();
+				}
 				speechIndexRef.current = index + 1;
-				speakQueuedChunk(index + 1);
+				speakQueuedChunkRef.current(index + 1);
+			};
+			utterance.onboundary = (event) => {
+				if (activeUtteranceRef.current !== utterance) return;
+				if (highlightMode !== "word") return;
+				if (event.name && event.name !== "word") return;
+
+				const queueItem = activeQueueItemRef.current;
+				if (!queueItem) return;
+				const absoluteCharIndex = queueItem.startOffset + (event.charIndex || 0);
+				highlightSpeechWord(queueItem.blockIndex, absoluteCharIndex);
 			};
 			utterance.onerror = (event) => {
 				if (activeUtteranceRef.current !== utterance) return;
 				console.error("Speech synthesis error:", event.error);
-				setSpeechError("Text to speech stopped in the browser.");
+				if (event.error === "not-allowed") {
+					setSpeechError("Browser blocked autoplay. Press Play after tapping or clicking anywhere on the page.");
+				} else {
+					setSpeechError("Text to speech stopped in the browser.");
+				}
 				activeUtteranceRef.current = null;
-				clearSpeakingBlock();
+				activeQueueItemRef.current = null;
+				clearSpeakingHighlights();
 				ttsStatusRef.current = "idle";
 				setTtsStatus("idle");
 			};
@@ -746,13 +983,37 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			setTtsStatus("playing");
 			window.speechSynthesis.speak(utterance);
 		},
-		[availableVoices, clearSpeakingBlock, hasNextChapter, highlightSpeechBlock, navigateToChapter, nextChapterNumber],
+		[
+			availableVoices,
+			clearSpeakingHighlights,
+			clearSpeakingWord,
+			hasNextChapter,
+			highlightMode,
+			highlightSpeechBlock,
+			highlightSpeechWord,
+			navigateToChapter,
+			nextChapterNumber,
+		],
 	);
 
+	useEffect(() => {
+		speakQueuedChunkRef.current = speakQueuedChunk;
+	}, [speakQueuedChunk]);
+
 	const startSpeechFromBlock = useCallback(
-		(startBlockIndex: number, options?: { continueAcrossChapters?: boolean }): boolean => {
+		(startBlockIndex: number, options?: { continueAcrossChapters?: boolean; fromUserGesture?: boolean }): boolean => {
 			if (!speechSupported || typeof window === "undefined" || !("speechSynthesis" in window)) {
 				setSpeechError("Text to speech is not available in this browser.");
+				return false;
+			}
+
+			if (options?.fromUserGesture) {
+				hasUserInteractedRef.current = true;
+				window.sessionStorage.setItem(TTS_SESSION_FLAG, "1");
+			}
+
+			if (!hasUserInteractedRef.current && !options?.fromUserGesture) {
+				setSpeechError("Press Play once after interacting with this page to enable browser speech playback.");
 				return false;
 			}
 
@@ -768,15 +1029,18 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			speechQueueRef.current = queue;
 			speechIndexRef.current = 0;
 			activeSpeechBlockIndexRef.current = null;
+			activeQueueItemRef.current = null;
 			setSpeechError("");
-			setIsSpeechPortalOpen(true);
-			speechStartTimerRef.current = window.setTimeout(() => {
+
+			if (speechStartTimerRef.current !== null && typeof window !== "undefined") {
+				window.clearTimeout(speechStartTimerRef.current);
 				speechStartTimerRef.current = null;
-				speakQueuedChunk(0);
-			}, 40);
+			}
+
+			speakQueuedChunkRef.current(0);
 			return true;
 		},
-		[createSpeechQueueFromBlock, speakQueuedChunk, speechSupported],
+		[createSpeechQueueFromBlock, speechSupported],
 	);
 
 	const restartSpeechFromCurrentBlock = useCallback(() => {
@@ -811,7 +1075,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			return;
 		}
 
-		void startSpeechFromBlock(0, { continueAcrossChapters: autoOpenNext });
+		void startSpeechFromBlock(0, { continueAcrossChapters: autoOpenNext, fromUserGesture: true });
 	}, [autoOpenNext, speechSupported, startSpeechFromBlock, ttsStatus]);
 
 	const handlePauseSpeech = useCallback(() => {
@@ -837,16 +1101,23 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			return;
 		}
 
+		if (!hasUserInteractedRef.current) {
+			setSpeechError("Browser requires one tap/click before auto-read can continue. Press Play to start.");
+			return;
+		}
+
 		shouldContinueSpeechRef.current = true;
 		const timer = window.setTimeout(() => {
+			// Force rebuilding fresh blocks synchronously before initializing speech tracking
+			speechBlocksRef.current = buildSpeechBlocks();
 			const didStart = startSpeechFromBlock(0, { continueAcrossChapters: true });
 			if (didStart) {
 				startedAutoSpeechForChapterRef.current = chapterNumber;
 			}
-		}, 180);
+		}, 250); // Small margin to let dangerouslySetInnerHTML finish committing and parsing in the document layout
 
 		return () => window.clearTimeout(timer);
-	}, [authLoading, chapter, chapterNumber, loading, readerSettingsReady, shouldResumeTtsFromRoute, speechSupported, startSpeechFromBlock]);
+	}, [authLoading, chapter, chapterNumber, loading, readerSettingsReady, shouldResumeTtsFromRoute, speechSupported, startSpeechFromBlock, buildSpeechBlocks]);
 
 	const handleThemeChange = (newTheme: ReaderTheme) => {
 		setTheme(newTheme);
@@ -895,89 +1166,57 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		restartSpeechFromCurrentBlock();
 	};
 
-	const handlePortalPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-		if (isCompactLayout) return;
-
-		portalDragRef.current = {
-			pointerId: event.pointerId,
-			startX: event.clientX,
-			startY: event.clientY,
-			originX: speechPortalPosition.x,
-			originY: speechPortalPosition.y,
-			currentX: speechPortalPosition.x,
-			currentY: speechPortalPosition.y,
-		};
-		event.currentTarget.setPointerCapture(event.pointerId);
+	const handleHighlightModeChange = (mode: ReaderHighlightMode) => {
+		setHighlightMode(mode);
+		persistReaderSettings({ highlightMode: mode });
 	};
 
-	const handlePortalPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-		if (isCompactLayout) return;
-
-		const drag = portalDragRef.current;
-		if (!drag || drag.pointerId !== event.pointerId) return;
-
-		drag.currentX = Math.max(8, drag.originX + event.clientX - drag.startX);
-		drag.currentY = Math.max(8, drag.originY + event.clientY - drag.startY);
-
-		if (portalRafRef.current !== null) return;
-
-		portalRafRef.current = window.requestAnimationFrame(() => {
-			portalRafRef.current = null;
-			if (!portalDragRef.current || !speechPortalRef.current) return;
-			const offsetX = portalDragRef.current.currentX - portalDragRef.current.originX;
-			const offsetY = portalDragRef.current.currentY - portalDragRef.current.originY;
-			speechPortalRef.current.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
-		});
+	const handleHighlightParagraphChange = (enabled: boolean) => {
+		setHighlightParagraph(enabled);
+		persistReaderSettings({ highlightParagraph: enabled });
 	};
 
-	const clearPortalDragState = useCallback(() => {
-		if (portalRafRef.current !== null) {
-			window.cancelAnimationFrame(portalRafRef.current);
-			portalRafRef.current = null;
-		}
-		if (speechPortalRef.current) {
-			speechPortalRef.current.style.transform = "";
-		}
-	}, []);
-
-	const handleCloseSpeechPortal = useCallback(() => {
-		clearPortalDragState();
-		portalDragRef.current = null;
-		setIsSpeechPortalOpen(false);
-	}, [clearPortalDragState]);
-
-	const handlePortalPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-		if (isCompactLayout) return;
-
-		const drag = portalDragRef.current;
-		if (!drag || drag.pointerId !== event.pointerId) return;
-
-		const finalPosition = { x: drag.currentX, y: drag.currentY };
-		clearPortalDragState();
-		setSpeechPortalPosition(finalPosition);
-		portalDragRef.current = null;
-		persistReaderSettings({ speechPortalPosition: finalPosition }, { immediate: true });
-		event.currentTarget.releasePointerCapture(event.pointerId);
+	const handleParagraphHighlightColorChange = (nextColor: string) => {
+		const normalized = normalizeHexColor(nextColor, DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR);
+		setParagraphHighlightColor(normalized);
+		persistReaderSettings({ paragraphHighlightColor: normalized });
 	};
 
-	const handlePortalPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
-		if (isCompactLayout) return;
-
-		const drag = portalDragRef.current;
-		if (!drag || drag.pointerId !== event.pointerId) return;
-
-		clearPortalDragState();
-		portalDragRef.current = null;
-		event.currentTarget.releasePointerCapture(event.pointerId);
+	const handleWordHighlightColorChange = (nextColor: string) => {
+		const normalized = normalizeHexColor(nextColor, DEFAULT_WORD_HIGHLIGHT_COLOR);
+		setWordHighlightColor(normalized);
+		persistReaderSettings({ wordHighlightColor: normalized });
 	};
 
-	useEffect(() => {
-		return () => {
-			if (portalRafRef.current !== null) {
-				window.cancelAnimationFrame(portalRafRef.current);
-			}
-		};
-	}, []);
+	const handleSentenceHighlightOpacityChange = (value: number) => {
+		const nextValue = Math.min(0.6, Math.max(0.05, value));
+		setSentenceHighlightOpacity(nextValue);
+		persistReaderSettings({ sentenceHighlightOpacity: Number(nextValue.toFixed(2)) });
+	};
+
+	const handleAutoScrollDuringSpeechChange = (enabled: boolean) => {
+		setAutoScrollDuringSpeech(enabled);
+		persistReaderSettings({ autoScrollDuringSpeech: enabled });
+	};
+
+	const handleAutoScrollBehaviorChange = (behavior: ReaderAutoScrollBehavior) => {
+		setAutoScrollBehavior(behavior);
+		persistReaderSettings({ autoScrollBehavior: behavior });
+	};
+
+	const handleAutoScrollOffsetChange = (value: number) => {
+		const nextOffset = Math.round(Math.min(260, Math.max(48, value)));
+		setAutoScrollOffset(nextOffset);
+		persistReaderSettings({ autoScrollOffset: nextOffset });
+	};
+
+	const handleSpeechPortalPositionChange = useCallback(
+		(nextPosition: { x: number; y: number }, options?: { immediate?: boolean }) => {
+			setSpeechPortalPosition(nextPosition);
+			persistReaderSettings({ speechPortalPosition: nextPosition }, options);
+		},
+		[persistReaderSettings],
+	);
 
 	const handleReaderContentClick = (event: React.MouseEvent<HTMLDivElement>) => {
 		const root = readerContentRef.current;
@@ -988,13 +1227,19 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		if (!block || !root.contains(block)) return;
 		if (!isSpeechLeafBlock(block)) return;
 
-		const blocks = Array.from(root.querySelectorAll<HTMLElement>(SPEECH_BLOCK_SELECTOR)).filter(
-			(element) => isSpeechLeafBlock(element) && (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim().length > 0,
-		);
-		const blockIndex = blocks.indexOf(block);
+		let blocks = getSpeechBlocks();
+		let blockIndex = blocks.findIndex((item) => item.element === block);
+
+		// Rebuild references immediately if they are stale due to React mutations
+		if (blockIndex < 0) {
+			speechBlocksRef.current = buildSpeechBlocks();
+			blocks = speechBlocksRef.current;
+			blockIndex = blocks.findIndex((item) => item.element === block);
+		}
+
 		if (blockIndex < 0) return;
 
-		void startSpeechFromBlock(blockIndex, { continueAcrossChapters: autoOpenNext });
+		void startSpeechFromBlock(blockIndex, { continueAcrossChapters: autoOpenNext, fromUserGesture: true });
 	};
 
 	if (loading) {
@@ -1108,399 +1353,337 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		medium: "850px",
 		wide: "1120px",
 	}[readWidth];
+	const readerContentStyle = {
+		fontSize: `${fontSize}px`,
+		"--reader-highlight-paragraph": paragraphHighlightColor,
+		"--reader-highlight-word": wordHighlightColor,
+		"--reader-sentence-opacity": String(sentenceHighlightOpacity),
+	} as React.CSSProperties;
 	const themeClass = `reader-theme-${theme}`;
-	const hasSpeechRatePreset = SPEECH_RATE_PRESETS.some((preset) => Math.abs(preset - speechRate) < 0.001);
-	const hasSpeechPitchPreset = SPEECH_PITCH_PRESETS.some((preset) => Math.abs(preset - speechPitch) < 0.001);
 
 	return (
-		<div className={`${themeClass} reader-shell`}>
-			<div className="reader-toolbar max-[860px]:gap-2 max-[860px]:px-3 max-[860px]:py-[0.65rem]">
-				<div className="reader-toolbar-primary w-full flex-wrap justify-between">
-					<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
-						Catalogue
-					</button>
-					<Link href={`/novels/${novelId}`} className="reader-back-link">
-						← {novel.title.length > 24 ? `${novel.title.substring(0, 24)}...` : novel.title}
-					</Link>
-					<button
-						className="reader-tool-button"
-						onClick={() => {
-							setReaderPanelTab("display");
-							setIsReaderPanelOpen(true);
-						}}
-					>
-						Controls
-					</button>
-				</div>
-			</div>
-
-			{speechError && <div className="reader-status-line max-[860px]:max-w-[calc(100vw-16px)]">{speechError}</div>}
-
-			{isCatalogOpen && (
-				<div className="reader-catalog-backdrop" onClick={() => setIsCatalogOpen(false)}>
-					<aside className="reader-catalog-panel" onClick={(event) => event.stopPropagation()}>
-						<div className="reader-catalog-header">
-							<div>
-								<h2>Catalogue</h2>
-								<p>
-									{isRawReader ? "Raw" : "Translated"} · {catalogItems.length} chapters indexed, {chapters.length} archived.
-								</p>
-							</div>
-							<button className="reader-tool-button" onClick={() => setIsCatalogOpen(false)}>
-								Close
+		<>
+			<style>{`
+				.reader-content .reader-speaking-block {
+					background-color: var(--reader-highlight-paragraph) !important;
+					border-radius: 4px;
+					box-shadow: 0 0 0 4px var(--reader-highlight-paragraph) !important;
+					transition: background-color 0.15s ease, box-shadow 0.15s ease;
+				}
+				.reader-speaking-word {
+					background-color: var(--reader-highlight-word) !important;
+					color: #000 !important;
+					border-radius: 2px;
+				}
+			`}</style>
+			<div className={`${themeClass} reader-shell`}>
+				<div className="reader-toolbar max-[860px]:gap-2 max-[860px]:px-3 max-[860px]:py-[0.65rem]">
+					<div className="reader-toolbar-primary w-full flex-wrap justify-between gap-2">
+						<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
+							Catalogue
+						</button>
+						<Link href={`/novels/${novelId}`} className="reader-back-link">
+							← {novel.title.length > 24 ? `${novel.title.substring(0, 24)}...` : novel.title}
+						</Link>
+						<div className="reader-toolbar-actions">
+							<button className="reader-tool-button" onClick={handlePlaySpeech}>
+								Listen
+							</button>
+							<button
+								className="reader-tool-button"
+								onClick={() => {
+									setReaderPanelTab("display");
+									setIsReaderPanelOpen(true);
+								}}
+							>
+								Controls
 							</button>
 						</div>
-
-						<input
-							className="reader-catalog-search"
-							value={catalogSearch}
-							onChange={(event) => setCatalogSearch(event.target.value)}
-							placeholder="Search chapter number or title"
-						/>
-
-						<div className="reader-catalog-list">
-							{filteredCatalogItems.map((item) => (
-								<button
-									key={item.number}
-									className={`reader-catalog-item ${item.number === chapterNumber ? "active" : ""}`}
-									onClick={() => {
-										setIsCatalogOpen(false);
-										navigateToChapter(item.number);
-									}}
-								>
-									<span>Chapter {item.number}</span>
-									<strong>{item.title}</strong>
-									<small>{item.archived ? "Archived" : "Indexed only"}</small>
-								</button>
-							))}
-						</div>
-					</aside>
-				</div>
-			)}
-
-			<main className="reader-page max-[860px]:px-3 max-[860px]:py-5">
-				<article className="reader-article" style={{ maxWidth: widthStyle }}>
-					<header className="reader-chapter-header">
-						<h1>{displayChapterTitle}</h1>
-						<div className="reader-chapter-meta max-[860px]:flex-col max-[860px]:items-start">
-							<span>{novel.title}</span>
-							<span>
-								{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}{" "}
-								{(isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal)
-									? `of ${isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal}`
-									: ""}
-							</span>
-							{chapter.sourceUrl && (
-								<a href={chapter.sourceUrl} target="_blank" rel="noreferrer">
-									Original Source
-								</a>
-							)}
-						</div>
-						{isRawReader && user?.role === "admin" && (
-							<div className="reader-status-line" style={{ marginTop: "1rem" }}>
-								<span>Raw source view</span>
-								<button className="reader-tool-button" onClick={handleGenerateTranslation} disabled={translatingRawChapter}>
-									{translatingRawChapter ? "Generating..." : "Generate English Translation"}
-								</button>
-							</div>
-						)}
-					</header>
-
-					<div
-						ref={readerContentRef}
-						className="reader-content"
-						style={{ fontSize: `${fontSize}px` }}
-						onClick={handleReaderContentClick}
-						dangerouslySetInnerHTML={{ __html: chapter.content }}
-					/>
-
-					<footer className="reader-footer">
-						<button
-							className="btn btn-secondary"
-							style={{ color: "var(--reader-text)", borderColor: "var(--reader-border)", backgroundColor: "transparent" }}
-							disabled={!hasPreviousChapter}
-							onClick={() => navigateToChapter(previousChapterNumber)}
-						>
-							← Previous Chapter
-						</button>
-
-						<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
-							Open Catalogue
-						</button>
-
-						<button className="btn btn-primary" disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
-							Next Chapter →
-						</button>
-					</footer>
-				</article>
-			</main>
-
-			{isSpeechPortalOpen && (
-				<div
-					ref={speechPortalRef}
-					className="reader-speech-portal max-[860px]:bottom-[74px] max-[860px]:left-2 max-[860px]:right-2 max-[860px]:top-auto max-[860px]:w-auto max-[860px]:max-h-[calc(100vh-140px)] max-[860px]:overflow-auto"
-					style={isCompactLayout ? undefined : { left: speechPortalPosition.x, top: speechPortalPosition.y }}
-				>
-					<div
-						className="reader-speech-portal-header max-[860px]:cursor-default max-[860px]:active:cursor-default"
-						onPointerDown={handlePortalPointerDown}
-						onPointerMove={handlePortalPointerMove}
-						onPointerUp={handlePortalPointerUp}
-						onPointerCancel={handlePortalPointerCancel}
-						onLostPointerCapture={handlePortalPointerCancel}
-					>
-						<span className={`reader-speech-status-dot ${ttsStatus}`}></span>
-						<strong>{ttsStatus === "idle" ? "Ready" : ttsStatus === "paused" ? "Paused" : "Reading"}</strong>
-						<button
-							type="button"
-							onPointerDown={(event) => event.stopPropagation()}
-							onClick={(event) => {
-								event.stopPropagation();
-								handleCloseSpeechPortal();
-							}}
-						>
-							Close
-						</button>
 					</div>
-
-					<div className="reader-speech-portal-controls">
-						<button type="button" onClick={() => navigateToChapter(previousChapterNumber)} disabled={!hasPreviousChapter}>
-							‹
-						</button>
-						<button type="button" onClick={handlePlaySpeech} disabled={!speechSupported}>
-							{ttsStatus === "paused" ? "▶" : ttsStatus === "playing" ? "↻" : "▶"}
-						</button>
-						<button type="button" onClick={handlePauseSpeech} disabled={ttsStatus !== "playing"}>
-							‖
-						</button>
-						<button type="button" onClick={() => stopSpeech()} disabled={ttsStatus === "idle"}>
-							■
-						</button>
-						<button type="button" onClick={() => navigateToChapter(nextChapterNumber)} disabled={!hasNextChapter}>
-							›
-						</button>
-					</div>
-
-					<button
-						type="button"
-						className="reader-tool-button"
-						onClick={() => {
-							setReaderPanelTab("speech");
-							setIsReaderPanelOpen(true);
-							handleCloseSpeechPortal();
-						}}
-					>
-						Open Speech Settings
-					</button>
 				</div>
-			)}
 
-			<div className={`reader-bottom-dock ${isReaderPanelOpen ? "open" : ""}`}>
-				<button
-					className="reader-dock-handle"
-					onClick={() => setIsReaderPanelOpen((open) => !open)}
-					aria-label={isReaderPanelOpen ? "Close reader controls" : "Open reader controls"}
-				>
-					{isReaderPanelOpen ? "⌄" : "⌃"}
-				</button>
-
-				{isReaderPanelOpen && (
-					<div className="reader-dock-panel max-[860px]:max-h-[44vh] max-[860px]:overflow-auto max-[860px]:p-3">
-						{readerPanelTab === "read" && (
-							<div className="reader-dock-grid">
-								<button className="reader-dock-action" disabled={!hasPreviousChapter} onClick={() => navigateToChapter(previousChapterNumber)}>
-									<strong>Previous</strong>
-									<span>Chapter {previousChapterNumber}</span>
-								</button>
-								<button className="reader-dock-action" onClick={() => setIsCatalogOpen(true)}>
-									<strong>Contents</strong>
-									<span>{catalogItems.length} indexed chapters</span>
-								</button>
-								<Link className="reader-dock-action" href={`/novels/${novelId}`}>
-									<strong>Novel</strong>
-									<span>{novel.title}</span>
-								</Link>
-								<button className="reader-dock-action" disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
-									<strong>Next</strong>
-									<span>Chapter {nextChapterNumber}</span>
+				{isCatalogOpen && (
+					<div className="reader-catalog-backdrop" onClick={() => setIsCatalogOpen(false)}>
+						<aside className="reader-catalog-panel" onClick={(event) => event.stopPropagation()}>
+							<div className="reader-catalog-header">
+								<div>
+									<h2>Catalogue</h2>
+									<p>
+										{isRawReader ? "Raw" : "Translated"} · {catalogItems.length} chapters indexed, {chapters.length} archived.
+									</p>
+								</div>
+								<button className="reader-tool-button" onClick={() => setIsCatalogOpen(false)}>
+									Close
 								</button>
 							</div>
-						)}
 
-						{readerPanelTab === "display" && (
-							<div className="reader-settings-grid">
-								<div>
-									<label>Theme</label>
-									<div className="reader-segmented wide">
-										{(["light", "sepia", "dark"] as const).map((item) => (
-											<button key={item} className={theme === item ? "active" : ""} onClick={() => handleThemeChange(item)}>
-												{item}
-											</button>
-										))}
-									</div>
-								</div>
-								<div>
-									<label>Font Size</label>
-									<div className="reader-segmented wide">
-										<button onClick={() => handleFontSizeChange(false)}>A-</button>
-										<button className="active">{fontSize}px</button>
-										<button onClick={() => handleFontSizeChange(true)}>A+</button>
-									</div>
-								</div>
-								<div>
-									<label>Reader Width</label>
-									<div className="reader-segmented wide">
-										{(["narrow", "medium", "wide"] as const).map((item) => (
-											<button key={item} className={readWidth === item ? "active" : ""} onClick={() => handleWidthChange(item)}>
-												{item}
-											</button>
-										))}
-									</div>
-								</div>
-							</div>
-						)}
+							<input
+								className="reader-catalog-search"
+								value={catalogSearch}
+								onChange={(event) => setCatalogSearch(event.target.value)}
+								placeholder="Search chapter number or title"
+							/>
 
-						{readerPanelTab === "speech" && (
-							<div className="reader-settings-grid">
-								<label className="reader-switch dock-switch">
-									<input type="checkbox" checked={speechSupported} readOnly />
-									<span></span>
-									<strong>{speechSupported ? "Text-to-Speech Available" : "Text-to-Speech Unavailable"}</strong>
-								</label>
-								<label className="reader-switch dock-switch">
-									<input type="checkbox" checked={autoOpenNext} onChange={(event) => handleAutoOpenNextChange(event.target.checked)} />
-									<span></span>
-									<strong>Continue into next chapter</strong>
-								</label>
-								<div>
-									<label>Playback</label>
-									<div className="reader-segmented wide">
-										<button onClick={handlePlaySpeech}>
-											{ttsStatus === "paused" ? "Resume" : ttsStatus === "playing" ? "Restart" : "Play"}
-										</button>
-										<button onClick={handlePauseSpeech} disabled={ttsStatus !== "playing"}>
-											Pause
-										</button>
-										<button onClick={() => stopSpeech()} disabled={ttsStatus === "idle"}>
-											Stop
-										</button>
-									</div>
-								</div>
-								<div>
-									<label>Voice</label>
-									<select
-										className="reader-catalog-search"
-										value={selectedVoiceURI}
-										onChange={(event) => handleVoiceChange(event.target.value)}
+							<div className="reader-catalog-list">
+								{filteredCatalogItems.map((item) => (
+									<button
+										key={item.number}
+										className={`reader-catalog-item ${item.number === chapterNumber ? "active" : ""}`}
+										onClick={() => {
+											setIsCatalogOpen(false);
+											navigateToChapter(item.number);
+										}}
 									>
-										<option value="">Browser default</option>
-										{availableVoices.map((voice) => (
-											<option key={voice.voiceURI} value={voice.voiceURI}>
-												{voice.name} {voice.lang ? `(${voice.lang})` : ""}
-											</option>
-										))}
-									</select>
-								</div>
-								<div>
-									<label>Speed</label>
-									<select
-										className="reader-catalog-search"
-										value={speechRate}
-										onChange={(event) => handleSpeechRateChange(Number(event.target.value))}
-									>
-										{!hasSpeechRatePreset && <option value={speechRate}>{formatSpeechValue(speechRate)}x</option>}
-										{SPEECH_RATE_PRESETS.map((preset) => (
-											<option key={preset} value={preset}>
-												{formatSpeechValue(preset)}x
-											</option>
-										))}
-									</select>
-								</div>
-								<div>
-									<label>Pitch</label>
-									<select
-										className="reader-catalog-search"
-										value={speechPitch}
-										onChange={(event) => handleSpeechPitchChange(Number(event.target.value))}
-									>
-										{!hasSpeechPitchPreset && <option value={speechPitch}>{formatSpeechValue(speechPitch)}x</option>}
-										{SPEECH_PITCH_PRESETS.map((preset) => (
-											<option key={preset} value={preset}>
-												{formatSpeechValue(preset)}x
-											</option>
-										))}
-									</select>
-								</div>
+										<span>Chapter {item.number}</span>
+										<strong>{item.title}</strong>
+										<small>{item.archived ? "Archived" : "Indexed only"}</small>
+									</button>
+								))}
 							</div>
-						)}
-
-						{readerPanelTab === "settings" && (
-							<div className="reader-settings-grid">
-								{novel.rawChaptersTotal > 0 && (
-									<div>
-										<label>Reader Source</label>
-										<div className="reader-segmented wide" aria-label="Reader source">
-											<button className={!isRawReader ? "active" : ""} onClick={() => switchReaderSource("translated")}>
-												Translated
-											</button>
-											<button className={isRawReader ? "active" : ""} onClick={() => switchReaderSource("raw")}>
-												Raw
-											</button>
-										</div>
-									</div>
-								)}
-								<label className="reader-switch dock-switch">
-									<input type="checkbox" checked={autoOpenNext} onChange={(event) => handleAutoOpenNextChange(event.target.checked)} />
-									<span></span>
-									<strong>Continue TTS into next chapter</strong>
-								</label>
-								<div>
-									<label>Reader Type</label>
-									<div className="reader-segmented wide">
-										<button className="active">Single Page</button>
-										<button disabled>Infinite</button>
-										<button disabled>Old Reader</button>
-									</div>
-								</div>
-							</div>
-						)}
-
-						{readerPanelTab === "more" && (
-							<div className="reader-dock-grid">
-								{chapter.sourceUrl && (
-									<a className="reader-dock-action" href={chapter.sourceUrl} target="_blank" rel="noreferrer">
-										<strong>Raw</strong>
-										<span>Go to source page</span>
-									</a>
-								)}
-								<button className="reader-dock-action" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-									<strong>Top</strong>
-									<span>Return to chapter title</span>
-								</button>
-								<Link className="reader-dock-action" href={user ? `/profile/novels/${novelId}` : "/login"}>
-									<strong>{user ? "Profile Details" : "Login"}</strong>
-									<span>{user ? "Open your private notes" : "Track reading progress"}</span>
-								</Link>
-							</div>
-						)}
+						</aside>
 					</div>
 				)}
 
-				<nav className="reader-dock-tabs max-[860px]:[&>button]:min-h-12 max-[860px]:[&>button]:text-[0.69rem]">
-					{(["read", "display", "speech", "settings", "more"] as const).map((tab) => (
-						<button
-							key={tab}
-							className={readerPanelTab === tab ? "active" : ""}
-							onClick={() => {
-								setReaderPanelTab(tab);
-								setIsReaderPanelOpen(true);
-							}}
-						>
-							{tab}
-						</button>
-					))}
-				</nav>
+				<main className="reader-page max-[860px]:px-3 max-[860px]:py-5">
+					<article className="reader-article" style={{ maxWidth: widthStyle }}>
+						<header className="reader-chapter-header">
+							<h1>{displayChapterTitle}</h1>
+							<div className="reader-chapter-meta max-[860px]:flex-col max-[860px]:items-start">
+								<span>{novel.title}</span>
+								<span>
+									{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}{" "}
+									{(isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal)
+										? `of ${isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal}`
+										: ""}
+								</span>
+								{chapter.sourceUrl && (
+									<a href={chapter.sourceUrl} target="_blank" rel="noreferrer">
+										Original Source
+									</a>
+								)}
+							</div>
+							{isRawReader && user?.role === "admin" && (
+								<div className="reader-status-line" style={{ marginTop: "1rem" }}>
+									<span>Raw source view</span>
+									<button className="reader-tool-button" onClick={handleGenerateTranslation} disabled={translatingRawChapter}>
+										{translatingRawChapter ? "Generating..." : "Generate English Translation"}
+									</button>
+								</div>
+							)}
+						</header>
+
+						<div
+							ref={readerContentRef}
+							className="reader-content"
+							style={readerContentStyle}
+							onClick={handleReaderContentClick}
+							dangerouslySetInnerHTML={{ __html: chapter.content }}
+						/>
+
+						<footer className="reader-footer">
+							<button
+								className="btn btn-secondary"
+								style={{ color: "var(--reader-text)", borderColor: "var(--reader-border)", backgroundColor: "transparent" }}
+								disabled={!hasPreviousChapter}
+								onClick={() => navigateToChapter(previousChapterNumber)}
+							>
+								← Previous Chapter
+							</button>
+
+							<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
+								Open Catalogue
+							</button>
+
+							<button className="btn btn-primary" disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
+								Next Chapter →
+							</button>
+						</footer>
+					</article>
+				</main>
+
+				<SpeechWidget
+					supported={speechSupported}
+					status={ttsStatus}
+					error={speechError}
+					onPlay={handlePlaySpeech}
+					onPause={handlePauseSpeech}
+					onStop={() => stopSpeech()}
+					onPrevChapter={() => navigateToChapter(previousChapterNumber)}
+					onNextChapter={() => navigateToChapter(nextChapterNumber)}
+					hasPrevChapter={hasPreviousChapter}
+					hasNextChapter={hasNextChapter}
+					voices={availableVoices}
+					voiceURI={selectedVoiceURI}
+					onVoiceChange={handleVoiceChange}
+					rate={speechRate}
+					onRateChange={handleSpeechRateChange}
+					pitch={speechPitch}
+					onPitchChange={handleSpeechPitchChange}
+					autoNextChapter={autoOpenNext}
+					onAutoNextChapterChange={handleAutoOpenNextChange}
+					highlightMode={highlightMode}
+					onHighlightModeChange={handleHighlightModeChange}
+					highlightParagraph={highlightParagraph}
+					onHighlightParagraphChange={handleHighlightParagraphChange}
+					paragraphColor={paragraphHighlightColor}
+					onParagraphColorChange={handleParagraphHighlightColorChange}
+					wordColor={wordHighlightColor}
+					onWordColorChange={handleWordHighlightColorChange}
+					emphasis={sentenceHighlightOpacity}
+					onEmphasisChange={handleSentenceHighlightOpacityChange}
+					autoScroll={autoScrollDuringSpeech}
+					onAutoScrollChange={handleAutoScrollDuringSpeechChange}
+					scrollBehavior={autoScrollBehavior}
+					onScrollBehaviorChange={handleAutoScrollBehaviorChange}
+					scrollOffset={autoScrollOffset}
+					onScrollOffsetChange={handleAutoScrollOffsetChange}
+					position={speechPortalPosition}
+					onPositionChange={handleSpeechPortalPositionChange}
+				/>
+
+				<div className={`reader-bottom-dock ${isReaderPanelOpen ? "open" : ""}`}>
+					<button
+						className="reader-dock-handle"
+						onClick={() => setIsReaderPanelOpen((open) => !open)}
+						aria-label={isReaderPanelOpen ? "Close reader controls" : "Open reader controls"}
+					>
+						{isReaderPanelOpen ? "⌄" : "⌃"}
+					</button>
+
+					{isReaderPanelOpen && (
+						<div className="reader-dock-panel max-[860px]:max-h-[44vh] max-[860px]:overflow-auto max-[860px]:p-3">
+							<div className="reader-dock-panel-header">
+								<span>Reader Controls</span>
+								<button type="button" className="reader-tool-button" onClick={() => setIsReaderPanelOpen(false)}>
+									Close
+								</button>
+							</div>
+							{readerPanelTab === "read" && (
+								<div className="reader-dock-grid">
+									<button
+										className="reader-dock-action"
+										disabled={!hasPreviousChapter}
+										onClick={() => navigateToChapter(previousChapterNumber)}
+									>
+										<strong>Previous</strong>
+										<span>Chapter {previousChapterNumber}</span>
+									</button>
+									<button className="reader-dock-action" onClick={() => setIsCatalogOpen(true)}>
+										<strong>Contents</strong>
+										<span>{catalogItems.length} indexed chapters</span>
+									</button>
+									<Link className="reader-dock-action" href={`/novels/${novelId}`}>
+										<strong>Novel</strong>
+										<span>{novel.title}</span>
+									</Link>
+									<button className="reader-dock-action" disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
+										<strong>Next</strong>
+										<span>Chapter {nextChapterNumber}</span>
+									</button>
+								</div>
+							)}
+
+							{readerPanelTab === "display" && (
+								<div className="reader-settings-grid">
+									<div>
+										<label>Theme</label>
+										<div className="reader-segmented wide">
+											{(["light", "sepia", "dark"] as const).map((item) => (
+												<button key={item} className={theme === item ? "active" : ""} onClick={() => handleThemeChange(item)}>
+													{item}
+												</button>
+											))}
+										</div>
+									</div>
+									<div>
+										<label>Font Size</label>
+										<div className="reader-segmented wide">
+											<button onClick={() => handleFontSizeChange(false)}>A-</button>
+											<button className="active">{fontSize}px</button>
+											<button onClick={() => handleFontSizeChange(true)}>A+</button>
+										</div>
+									</div>
+									<div>
+										<label>Reader Width</label>
+										<div className="reader-segmented wide">
+											{(["narrow", "medium", "wide"] as const).map((item) => (
+												<button key={item} className={readWidth === item ? "active" : ""} onClick={() => handleWidthChange(item)}>
+													{item}
+												</button>
+											))}
+										</div>
+									</div>
+								</div>
+							)}
+
+							{readerPanelTab === "settings" && (
+								<div className="reader-settings-grid">
+									{novel.rawChaptersTotal > 0 && (
+										<div>
+											<label>Reader Source</label>
+											<div className="reader-segmented wide" aria-label="Reader source">
+												<button className={!isRawReader ? "active" : ""} onClick={() => switchReaderSource("translated")}>
+													Translated
+												</button>
+												<button className={isRawReader ? "active" : ""} onClick={() => switchReaderSource("raw")}>
+													Raw
+												</button>
+											</div>
+										</div>
+									)}
+									<label className="reader-switch dock-switch">
+										<input type="checkbox" checked={autoOpenNext} onChange={(event) => handleAutoOpenNextChange(event.target.checked)} />
+										<span></span>
+										<strong>Continue TTS into next chapter</strong>
+									</label>
+									<div>
+										<label>Reader Type</label>
+										<div className="reader-segmented wide">
+											<button className="active">Single Page</button>
+											<button disabled>Infinite</button>
+											<button disabled>Old Reader</button>
+										</div>
+									</div>
+								</div>
+							)}
+
+							{readerPanelTab === "more" && (
+								<div className="reader-dock-grid">
+									{chapter.sourceUrl && (
+										<a className="reader-dock-action" href={chapter.sourceUrl} target="_blank" rel="noreferrer">
+											<strong>Raw</strong>
+											<span>Go to source page</span>
+										</a>
+									)}
+									<button className="reader-dock-action" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+										<strong>Top</strong>
+										<span>Return to chapter title</span>
+									</button>
+									<Link className="reader-dock-action" href={user ? `/profile/novels/${novelId}` : "/login"}>
+										<strong>{user ? "Profile Details" : "Login"}</strong>
+										<span>{user ? "Open your private notes" : "Track reading progress"}</span>
+									</Link>
+								</div>
+							)}
+						</div>
+					)}
+
+					<nav className="reader-dock-tabs max-[860px]:[&>button]:min-h-12 max-[860px]:[&>button]:text-[0.69rem]">
+						{(["read", "display", "settings", "more"] as const).map((tab) => (
+							<button
+								key={tab}
+								className={readerPanelTab === tab ? "active" : ""}
+								onClick={() => {
+									setReaderPanelTab(tab);
+									setIsReaderPanelOpen(true);
+								}}
+							>
+								{tab}
+							</button>
+						))}
+					</nav>
+				</div>
 			</div>
-		</div>
+		</>
 	);
 }
