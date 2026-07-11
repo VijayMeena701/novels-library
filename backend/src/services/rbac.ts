@@ -1,120 +1,122 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { Role, IRole } from '../models/Role.js';
-import { Capability, ICapability } from '../models/Capability.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { User } from '../models/User.js';
+import { Resource } from '../models/Resource.js';
+import { Role } from '../models/Role.js';
+import { getEnforcer, initEnforcer, syncPolicies } from './casbin.js';
 
 export const CAPABILITY = {
-  AUTH_SELF: 'auth.self',
+  // Profile & settings
+  PROFILE_READ: 'profile:read',
+  PROFILE_UPDATE: 'profile:update',
+  SETTINGS_READ: 'settings:read',
+  SETTINGS_UPDATE: 'settings:update',
 
-  PUBLIC_CATALOG_READ: 'public.catalog.read',
-  PUBLIC_READ: 'public.read',
+  // Catalog
+  NOVELS_LIST: 'novels:list',
+  NOVELS_READ: 'novels:read',
+  NOVELS_CREATE: 'novels:create',
+  NOVELS_UPDATE: 'novels:update',
+  NOVELS_DELETE: 'novels:delete',
+  NOVELS_MANAGE: 'novels:manage',
 
-  SETTINGS_READ: 'settings.read',
-  SETTINGS_UPDATE: 'settings.update',
+  // Library
+  LIBRARY_READ: 'library:read',
+  LIBRARY_ADD: 'library:add',
+  LIBRARY_UPDATE: 'library:update',
+  LIBRARY_DELETE: 'library:delete',
+  LIBRARY_MANAGE: 'library:manage',
 
-  LIBRARY_READ: 'library.read',
-  LIBRARY_ADD: 'library.add',
-  LIBRARY_UPDATE: 'library.update',
-  LIBRARY_DELETE: 'library.delete',
+  // Chapters
+  CHAPTERS_LIST: 'chapters:list',
+  CHAPTERS_READ: 'chapters:read',
+  CHAPTERS_READ_RAW: 'chapters:read_raw',
+  CHAPTERS_TRANSLATE: 'chapters:translate',
+  CHAPTERS_VISIT: 'chapters:visit',
+  CHAPTERS_MANAGE: 'chapters:manage',
 
-  CATALOG_MANAGE: 'catalog.manage',
-  CATALOG_DELETE: 'catalog.delete',
-  COVER_SYNC: 'cover.sync',
+  // Taxonomy
+  AUTHORS_LIST: 'authors:list',
+  AUTHORS_READ: 'authors:read',
+  AUTHORS_CREATE: 'authors:create',
+  AUTHORS_UPDATE: 'authors:update',
+  AUTHORS_DELETE: 'authors:delete',
+  AUTHORS_MANAGE: 'authors:manage',
 
-  CHAPTER_READ: 'chapter.read',
-  CHAPTER_READ_RAW: 'chapter.read_raw',
-  CHAPTER_TRANSLATE: 'chapter.translate',
-  CHAPTER_VISIT: 'chapter.visit',
+  GENRES_LIST: 'genres:list',
+  GENRES_READ: 'genres:read',
+  GENRES_CREATE: 'genres:create',
+  GENRES_UPDATE: 'genres:update',
+  GENRES_DELETE: 'genres:delete',
+  GENRES_MANAGE: 'genres:manage',
 
-  SESSION_READ: 'session.read',
-  SESSION_MANAGE: 'session.manage',
+  PUBLICATION_STATUSES_LIST: 'publication_statuses:list',
+  PUBLICATION_STATUSES_READ: 'publication_statuses:read',
+  PUBLICATION_STATUSES_CREATE: 'publication_statuses:create',
+  PUBLICATION_STATUSES_UPDATE: 'publication_statuses:update',
+  PUBLICATION_STATUSES_DELETE: 'publication_statuses:delete',
+  PUBLICATION_STATUSES_MANAGE: 'publication_statuses:manage',
 
-  PRONUNCIATION_READ: 'pronunciation.read',
-  PRONUNCIATION_MANAGE: 'pronunciation.manage',
+  // Jobs
+  JOBS_LIST: 'jobs:list',
+  JOBS_RETRY: 'jobs:retry',
+  JOBS_MANUAL_INTERVENTION: 'jobs:manual_intervention',
+  JOBS_IMPORT: 'jobs:import',
+  JOBS_SCRAPE: 'jobs:scrape',
+  JOBS_MANAGE: 'jobs:manage',
 
-  AUTHOR_READ: 'author.read',
-  AUTHOR_MANAGE: 'author.manage',
+  // TTS
+  PRONUNCIATION_READ: 'pronunciation:read',
+  PRONUNCIATION_MANAGE: 'pronunciation:manage',
 
-  GENRE_READ: 'genre.read',
-  GENRE_MANAGE: 'genre.manage',
+  // Sessions
+  SESSIONS_READ: 'sessions:read',
+  SESSIONS_MANAGE: 'sessions:manage',
 
-  PUBLICATION_STATUS_READ: 'publication_status.read',
-  PUBLICATION_STATUS_MANAGE: 'publication_status.manage',
+  // Cover & translation
+  COVER_SYNC: 'cover:sync',
+  COVER_MANAGE: 'cover:manage',
+  TRANSLATION_EXECUTE: 'translation:execute',
+  TRANSLATION_MANAGE: 'translation:manage',
 
-  JOB_READ: 'job.read',
-  JOB_RETRY: 'job.retry',
-  JOB_MANUAL_INTERVENTION: 'job.manual_intervention',
-  JOB_IMPORT: 'job.import',
-  JOB_SCRAPE: 'job.scrape',
+  // Admin console
+  ADMIN_ACCESS: 'admin:access',
+  ADMIN_MANAGE: 'admin:manage',
 
-  RBAC_MANAGE: 'rbac.manage',
+  // Administration
+  USERS_LIST: 'users:list',
+  USERS_READ: 'users:read',
+  USERS_CREATE: 'users:create',
+  USERS_UPDATE: 'users:update',
+  USERS_DELETE: 'users:delete',
+  USERS_MANAGE: 'users:manage',
+
+  ROLES_LIST: 'roles:list',
+  ROLES_READ: 'roles:read',
+  ROLES_CREATE: 'roles:create',
+  ROLES_UPDATE: 'roles:update',
+  ROLES_DELETE: 'roles:delete',
+  ROLES_MANAGE: 'roles:manage',
+
+  GROUPS_LIST: 'groups:list',
+  GROUPS_READ: 'groups:read',
+  GROUPS_CREATE: 'groups:create',
+  GROUPS_UPDATE: 'groups:update',
+  GROUPS_DELETE: 'groups:delete',
+  GROUPS_MANAGE: 'groups:manage',
+
+  RESOURCES_LIST: 'resources:list',
+  RESOURCES_READ: 'resources:read',
+  RESOURCES_ENABLE: 'resources:enable',
+  RESOURCES_MANAGE: 'resources:manage',
+
+  AUDIT_LOGS_READ: 'audit_logs:read',
+  ACCESS_LOGS_READ: 'access_logs:read',
+
+  SERVICE_READ: 'service:read',
+  SERVICE_EXECUTE: 'service:execute',
+  SERVICE_MANAGE: 'service:manage',
 } as const;
-
-export const CAPABILITY_DEFINITIONS: Array<Pick<ICapability, 'key' | 'name' | 'description' | 'category'>> = [
-  { key: CAPABILITY.AUTH_SELF, name: 'View own profile', description: 'Allows reading the authenticated user profile.', category: 'auth' },
-  { key: CAPABILITY.PUBLIC_READ, name: 'Public read', description: 'Allows anonymous/public browsing of the catalog.', category: 'public' },
-  { key: CAPABILITY.PUBLIC_CATALOG_READ, name: 'Public catalog read', description: 'Allows reading public catalog novels and chapters.', category: 'public' },
-  { key: CAPABILITY.SETTINGS_READ, name: 'Read settings', description: 'Allows reading user settings.', category: 'user' },
-  { key: CAPABILITY.SETTINGS_UPDATE, name: 'Update settings', description: 'Allows updating user settings.', category: 'user' },
-  { key: CAPABILITY.LIBRARY_READ, name: 'Read library', description: 'Allows reading personal library entries.', category: 'library' },
-  { key: CAPABILITY.LIBRARY_ADD, name: 'Add to library', description: 'Allows adding a catalog novel to the personal library.', category: 'library' },
-  { key: CAPABILITY.LIBRARY_UPDATE, name: 'Update library', description: 'Allows updating personal reading data.', category: 'library' },
-  { key: CAPABILITY.LIBRARY_DELETE, name: 'Remove from library', description: 'Allows removing a novel from the personal library.', category: 'library' },
-  { key: CAPABILITY.CATALOG_MANAGE, name: 'Manage catalog', description: 'Allows creating, updating, and importing catalog novels and metadata.', category: 'catalog' },
-  { key: CAPABILITY.CATALOG_DELETE, name: 'Delete catalog', description: 'Allows deleting catalog novels and related data.', category: 'catalog' },
-  { key: CAPABILITY.COVER_SYNC, name: 'Sync cover', description: 'Allows syncing and caching cover images.', category: 'catalog' },
-  { key: CAPABILITY.CHAPTER_READ, name: 'Read chapters', description: 'Allows reading archived chapters in the personal library.', category: 'chapters' },
-  { key: CAPABILITY.CHAPTER_READ_RAW, name: 'Read raw chapters', description: 'Allows reading archived raw chapters in the personal library.', category: 'chapters' },
-  { key: CAPABILITY.CHAPTER_TRANSLATE, name: 'Translate chapter', description: 'Allows translating raw chapters into translated chapters.', category: 'chapters' },
-  { key: CAPABILITY.CHAPTER_VISIT, name: 'Record chapter visit', description: 'Allows recording chapter open/visit events.', category: 'chapters' },
-  { key: CAPABILITY.SESSION_READ, name: 'Read re-read sessions', description: 'Allows reading re-reading sessions.', category: 'sessions' },
-  { key: CAPABILITY.SESSION_MANAGE, name: 'Manage re-read sessions', description: 'Allows creating and updating re-reading sessions.', category: 'sessions' },
-  { key: CAPABILITY.PRONUNCIATION_READ, name: 'Read pronunciation rules', description: 'Allows reading TTS pronunciation rules.', category: 'tts' },
-  { key: CAPABILITY.PRONUNCIATION_MANAGE, name: 'Manage pronunciation rules', description: 'Allows creating, updating, and deleting TTS pronunciation rules.', category: 'tts' },
-  { key: CAPABILITY.AUTHOR_READ, name: 'Read authors', description: 'Allows reading author records.', category: 'taxonomy' },
-  { key: CAPABILITY.AUTHOR_MANAGE, name: 'Manage authors', description: 'Allows creating and updating author records.', category: 'taxonomy' },
-  { key: CAPABILITY.GENRE_READ, name: 'Read genres', description: 'Allows reading genre records.', category: 'taxonomy' },
-  { key: CAPABILITY.GENRE_MANAGE, name: 'Manage genres', description: 'Allows creating and updating genre records.', category: 'taxonomy' },
-  { key: CAPABILITY.PUBLICATION_STATUS_READ, name: 'Read publication statuses', description: 'Allows reading publication status records.', category: 'taxonomy' },
-  { key: CAPABILITY.PUBLICATION_STATUS_MANAGE, name: 'Manage publication statuses', description: 'Allows creating and updating publication status records.', category: 'taxonomy' },
-  { key: CAPABILITY.JOB_READ, name: 'Read jobs', description: 'Allows reading background jobs and scraper status.', category: 'jobs' },
-  { key: CAPABILITY.JOB_RETRY, name: 'Retry jobs', description: 'Allows retrying failed jobs.', category: 'jobs' },
-  { key: CAPABILITY.JOB_MANUAL_INTERVENTION, name: 'Manual job intervention', description: 'Allows opening a manual browser for a job.', category: 'jobs' },
-  { key: CAPABILITY.JOB_IMPORT, name: 'Import job HTML', description: 'Allows importing chapter and index HTML for jobs.', category: 'jobs' },
-  { key: CAPABILITY.JOB_SCRAPE, name: 'Scrape now', description: 'Allows running/triggering scraper jobs.', category: 'jobs' },
-  { key: CAPABILITY.RBAC_MANAGE, name: 'Manage RBAC', description: 'Allows managing roles and capabilities (super admin).', category: 'rbac' },
-];
-
-export const SYSTEM_ROLES: Record<string, Partial<IRole>> = {
-  anonymous: {
-    key: 'anonymous',
-    name: 'Anonymous',
-    description: 'Unauthenticated public visitors.',
-    isSystem: true,
-  },
-  user: {
-    key: 'user',
-    name: 'User',
-    description: 'Standard authenticated user.',
-    isSystem: true,
-  },
-  admin: {
-    key: 'admin',
-    name: 'Administrator',
-    description: 'Full system access.',
-    isSystem: true,
-    isSuperuser: true,
-  },
-};
-
-async function getRole(roleKey: string): Promise<IRole | null> {
-  return Role.findOne({ key: roleKey });
-}
-
-export async function getRoleCapabilities(roleKey: string): Promise<string[]> {
-  const role = await getRole(roleKey);
-  return role?.capabilities || [];
-}
 
 function getClientIp(request: FastifyRequest): string | undefined {
   const forwarded = (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim();
@@ -146,12 +148,79 @@ async function writeAuditEntry(payload: {
   }
 }
 
+function parseCapability(capability: string): { resource: string; action: string } | null {
+  const parts = capability.split(':');
+  if (parts.length !== 2) return null;
+  return { resource: parts[0], action: parts[1] };
+}
+
+export async function getUserCapabilities(userId: string): Promise<{ capabilities: string[]; isSuperuser: boolean }> {
+  const user = await User.findById(userId).populate({
+    path: 'roles',
+    populate: {
+      path: 'groups',
+      populate: {
+        path: 'capabilities',
+        populate: ['resource', 'action'],
+      },
+    },
+  });
+
+  if (!user) {
+    return { capabilities: [], isSuperuser: false };
+  }
+
+  if (user.isDeleted || user.isDisabled) {
+    return { capabilities: [], isSuperuser: false };
+  }
+
+  let isSuperuser = false;
+  const set = new Set<string>();
+  const roles = (user.roles || []) as any[];
+  for (const role of roles) {
+    if (role.isSuperuser) {
+      isSuperuser = true;
+    }
+    const groups = (role.groups || []) as any[];
+    for (const group of groups) {
+      const caps = (group.capabilities || []) as any[];
+      for (const cap of caps) {
+        const resourceKey = cap.resource?.key as string | undefined;
+        const actionKey = cap.action?.key as string | undefined;
+        if (resourceKey && actionKey) {
+          set.add(`${resourceKey}:${actionKey}`);
+        }
+      }
+    }
+  }
+
+  return { capabilities: Array.from(set), isSuperuser };
+}
+
+export async function getUserRoles(userId: string): Promise<{ roles: string[]; isSuperuser: boolean }> {
+  const user = await User.findById(userId).populate('roles');
+  if (!user) return { roles: [], isSuperuser: false };
+  const roles = (user.roles || []) as any[];
+  return {
+    roles: roles.map((r) => r.key as string),
+    isSuperuser: roles.some((r) => r.isSuperuser),
+  };
+}
+
 export async function hasCapability(request: FastifyRequest, capability: string): Promise<boolean> {
-  const roleKey = (request.user as any)?.role || 'anonymous';
-  const role = (await getRole(roleKey)) || (await getRole('anonymous'));
-  if (!role) return false;
-  const capabilities = new Set(role.capabilities || []);
-  return role.isSuperuser || capabilities.has(capability) || capabilities.has(CAPABILITY.RBAC_MANAGE);
+  const parsed = parseCapability(capability);
+  if (!parsed) return false;
+
+  const user = (request as any).user as any;
+  if (!user?.id) {
+    const e = await initEnforcer();
+    return await e.enforce('anonymous', parsed.resource, parsed.action);
+  }
+
+  if (user.isSuperuser) return true;
+
+  const e = await initEnforcer();
+  return await e.enforce(String(user.id), parsed.resource, parsed.action);
 }
 
 export function requireCapability(
@@ -160,11 +229,16 @@ export function requireCapability(
 ): (request: FastifyRequest, reply: FastifyReply) => Promise<void> {
   const { allowAnonymous = false, audit = true } = options;
   return async function rbacPreHandler(request: FastifyRequest, reply: FastifyReply) {
+    const parsed = parseCapability(capability);
+    if (!parsed) {
+      return reply.status(500).send({ error: 'Server error. Invalid capability format.' });
+    }
+
     const auditMeta: any = {
       action: capability,
       method: request.method,
       path: request.routerPath || request.url,
-      resourceType: undefined,
+      resourceType: parsed.resource,
       resourceId: undefined,
       userId: (request.user as any)?.id,
       role: (request.user as any)?.role,
@@ -183,114 +257,101 @@ export function requireCapability(
 
     (request as any).auditMeta = auditMeta;
 
-    let roleKey: string;
-    if (!(request.user as any)?.id) {
+    const user = (request as any).user as any;
+
+    let subject: string;
+    if (!user?.id) {
       if (!allowAnonymous) {
         return reply.status(401).send({ error: 'Unauthorized. Authentication is required.' });
       }
-      roleKey = 'anonymous';
+      subject = 'anonymous';
       auditMeta.userId = undefined;
       auditMeta.role = 'anonymous';
       auditMeta.email = undefined;
     } else {
-      roleKey = (request.user as any).role || 'anonymous';
-    }
-
-    const role = await getRole(roleKey);
-    if (!role) {
-      auditMeta.outcome = 'denied';
-      if (audit) {
-        await writeAuditEntry({ ...auditMeta, outcome: 'denied', statusCode: 403 });
+      subject = String(user.id);
+      if (user.isSuperuser) {
+        auditMeta.allowed = true;
+        auditMeta.outcome = 'allowed';
+        auditMeta.role = user.role;
+        return;
       }
-      return reply.status(403).send({ error: 'Forbidden. Role configuration not found.' });
     }
 
-    if (roleKey === 'anonymous' && allowAnonymous) {
-      auditMeta.allowed = true;
-      auditMeta.role = 'anonymous';
-      auditMeta.outcome = 'allowed';
-      return;
-    }
-
-    const capabilities = new Set(role.capabilities || []);
-    if (role.isSuperuser || capabilities.has(capability) || capabilities.has(CAPABILITY.RBAC_MANAGE)) {
-      (request.user as any) = {
-        ...(request.user as any),
-        role: role.key,
-        capabilities: Array.from(capabilities),
-      };
-      auditMeta.allowed = true;
-      auditMeta.role = role.key;
-      auditMeta.outcome = 'allowed';
-      return;
+    try {
+      const e = await initEnforcer();
+      const allowed = await e.enforce(subject, parsed.resource, parsed.action);
+      if (allowed) {
+        auditMeta.allowed = true;
+        auditMeta.outcome = 'allowed';
+        auditMeta.role = (request.user as any)?.role;
+        return;
+      }
+    } catch (err) {
+      console.error('[RBAC] Casbin enforcement error:', err);
+      auditMeta.outcome = 'error';
+      if (audit) {
+        await writeAuditEntry({ ...auditMeta, statusCode: 500, outcome: 'error' });
+      }
+      return reply.status(500).send({ error: 'Server error checking permissions.' });
     }
 
     auditMeta.outcome = 'denied';
     if (audit) {
-      await writeAuditEntry({ ...auditMeta, outcome: 'denied', statusCode: 403 });
+      await writeAuditEntry({ ...auditMeta, statusCode: 403, outcome: 'denied' });
     }
     return reply.status(403).send({ error: 'Forbidden. You do not have permission to perform this action.' });
   };
 }
 
-export async function ensureRolesAndCapabilities(): Promise<void> {
-  for (const def of CAPABILITY_DEFINITIONS) {
-    await Capability.findOneAndUpdate(
-      { key: def.key },
-      { $set: { name: def.name, description: def.description, category: def.category } },
-      { upsert: true, new: true }
-    );
+export function isAdminCapability(capability: string): boolean {
+  const parsed = parseCapability(capability);
+  if (!parsed) return false;
+  return parsed.resource === 'admin' || parsed.resource === 'users' || parsed.resource === 'roles' || parsed.resource === 'groups';
+}
+
+export async function canManageTarget(actor: any, target: any): Promise<boolean> {
+  if (actor?.isSuperuser) return true;
+  if (!target) return false;
+
+  // If target is already a populated Role/User document
+  let targetRoles: any[] = [];
+  if (target.isSuperuser) return false;
+
+  if (target.roles && Array.isArray(target.roles)) {
+    // target is a User with roles
+    targetRoles = target.roles as any[];
+  } else {
+    // target is a role id or Role document
+    const role = target.groups
+      ? target
+      : await Role.findById(target).populate({
+          path: 'groups',
+          populate: {
+            path: 'capabilities',
+            populate: ['resource', 'action'],
+          },
+        });
+    if (!role) return false;
+    if (role.isSuperuser) return false;
+    targetRoles = [role];
   }
 
-  const allCapabilityKeys = CAPABILITY_DEFINITIONS.map((c) => c.key);
-
-  const userCapabilities = [
-    CAPABILITY.AUTH_SELF,
-    CAPABILITY.PUBLIC_CATALOG_READ,
-    CAPABILITY.SETTINGS_READ,
-    CAPABILITY.SETTINGS_UPDATE,
-    CAPABILITY.LIBRARY_READ,
-    CAPABILITY.LIBRARY_ADD,
-    CAPABILITY.LIBRARY_UPDATE,
-    CAPABILITY.LIBRARY_DELETE,
-    CAPABILITY.CHAPTER_READ,
-    CAPABILITY.CHAPTER_READ_RAW,
-    CAPABILITY.CHAPTER_VISIT,
-    CAPABILITY.SESSION_READ,
-    CAPABILITY.SESSION_MANAGE,
-    CAPABILITY.PRONUNCIATION_READ,
-    CAPABILITY.PRONUNCIATION_MANAGE,
-    CAPABILITY.AUTHOR_READ,
-    CAPABILITY.GENRE_READ,
-    CAPABILITY.PUBLICATION_STATUS_READ,
-  ];
-
-  const anonymousCapabilities = [CAPABILITY.PUBLIC_CATALOG_READ];
-
-  const roleUpdates: Record<string, Partial<IRole>> = {
-    anonymous: {
-      ...SYSTEM_ROLES.anonymous,
-      capabilities: anonymousCapabilities,
-    },
-    user: {
-      ...SYSTEM_ROLES.user,
-      capabilities: userCapabilities,
-    },
-    admin: {
-      ...SYSTEM_ROLES.admin,
-      capabilities: allCapabilityKeys,
-    },
-  };
-
-  for (const [key, update] of Object.entries(roleUpdates)) {
-    await Role.findOneAndUpdate(
-      { key },
-      { $set: update },
-      { upsert: true, new: true }
-    );
+  for (const role of targetRoles) {
+    if (role.isSuperuser) return false;
+    const groups = (role.groups || []) as any[];
+    for (const group of groups) {
+      const caps = (group.capabilities || []) as any[];
+      for (const cap of caps) {
+        const resourceKey = cap.resource?.key as string | undefined;
+        const actionKey = cap.action?.key as string | undefined;
+        if (resourceKey === 'admin' && (actionKey === 'access' || actionKey === 'manage')) {
+          return false;
+        }
+      }
+    }
   }
-
-  console.log('[RBAC] Default roles and capabilities ensured.');
+  return true;
 }
 
 export async function onResponseAuditLog(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -304,3 +365,6 @@ export async function onResponseAuditLog(request: FastifyRequest, reply: Fastify
     timestamp: new Date(),
   });
 }
+
+export { syncPolicies };
+

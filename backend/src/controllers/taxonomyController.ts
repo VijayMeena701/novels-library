@@ -53,7 +53,7 @@ export async function getGenreHandler(request: FastifyRequest, reply: FastifyRep
 }
 
 export async function upsertGenreHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await hasCapability(request, CAPABILITY.GENRE_MANAGE))) {
+  if (!(await hasCapability(request, CAPABILITY.GENRES_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to manage genres.' });
   }
 
@@ -129,7 +129,7 @@ export async function getPublicationStatusHandler(request: FastifyRequest, reply
 }
 
 export async function upsertPublicationStatusHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await hasCapability(request, CAPABILITY.PUBLICATION_STATUS_MANAGE))) {
+  if (!(await hasCapability(request, CAPABILITY.PUBLICATION_STATUSES_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to manage publication statuses.' });
   }
 

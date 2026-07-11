@@ -1,29 +1,48 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { User } from '../models/User.js';
-import { getRoleCapabilities } from '../services/rbac.js';
+import { Role } from '../models/Role.js';
+import { getUserCapabilities } from '../services/rbac.js';
+import { syncPolicies } from '../services/casbin.js';
 
-function roleForEmail(email: string): 'user' | 'admin' {
+async function getDefaultRoleId(email: string): Promise<string | undefined> {
   const adminEmails = new Set(
     (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
       .split(',')
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean)
   );
-
-  return adminEmails.has(email.toLowerCase()) ? 'admin' : 'user';
+  const roleKey = adminEmails.has(email.toLowerCase()) ? 'superadmin' : 'user';
+  const role = await Role.findOne({ key: roleKey }).lean();
+  return role ? String(role._id) : undefined;
 }
 
 async function serializeUser(user: any) {
-  const capabilities = await getRoleCapabilities(user.role || 'anonymous');
+  const userDoc = await User.findById(user._id).populate('roles').lean();
+  if (!userDoc) {
+    return null;
+  }
+
+  const roleIds = (userDoc.roles || []).map((r: any) => String(r._id));
+  const roleKeys = (userDoc.roles || []).map((r: any) => r.key as string);
+  const isSuperuser = (userDoc.roles || []).some((r: any) => r.isSuperuser);
+  const caps = await getUserCapabilities(String(userDoc._id));
+
   return {
-    id: user._id,
-    username: user.username,
-    email: user.email,
-    avatarUrl: user.avatarUrl,
-    authProvider: user.authProvider,
-    role: user.role,
-    capabilities,
+    id: String(userDoc._id),
+    username: userDoc.username,
+    email: userDoc.email,
+    avatarUrl: userDoc.avatarUrl,
+    authProvider: userDoc.authProvider,
+    roles: roleKeys,
+    roleIds,
+    isSuperuser: caps.isSuperuser || isSuperuser,
+    isDisabled: userDoc.isDisabled,
+    isDeleted: userDoc.isDeleted,
+    isVerified: userDoc.isVerified,
+    isLocked: userDoc.isLocked,
+    capabilities: caps.capabilities,
   };
 }
 
@@ -46,16 +65,20 @@ export async function registerHandler(request: FastifyRequest, reply: FastifyRep
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Create user
+    const roleId = await getDefaultRoleId(email);
     const user = await User.create({
       username,
       email: email.toLowerCase(),
       passwordHash,
       authProvider: 'password',
-      role: roleForEmail(email),
+      roles: roleId ? [new mongoose.Types.ObjectId(roleId)] : [],
     });
 
     // Generate JWT
-    const token = await reply.jwtSign({ id: user._id, email: user.email, role: user.role });
+    const token = await reply.jwtSign({ id: user._id, email: user.email });
+
+    // Re-sync Casbin policies so the new user has role mappings in memory
+    await syncPolicies();
 
     return reply.status(201).send({
       token,
@@ -86,14 +109,28 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
       return reply.status(401).send({ error: 'Invalid email or password.' });
     }
 
-    const envRole = roleForEmail(user.email);
-    if (envRole === 'admin' && user.role !== 'admin') {
-      user.role = 'admin';
-      await user.save();
+    if (user.isDeleted || user.isDisabled || user.isLocked) {
+      return reply.status(403).send({ error: 'Account is inactive or locked. Contact an administrator.' });
+    }
+
+    const envRoleId = await getDefaultRoleId(user.email);
+    let roleChanged = false;
+    if (envRoleId) {
+      const current = new Set(user.roles.map((r) => String(r)));
+      if (!current.has(envRoleId)) {
+        user.roles.push(new mongoose.Types.ObjectId(envRoleId));
+        await user.save();
+        roleChanged = true;
+      }
+    }
+
+    // Re-sync Casbin policies so role/flag changes are reflected in memory
+    if (roleChanged) {
+      await syncPolicies();
     }
 
     // Generate JWT
-    const token = await reply.jwtSign({ id: user._id, email: user.email, role: user.role });
+    const token = await reply.jwtSign({ id: user._id, email: user.email });
 
     return reply.send({
       token,
@@ -191,6 +228,7 @@ export async function googleCallbackHandler(request: FastifyRequest, reply: Fast
     }
 
     let user = await User.findOne({ $or: [{ googleId: profile.sub }, { email: profile.email.toLowerCase() }] });
+    const roleId = await getDefaultRoleId(profile.email);
     if (!user) {
       user = await User.create({
         username: profile.name || profile.email.split('@')[0],
@@ -198,19 +236,22 @@ export async function googleCallbackHandler(request: FastifyRequest, reply: Fast
         googleId: profile.sub,
         avatarUrl: profile.picture || '',
         authProvider: 'google',
-        role: roleForEmail(profile.email),
+        roles: roleId ? [new mongoose.Types.ObjectId(roleId)] : [],
       });
     } else {
       user.googleId = user.googleId || profile.sub;
       user.avatarUrl = profile.picture || user.avatarUrl;
       user.authProvider = user.passwordHash ? 'both' : 'google';
-      if (roleForEmail(user.email) === 'admin') {
-        user.role = 'admin';
+      if (roleId) {
+        const current = new Set(user.roles.map((r) => String(r)));
+        if (!current.has(roleId)) {
+          user.roles.push(new mongoose.Types.ObjectId(roleId));
+        }
       }
       await user.save();
     }
 
-    const jwt = await reply.jwtSign({ id: user._id, email: user.email, role: user.role });
+    const jwt = await reply.jwtSign({ id: user._id, email: user.email });
     return reply.redirect(`${frontendOrigin}/login?token=${encodeURIComponent(jwt)}`);
   } catch (err: any) {
     request.log.error(err);
@@ -225,7 +266,14 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
     if (!user) {
       return reply.status(404).send({ error: 'User not found.' });
     }
-    return reply.send({ user: await serializeUser(user) });
+    if (user.isDeleted || user.isDisabled || user.isLocked) {
+      return reply.status(403).send({ error: 'Account is inactive or locked.' });
+    }
+    const serialized = await serializeUser(user);
+    if (!serialized) {
+      return reply.status(500).send({ error: 'Server error serializing user.' });
+    }
+    return reply.send({ user: serialized });
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error fetching user.' });
@@ -254,9 +302,24 @@ export async function updateMeHandler(request: FastifyRequest, reply: FastifyRep
       return reply.status(404).send({ error: 'User not found.' });
     }
 
-    return reply.send({ user: await serializeUser(user) });
+    const serialized = await serializeUser(user);
+    if (!serialized) {
+      return reply.status(500).send({ error: 'Server error serializing user.' });
+    }
+    return reply.send({ user: serialized });
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error updating user profile.' });
+  }
+}
+
+export async function getCapabilitiesHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const userId = (request.user as any).id;
+    const data = await getUserCapabilities(userId);
+    return reply.send(data);
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error fetching capabilities.' });
   }
 }

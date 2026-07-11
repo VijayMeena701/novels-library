@@ -8,7 +8,7 @@ import { connectDB, disconnectDB } from "./config/db.js";
 import { apiRoutes } from "./routes/api.js";
 import { startWorker, stopWorker } from "./worker/jobProcessor.js";
 import { closeBrowser } from "./services/scraper.js";
-import { ensureRolesAndCapabilities } from "./services/rbac.js";
+import { seedRbac } from "./seed/index.js";
 
 const app = Fastify({
 	logger: {
@@ -91,8 +91,8 @@ const start = async () => {
 		// 1. Connect MongoDB
 		await connectDB();
 
-		// 2. Ensure default RBAC roles and capabilities
-		await ensureRolesAndCapabilities();
+		// 2. Seed RBAC roles and capabilities and load Casbin policies
+		await seedRbac();
 
 		// 3. Start Background Job Worker
 		startWorker();

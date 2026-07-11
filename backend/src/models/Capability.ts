@@ -1,22 +1,24 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICapability extends Document {
-  key: string;
-  name: string;
-  description: string;
+  resource: mongoose.Types.ObjectId;
+  action: mongoose.Types.ObjectId;
   category: string;
+  isSystem: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const CapabilitySchema = new Schema<ICapability>(
   {
-    key: { type: String, required: true, unique: true, index: true },
-    name: { type: String, required: true },
-    description: { type: String, default: '' },
+    resource: { type: Schema.Types.ObjectId, ref: 'Resource', required: true, index: true },
+    action: { type: Schema.Types.ObjectId, ref: 'Action', required: true, index: true },
     category: { type: String, default: 'general' },
+    isSystem: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+CapabilitySchema.index({ resource: 1, action: 1 }, { unique: true });
 
 export const Capability = mongoose.model<ICapability>('Capability', CapabilitySchema);

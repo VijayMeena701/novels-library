@@ -1,12 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { Ability } from "@casl/ability";
 import { api, ApiError, User } from "../utils/api";
-import { hasCapability, CAPABILITY } from "../utils/permissions";
+import { CAPABILITY } from "../utils/permissions";
+import { buildAbilityFor } from "../utils/ability";
 
 interface AuthContextType {
 	user: User | null;
+	ability: Ability | null;
 	loading: boolean;
 	login: (email: string, password: string) => Promise<void>;
 	register: (username: string, email: string, password: string) => Promise<void>;
@@ -18,10 +21,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function isProtectedRoute(pathname: string): boolean {
-	return pathname.startsWith("/profile") || pathname.startsWith("/settings") || pathname.startsWith("/scraper");
+	return pathname.startsWith("/profile") || pathname.startsWith("/settings") || pathname.startsWith("/scraper") || pathname.startsWith("/admin");
 }
 
-function decodeJwtPayload(token: string) {
+function parseJwtPayload(token: string) {
 	try {
 		const parts = token.split(".");
 		if (parts.length !== 3) return null;
@@ -35,52 +38,55 @@ function decodeJwtPayload(token: string) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
+	const [ability, setAbility] = useState<Ability | null>(null);
 	const [loading, setLoading] = useState(true);
 	const router = useRouter();
 	const pathname = usePathname();
 
-	const hasCap = useCallback((capability: string) => hasCapability(user, capability), [user]);
+	const setUserAndAbility = useCallback((nextUser: User | null) => {
+		setUser(nextUser);
+		setAbility(nextUser ? buildAbilityFor(nextUser.capabilities || [], nextUser.isSuperuser) : buildAbilityFor([]));
+	}, []);
+
+	const hasCapability = useCallback(
+		(capability: string) => {
+			if (!ability) return false;
+			const [subject, action] = capability.split(":");
+			if (!subject || !action) return false;
+			return ability.can(action, subject);
+		},
+		[ability]
+	);
 
 	useEffect(() => {
 		async function checkAuth() {
 			if (api.isLoggedIn()) {
 				const token = localStorage.getItem("novel_lib_token");
 				if (token) {
-					const decoded = decodeJwtPayload(token) as {
-						id?: string;
-						username?: string;
-						email?: string;
-						role?: string;
-					} | null;
-					if (decoded?.role) {
-						setUser({
-							id: decoded.id || "",
-							username: decoded.username || "",
-							email: decoded.email || "",
-							role: decoded.role,
-						} as User);
+					const decoded = parseJwtPayload(token) as { id?: string; email?: string } | null;
+					if (decoded?.id) {
+						setUser({ id: decoded.id, email: decoded.email || "", username: "" } as User);
 					}
 				}
 
 				try {
 					const data = await api.getMe();
-					setUser(data.user);
+					setUserAndAbility(data.user);
 				} catch (err) {
 					console.error("Failed to authenticate stored token:", err);
 					if (err instanceof ApiError && (err.status === 401 || err.status === 403 || err.status === 404)) {
 						api.logout();
-						setUser(null);
+						setUserAndAbility(null);
 					}
 				}
 			} else {
-				setUser(null);
+				setUserAndAbility(null);
 			}
 			setLoading(false);
 		}
 		checkAuth();
-	}, []);
+	}, [setUserAndAbility]);
 
-	// Redirect unauthenticated users
 	useEffect(() => {
 		if (!loading) {
 			const isAuthPage = pathname === "/login";
@@ -88,17 +94,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				router.push("/login");
 			} else if (user && isAuthPage) {
 				router.push("/profile");
-			} else if (user && pathname.startsWith("/scraper") && !hasCapability(user, CAPABILITY.JOB_READ)) {
+			} else if (user && pathname.startsWith("/scraper") && !hasCapability(CAPABILITY.JOBS_LIST)) {
+				router.push("/profile");
+			} else if (user && pathname.startsWith("/admin") && !hasCapability(CAPABILITY.ADMIN_ACCESS)) {
 				router.push("/profile");
 			}
 		}
-	}, [user, loading, pathname, router]);
+	}, [user, loading, pathname, router, hasCapability]);
 
 	const login = async (email: string, password: string) => {
 		setLoading(true);
 		try {
 			const data = await api.login(email, password);
-			setUser(data.user);
+			setUserAndAbility(data.user);
+			setLoading(false);
 			router.push("/profile");
 		} catch (err) {
 			setLoading(false);
@@ -110,7 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setLoading(true);
 		try {
 			const data = await api.register(username, email, password);
-			setUser(data.user);
+			setUserAndAbility(data.user);
+			setLoading(false);
 			router.push("/profile");
 		} catch (err) {
 			setLoading(false);
@@ -120,16 +130,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 	const updateUser = async (payload: { username?: string; avatarUrl?: string }) => {
 		const data = await api.updateMe(payload);
-		setUser(data.user);
+		setUserAndAbility(data.user);
 	};
 
 	const logout = () => {
 		api.logout();
-		setUser(null);
+		setUserAndAbility(null);
 		router.push("/login");
 	};
 
-	return <AuthContext.Provider value={{ user, loading, login, register, updateUser, logout, hasCapability: hasCap }}>{children}</AuthContext.Provider>;
+	const value = useMemo(
+		() => ({ user, ability, loading, login, register, updateUser, logout, hasCapability }),
+		[user, ability, loading, hasCapability]
+	);
+
+	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

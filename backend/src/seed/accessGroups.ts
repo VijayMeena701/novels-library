@@ -1,0 +1,145 @@
+export interface AccessGroupDefinition {
+  key: string;
+  name: string;
+  description: string;
+  resourceKey?: string;
+  capabilityKeys: string[];
+  isSystem?: boolean;
+}
+
+export const ACCESS_GROUPS: AccessGroupDefinition[] = [
+  {
+    key: 'anonymous:public',
+    name: 'Public Read',
+    description: 'Public read-only access.',
+    capabilityKeys: [
+      'novels:read',
+      'chapters:read',
+      'chapters:read_raw',
+      'authors:read',
+      'genres:read',
+      'publication_statuses:read',
+    ],
+    isSystem: true,
+  },
+  {
+    key: 'user:public',
+    name: 'User Public Read',
+    description: 'Read public catalog and taxonomy.',
+    resourceKey: 'novels',
+    capabilityKeys: [
+      'novels:read',
+      'chapters:read',
+      'chapters:read_raw',
+      'chapters:visit',
+      'authors:read',
+      'genres:read',
+      'publication_statuses:read',
+    ],
+    isSystem: true,
+  },
+  {
+    key: 'user:library',
+    name: 'User Library',
+    description: 'Manage personal library.',
+    resourceKey: 'library',
+    capabilityKeys: ['library:read', 'library:add', 'library:update', 'library:delete'],
+    isSystem: true,
+  },
+  {
+    key: 'user:profile',
+    name: 'User Profile',
+    description: 'Manage own profile.',
+    resourceKey: 'profile',
+    capabilityKeys: ['profile:read', 'profile:update'],
+    isSystem: true,
+  },
+  {
+    key: 'user:settings',
+    name: 'User Settings',
+    description: 'Manage user settings.',
+    resourceKey: 'settings',
+    capabilityKeys: ['settings:read', 'settings:update'],
+    isSystem: true,
+  },
+  {
+    key: 'user:sessions',
+    name: 'User Reading Sessions',
+    description: 'Manage reading sessions.',
+    resourceKey: 'sessions',
+    capabilityKeys: ['sessions:read', 'sessions:manage'],
+    isSystem: true,
+  },
+  {
+    key: 'user:tts',
+    name: 'User TTS',
+    description: 'Manage TTS pronunciation rules.',
+    resourceKey: 'pronunciation',
+    capabilityKeys: ['pronunciation:read', 'pronunciation:manage'],
+    isSystem: true,
+  },
+  {
+    key: 'user:translation',
+    name: 'User Translation',
+    description: 'Translate raw chapters.',
+    resourceKey: 'translation',
+    capabilityKeys: ['translation:execute'],
+    isSystem: true,
+  },
+  {
+    key: 'admin:content',
+    name: 'Admin Content',
+    description: 'Manage catalog content, jobs, taxonomy, and cover.',
+    capabilityKeys: [
+      'novels:manage',
+      'chapters:manage',
+      'library:manage',
+      'jobs:manage',
+      'authors:manage',
+      'genres:manage',
+      'publication_statuses:manage',
+      'cover:sync',
+      'cover:manage',
+      'translation:manage',
+      'service:manage',
+    ],
+    isSystem: true,
+  },
+  {
+    key: 'admin:users',
+    name: 'Admin Users',
+    description: 'Manage users, roles, and access groups (non-admin only).',
+    capabilityKeys: [
+      'users:manage',
+      'roles:manage',
+      'groups:manage',
+      'audit_logs:read',
+      'access_logs:read',
+    ],
+    isSystem: true,
+  },
+  {
+    key: 'admin:full',
+    name: 'Admin Console',
+    description: 'Admin console access and management.',
+    resourceKey: 'admin',
+    capabilityKeys: ['admin:access', 'admin:manage'],
+    isSystem: true,
+  },
+  {
+    key: 'resources:manage',
+    name: 'Resource Management',
+    description: 'Enable/disable resources.',
+    resourceKey: 'resources',
+    capabilityKeys: ['resources:enable', 'resources:manage'],
+    isSystem: true,
+  },
+  {
+    key: 'service:full',
+    name: 'Service Full',
+    description: 'Service/bot operations.',
+    resourceKey: 'service',
+    capabilityKeys: ['service:read', 'service:execute', 'service:manage'],
+    isSystem: true,
+  },
+];

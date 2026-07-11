@@ -157,7 +157,7 @@ export default function Dashboard() {
             Track reading status, personal notes, rereads, characters, and recall details.
           </p>
         </div>
-        {hasCapability(CAPABILITY.CATALOG_MANAGE) ? (
+        {hasCapability(CAPABILITY.NOVELS_CREATE) ? (
           <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
             + Create Catalog Novel
           </button>
@@ -218,7 +218,7 @@ export default function Dashboard() {
           <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
             {search || statusFilter !== 'all' ? 'No novels match your filter query.' : 'Your reading library is empty.'}
           </p>
-          {hasCapability(CAPABILITY.CATALOG_MANAGE) ? (
+          {hasCapability(CAPABILITY.NOVELS_CREATE) ? (
             <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
               + Create Catalog Novel
             </button>

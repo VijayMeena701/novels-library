@@ -746,7 +746,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 	const [chapterSort, setChapterSort] = useState<"asc" | "desc">("asc");
 
 	const fetchNovelJobs = async () => {
-		if (!hasCapability(CAPABILITY.JOB_READ)) return;
+		if (!hasCapability(CAPABILITY.JOBS_LIST)) return;
 		setJobsLoading(true);
 		try {
 			const jobData = await api.getNovelJobs(id);
@@ -808,7 +808,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 
 	// Fetch Jobs Loop
 	useEffect(() => {
-		if (hasCapability(CAPABILITY.JOB_READ)) {
+		if (hasCapability(CAPABILITY.JOBS_LIST)) {
 			fetchNovelJobs();
 		} else {
 			setJobs([]);
@@ -918,10 +918,10 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 	}, [rawCatalogItems, chapterSearch, chapterSort]);
 
 	const coverSrc = novel ? getNovelCoverUrl(novel) : "";
-	const canManageCatalog = hasCapability(CAPABILITY.CATALOG_MANAGE);
-	const canReadJobs = hasCapability(CAPABILITY.JOB_READ);
-	const canScrape = hasCapability(CAPABILITY.JOB_SCRAPE);
-	const canImport = hasCapability(CAPABILITY.JOB_IMPORT);
+	const canManageCatalog = hasCapability(CAPABILITY.NOVELS_MANAGE) || hasCapability(CAPABILITY.NOVELS_CREATE) || hasCapability(CAPABILITY.NOVELS_UPDATE);
+	const canReadJobs = hasCapability(CAPABILITY.JOBS_LIST);
+	const canScrape = hasCapability(CAPABILITY.JOBS_SCRAPE);
+	const canImport = hasCapability(CAPABILITY.JOBS_IMPORT);
 	const canAdmin = canManageCatalog || canReadJobs || canScrape || canImport;
 	const activeJobTypes = useMemo(() => new Set(jobs.filter((job) => job.status === "pending" || job.status === "processing").map((job) => job.type)), [jobs]);
 	const processingJobCount = jobs.filter((job) => job.status === "pending" || job.status === "processing").length;

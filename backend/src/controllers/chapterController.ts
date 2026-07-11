@@ -291,7 +291,7 @@ export async function translateRawChapterHandler(request: FastifyRequest, reply:
   }
 
   try {
-    if (!(await hasCapability(request, CAPABILITY.CHAPTER_TRANSLATE))) {
+    if (!(await hasCapability(request, CAPABILITY.CHAPTERS_TRANSLATE))) {
       return reply.status(403).send({ error: 'Admin access is required to generate and store translated chapters.' });
     }
 

@@ -16,6 +16,7 @@ const publicLinks = [
 ];
 
 const adminLinks = [{ href: "/scraper", label: "Scrapers", match: (pathname: string) => pathname === "/scraper" }];
+const consoleLinks = [{ href: "/admin", label: "Admin", match: (pathname: string) => pathname.startsWith("/admin") }];
 
 export default function Header() {
 	const pathname = usePathname();
@@ -39,7 +40,13 @@ export default function Header() {
 
 	if (pathname === "/login") return null;
 
-	const links = user ? [...publicLinks, ...(hasCapability(CAPABILITY.JOB_READ) ? adminLinks : [])] : publicLinks;
+	const links = user
+		? [
+				...publicLinks,
+				...(hasCapability(CAPABILITY.JOBS_LIST) ? adminLinks : []),
+				...(hasCapability(CAPABILITY.ADMIN_ACCESS) ? consoleLinks : []),
+		  ]
+		: publicLinks;
 
 	const navLinkClass = (active: boolean) =>
 		cn(

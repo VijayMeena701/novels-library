@@ -109,7 +109,7 @@ export async function getAuthorHandler(request: FastifyRequest, reply: FastifyRe
 }
 
 export async function upsertAuthorHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await hasCapability(request, CAPABILITY.AUTHOR_MANAGE))) {
+  if (!(await hasCapability(request, CAPABILITY.AUTHORS_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to manage authors.' });
   }
 

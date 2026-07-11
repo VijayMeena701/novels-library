@@ -21,6 +21,13 @@ export interface User {
 	username: string;
 	email: string;
 	role?: string;
+	roles?: string[];
+	roleIds?: string[];
+	isSuperuser?: boolean;
+	isDisabled?: boolean;
+	isDeleted?: boolean;
+	isVerified?: boolean;
+	isLocked?: boolean;
 	capabilities?: string[];
 	avatarUrl?: string;
 	authProvider?: "password" | "google" | "both";
@@ -377,6 +384,80 @@ class ApiClient {
 			method: "PUT",
 			body: JSON.stringify(payload),
 		});
+	}
+
+	async getCapabilities(): Promise<{ capabilities: string[]; isSuperuser: boolean }> {
+		return this.request<{ capabilities: string[]; isSuperuser: boolean }>("/auth/capabilities");
+	}
+
+	// Admin Methods
+	async getAdminStats(): Promise<{ users: number; roles: number; groups: number; capabilities: number; resources: number; auditLogs: number }> {
+		return this.request<{ users: number; roles: number; groups: number; capabilities: number; resources: number; auditLogs: number }>("/admin");
+	}
+
+	async listAdminUsers(query: { search?: string; page?: number; limit?: number } = {}) {
+		const params = new URLSearchParams();
+		if (query.search) params.set("search", query.search);
+		if (query.page !== undefined) params.set("page", String(query.page));
+		if (query.limit !== undefined) params.set("limit", String(query.limit));
+		const suffix = params.toString() ? `?${params.toString()}` : "";
+		return this.request<{ users: any[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/users${suffix}`);
+	}
+
+	async updateAdminUser(id: string, payload: any) {
+		return this.request<{ user: any }>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+	}
+
+	async deleteAdminUser(id: string) {
+		return this.request<{ success: boolean; message: string }>(`/admin/users/${id}`, { method: "DELETE" });
+	}
+
+	async listAdminRoles() {
+		return this.request<{ roles: any[] }>("/admin/roles");
+	}
+
+	async createAdminRole(payload: any) {
+		return this.request<{ role: any }>("/admin/roles", { method: "POST", body: JSON.stringify(payload) });
+	}
+
+	async updateAdminRole(id: string, payload: any) {
+		return this.request<{ role: any }>(`/admin/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+	}
+
+	async deleteAdminRole(id: string) {
+		return this.request<{ success: boolean; message: string }>(`/admin/roles/${id}`, { method: "DELETE" });
+	}
+
+	async listAdminGroups() {
+		return this.request<{ groups: any[] }>("/admin/groups");
+	}
+
+	async createAdminGroup(payload: any) {
+		return this.request<{ group: any }>("/admin/groups", { method: "POST", body: JSON.stringify(payload) });
+	}
+
+	async updateAdminGroup(id: string, payload: any) {
+		return this.request<{ group: any }>(`/admin/groups/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+	}
+
+	async deleteAdminGroup(id: string) {
+		return this.request<{ success: boolean; message: string }>(`/admin/groups/${id}`, { method: "DELETE" });
+	}
+
+	async listAdminResources() {
+		return this.request<{ resources: any[] }>("/admin/resources");
+	}
+
+	async enableAdminResource(id: string, isEnabled: boolean) {
+		return this.request<{ resource: any }>(`/admin/resources/${id}/enable`, { method: "PUT", body: JSON.stringify({ isEnabled }) });
+	}
+
+	async listAdminAuditLogs(query: { page?: number; limit?: number } = {}) {
+		const params = new URLSearchParams();
+		if (query.page !== undefined) params.set("page", String(query.page));
+		if (query.limit !== undefined) params.set("limit", String(query.limit));
+		const suffix = params.toString() ? `?${params.toString()}` : "";
+		return this.request<{ logs: any[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/audit-logs${suffix}`);
 	}
 
 	// User Settings Methods

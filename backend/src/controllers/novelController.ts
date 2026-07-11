@@ -436,7 +436,7 @@ export async function createNovelHandler(request: FastifyRequest, reply: Fastify
   } = request.body as any;
 
   try {
-    if (!(await hasCapability(request, CAPABILITY.CATALOG_MANAGE))) {
+    if (!(await hasCapability(request, CAPABILITY.NOVELS_MANAGE))) {
       return reply.status(403).send({ error: 'Admin access is required to create catalog novels.' });
     }
 
@@ -612,7 +612,7 @@ export async function updateNovelHandler(request: FastifyRequest, reply: Fastify
       return reply.status(404).send({ error: 'Novel not found in your library.' });
     }
 
-    const isAdmin = await hasCapability(request, CAPABILITY.CATALOG_MANAGE);
+    const isAdmin = await hasCapability(request, CAPABILITY.NOVELS_MANAGE);
     const personalUpdates = pickPersonalLibraryUpdates(updates);
     const sharedUpdates = pickSharedNovelUpdates(updates);
     const nextCoverUrl = typeof updates.coverUrl === 'string' ? updates.coverUrl.trim() : undefined;
@@ -652,7 +652,7 @@ export async function updateNovelHandler(request: FastifyRequest, reply: Fastify
 }
 
 export async function updateCatalogNovelHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await hasCapability(request, CAPABILITY.CATALOG_MANAGE))) {
+  if (!(await hasCapability(request, CAPABILITY.NOVELS_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to edit catalog novel metadata.' });
   }
 
@@ -727,7 +727,7 @@ export async function deleteNovelHandler(request: FastifyRequest, reply: Fastify
 }
 
 export async function deleteCatalogNovelHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await hasCapability(request, CAPABILITY.CATALOG_DELETE))) {
+  if (!(await hasCapability(request, CAPABILITY.NOVELS_DELETE))) {
     return reply.status(403).send({ error: 'Admin access is required to delete catalog novels.' });
   }
 

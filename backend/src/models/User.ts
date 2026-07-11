@@ -6,8 +6,12 @@ export interface IUser extends Document {
   passwordHash: string;
   googleId: string;
   authProvider: 'password' | 'google' | 'both';
-  role: 'user' | 'admin';
+  roles: mongoose.Types.ObjectId[];
   avatarUrl: string;
+  isDisabled: boolean;
+  isDeleted: boolean;
+  isVerified: boolean;
+  isLocked: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,8 +22,12 @@ const UserSchema = new Schema<IUser>({
   passwordHash: { type: String, default: '' },
   googleId: { type: String, default: '', index: true },
   authProvider: { type: String, enum: ['password', 'google', 'both'], default: 'password' },
-  role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
+  roles: [{ type: Schema.Types.ObjectId, ref: 'Role', index: true }],
   avatarUrl: { type: String, default: '' },
+  isDisabled: { type: Boolean, default: false, index: true },
+  isDeleted: { type: Boolean, default: false, index: true },
+  isVerified: { type: Boolean, default: false, index: true },
+  isLocked: { type: Boolean, default: false, index: true },
 }, { timestamps: true });
 
 export const User = mongoose.model<IUser>('User', UserSchema);

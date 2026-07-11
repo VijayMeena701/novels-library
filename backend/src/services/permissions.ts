@@ -12,7 +12,7 @@ function getAdminEmails(): Set<string> {
 
 export async function isAdminRequest(request: FastifyRequest): Promise<boolean> {
   const tokenUser = request.user as any;
-  if (tokenUser?.role === 'admin') {
+  if (tokenUser?.isSuperuser || tokenUser?.role?.includes('admin')) {
     return true;
   }
 
@@ -21,10 +21,11 @@ export async function isAdminRequest(request: FastifyRequest): Promise<boolean> 
     return false;
   }
 
-  const user = await User.findById(userId).select('email role');
+  const user = await User.findById(userId).select('email roles').populate('roles', 'key isSuperuser');
   if (!user) {
     return false;
   }
 
-  return user.role === 'admin' || getAdminEmails().has(user.email.toLowerCase());
+  const isAdmin = (user.roles || []).some((r: any) => r.isSuperuser || r.key === 'admin');
+  return isAdmin || getAdminEmails().has(user.email.toLowerCase());
 }

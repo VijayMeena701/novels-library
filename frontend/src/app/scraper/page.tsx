@@ -30,7 +30,7 @@ export default function ScraperMonitor() {
   };
 
   useEffect(() => {
-    if (hasCapability(CAPABILITY.JOB_READ)) {
+    if (hasCapability(CAPABILITY.JOBS_LIST)) {
       fetchJobs();
     } else if (user) {
       setLoading(false);
@@ -39,7 +39,7 @@ export default function ScraperMonitor() {
 
   // Auto-refresh when jobs are active
   useEffect(() => {
-    if (!hasCapability(CAPABILITY.JOB_READ)) return;
+    if (!hasCapability(CAPABILITY.JOBS_LIST)) return;
     
     const hasActiveJobs = jobs.some(j => j.status === 'pending' || j.status === 'processing');
     
@@ -119,7 +119,7 @@ export default function ScraperMonitor() {
     );
   }
 
-  if (!hasCapability(CAPABILITY.JOB_READ)) {
+  if (!hasCapability(CAPABILITY.JOBS_LIST)) {
     return (
       <div className="container">
         <div className="glass-card empty-state">
