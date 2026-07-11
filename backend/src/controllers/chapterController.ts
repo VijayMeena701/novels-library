@@ -315,12 +315,17 @@ export async function translateRawChapterHandler(request: FastifyRequest, reply:
       });
     }
 
+    request.log.info(`[translateRawChapter] starting chapter ${parsedChNumber} for novel ${novelId} targetLanguage=${targetLanguage || 'default'} overwrite=${Boolean(overwrite)}`);
+
     const translated = await translateChapterHtml({
       html: rawChapter.content,
       title: rawChapter.title,
       sourceLanguage: rawChapter.language || novel.rawOriginalLanguage,
       targetLanguage,
+      logger: request.log,
     });
+
+    request.log.info(`[translateRawChapter] completed chapter ${parsedChNumber} model=${translated.model} title="${translated.title}" contentLength=${translated.content.length}`);
 
     const chapter = await ChapterContent.findOneAndUpdate(
       {

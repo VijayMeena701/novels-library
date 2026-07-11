@@ -1,5 +1,6 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050/api";
 const API_REQUEST_TIMEOUT_MS = 30000;
+const API_TRANSLATION_TIMEOUT_MS = 70000;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -298,17 +299,19 @@ class ApiClient {
 		return headers;
 	}
 
-	private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+	private async request<T>(endpoint: string, options: RequestInit & { timeoutMs?: number } = {}): Promise<T> {
 		const url = `${API_BASE_URL}${endpoint}`;
-		const headers = { ...this.getHeaders(), ...options.headers } as Record<string, string>;
-		if (options.body && !(options.body instanceof FormData) && !headers["Content-Type"]) {
+		const { timeoutMs, ...fetchOptions } = options;
+		const headers = { ...this.getHeaders(), ...fetchOptions.headers } as Record<string, string>;
+		if (fetchOptions.body && !(fetchOptions.body instanceof FormData) && !headers["Content-Type"]) {
 			headers["Content-Type"] = "application/json";
 		}
 
 		const controller = new AbortController();
-		const timeout = typeof window !== "undefined" ? window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS) : undefined;
+		const timeoutDuration = timeoutMs ?? API_REQUEST_TIMEOUT_MS;
+		const timeout = typeof window !== "undefined" ? window.setTimeout(() => controller.abort(), timeoutDuration) : undefined;
 		try {
-			const response = await fetch(url, { ...options, headers, signal: options.signal || controller.signal });
+			const response = await fetch(url, { ...fetchOptions, headers, signal: fetchOptions.signal || controller.signal });
 			const contentType = response.headers.get("content-type") || "";
 			const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : await response.text().catch(() => "");
 			if (!response.ok) {
@@ -640,6 +643,7 @@ class ApiClient {
 			{
 				method: "POST",
 				body: JSON.stringify(data),
+				timeoutMs: API_TRANSLATION_TIMEOUT_MS,
 			},
 		);
 	}
