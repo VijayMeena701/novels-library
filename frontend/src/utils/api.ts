@@ -498,7 +498,7 @@ class ApiClient {
 	}
 
 	async getPublicCatalogNovelsPaginated(filters: CatalogNovelFilters = {}): Promise<PaginatedNovels> {
-		const query = this.buildCatalogQuery(filters, true);
+		const query = this.buildCatalogQuery({ ...filters, page: filters.page ?? 1 }, true);
 		const suffix = query.toString() ? `?${query.toString()}` : "";
 		return this.request<PaginatedNovels>(`/public/catalog/novels${suffix}`);
 	}

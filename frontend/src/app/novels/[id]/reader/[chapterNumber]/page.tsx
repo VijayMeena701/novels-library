@@ -1591,7 +1591,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 								)}
 							</div>
 							{isRawReader && hasCapability(CAPABILITY.CHAPTER_TRANSLATE) && (
-								<div className="reader-status-line" style={{ marginTop: "1rem" }}>
+								<div className="mx-auto mt-4 flex w-fit max-w-[min(92vw,640px)] flex-wrap items-center justify-center gap-3 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-[0.45rem] text-[0.78rem] font-bold text-[var(--reader-muted)]">
 									<span>Raw source view</span>
 									<button className="reader-tool-button" onClick={handleGenerateTranslation} disabled={translatingRawChapter}>
 										{translatingRawChapter ? "Generating..." : "Generate English Translation"}

@@ -9,7 +9,8 @@ import { NovelCard } from '../components/NovelCard';
 import { useAuth } from '../context/AuthContext';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 
 function byNewest(a: Novel, b: Novel) {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -61,6 +62,8 @@ export default function PublicHomePage() {
   const router = useRouter();
   const [novels, setNovels] = useState<Novel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [libraryNovels, setLibraryNovels] = useState<Novel[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -69,7 +72,7 @@ export default function PublicHomePage() {
     api.getPublicCatalogNovelsPaginated({ pageSize: 100 })
       .then((data) => {
         if (!cancelled) {
-          setNovels(data.novels || []);
+          setNovels(Array.isArray(data) ? data : data.novels || []);
         }
       })
       .finally(() => {
@@ -81,6 +84,29 @@ export default function PublicHomePage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setLibraryNovels([]);
+      return;
+    }
+    setLibraryLoading(true);
+    api.getNovels()
+      .then((data) => {
+        if (!cancelled) {
+          setLibraryNovels(data || []);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLibraryLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const sections = useMemo(() => {
     const newest = [...novels].sort(byNewest);
@@ -111,6 +137,17 @@ export default function PublicHomePage() {
     return sections.ranked[0] || sections.newest[0];
   }, [sections.ranked, sections.newest]);
 
+  const userSections = useMemo(() => {
+    const byUpdated = [...libraryNovels].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const byRating = [...libraryNovels].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    return {
+      continueReading: byUpdated.filter((n) => n.status === 'reading' && n.chaptersRead > 0 && n.chaptersRead < (n.chaptersTotal || n.chaptersList?.length || 0)).slice(0, 6),
+      planning: byUpdated.filter((n) => n.status === 'planning').slice(0, 6),
+      completed: byUpdated.filter((n) => n.status === 'completed').slice(0, 6),
+      topRated: byRating.filter((n) => (n.rating || 0) > 0).slice(0, 6),
+    };
+  }, [libraryNovels]);
+
   const showLongReads = novels.length > 4;
 
   const handleSearch = (e: FormEvent) => {
@@ -126,7 +163,7 @@ export default function PublicHomePage() {
       <div className="container flex flex-1 items-center justify-center py-24">
         <div className="flex flex-col items-center gap-4">
           <div className="spinner" style={{ width: 40, height: 40 }} />
-          <span className="text-sm text-copy">Loading the library...</span>
+          <span className="text-sm text-muted-copy">Loading the library...</span>
         </div>
       </div>
     );
@@ -134,11 +171,11 @@ export default function PublicHomePage() {
 
   if (!novels.length) {
     return (
-      <div className="container page-stack">
-        <div className="glass-card empty-state">
-          <h1 className="page-title">Novels Library</h1>
-          <p className="page-subtitle">Your personal web novel catalogue is empty right now.</p>
-          <div className="flex flex-wrap justify-center gap-3">
+      <div className="container py-12">
+        <Card className="mx-auto max-w-2xl p-8 text-center">
+          <h1 className="font-serif text-3xl font-medium text-foreground">Novels Library</h1>
+          <p className="mt-2 text-base text-muted-copy">The catalog is empty right now.</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg">
               <Link href="/novels">Browse Catalog</Link>
             </Button>
@@ -148,25 +185,27 @@ export default function PublicHomePage() {
               </Button>
             )}
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="container public-home">
-      <section className="public-main">
-        <section className="public-hero">
-          <div className="public-hero-copy text-center sm:text-left">
-            <span className="eyebrow">Personal Web Novel Library</span>
-            <h1 className="page-title">Read, track, and archive web novels in one place.</h1>
-            <p className="page-subtitle">
+    <div className="container">
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] items-start">
+      <main className="flex flex-col gap-6">
+        <Card className="relative overflow-hidden p-6 lg:p-8">
+          <div className="relative z-10 flex max-w-3xl flex-col gap-5 text-center sm:text-left">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-copy">Personal Web Novel Library</span>
+            <h1 className="font-serif text-3xl font-medium leading-tight text-foreground lg:text-4xl">
+              Read, track, and archive web novels in one place.
+            </h1>
+            <p className="max-w-xl text-base leading-relaxed text-copy">
               Discover translated and raw web novels, keep your reading progress, and let the background crawler archive chapters automatically.
             </p>
             <form className="flex w-full max-w-xl flex-col gap-2 sm:flex-row" onSubmit={handleSearch}>
-              <input
+              <Input
                 type="text"
-                className="form-input flex-1"
                 placeholder="Search novels, authors, or genres..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -177,84 +216,151 @@ export default function PublicHomePage() {
               </Button>
             </form>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" className="w-full sm:w-auto">
+              <Button asChild size="lg">
                 <Link href="/novels">Browse Catalog</Link>
               </Button>
-              <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
+              <Button asChild size="lg" variant="secondary">
                 <Link href={user ? '/profile' : '/login'}>{user ? 'Open Library' : 'Login to Track'}</Link>
               </Button>
             </div>
-            <div className="public-hero-stats">
-              <div>
-                <strong>{novels.length}</strong>
-                <span>Novels</span>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
+                <strong className="block text-lg font-semibold leading-none text-foreground">{novels.length}</strong>
+                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Novels</span>
               </div>
-              <div>
-                <strong>{sections.totalChapters}</strong>
-                <span>Chapters</span>
+              <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
+                <strong className="block text-lg font-semibold leading-none text-foreground">{sections.totalChapters}</strong>
+                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Chapters</span>
               </div>
-              <div>
-                <strong>{sections.completed.length}</strong>
-                <span>Completed</span>
+              <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
+                <strong className="block text-lg font-semibold leading-none text-foreground">{sections.completed.length}</strong>
+                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Completed</span>
               </div>
             </div>
           </div>
-        </section>
+        </Card>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((feature) => (
-            <Card key={feature.title} className="flex flex-col gap-3 p-4">
-              <feature.icon className="size-10 text-primary" />
-              <h3 className="text-base font-extrabold">{feature.title}</h3>
-              <p className="text-sm text-copy leading-relaxed">{feature.description}</p>
+            <Card key={feature.title} className="p-5 transition-shadow hover:shadow-elevated">
+              <feature.icon className="size-8 text-primary/70" />
+              <h3 className="mt-3 text-sm font-semibold text-foreground">{feature.title}</h3>
+              <p className="mt-1 text-sm text-muted-copy leading-relaxed">{feature.description}</p>
             </Card>
           ))}
         </section>
 
-        {spotlightNovel && (
-          <section className="featured-novel">
-            <div className="featured-cover-art">
-              <Link href={`/novels/${spotlightNovel._id}`}>
-                <img
-                  src={spotlightNovel.coverUrl || '/placeholder.svg'}
-                  alt={spotlightNovel.title}
-                  className="h-full w-full object-cover"
-                />
+        {user && !libraryLoading && (
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-serif text-xl font-medium text-foreground">Your Library</h2>
+              <Link href="/profile" className="text-sm font-semibold text-primary hover:underline">
+                Open Library <ArrowRight className="inline size-4" />
               </Link>
             </div>
-            <div className="featured-novel-info">
-              <span className="eyebrow">
-                <Sparkles className="size-4" /> Featured Pick
-              </span>
-              <h2 className="section-title">
-                <Link href={`/novels/${spotlightNovel._id}`}>{spotlightNovel.title}</Link>
-              </h2>
-              <p className="text-sm text-copy">by {getAuthor(spotlightNovel)}</p>
-              <p className="line-clamp-3 text-sm text-copy">
-                {spotlightNovel.description || 'No summary available yet.'}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {spotlightNovel.publicationStatus && <Badge>{spotlightNovel.publicationStatus}</Badge>}
-                {(spotlightNovel.genres || []).slice(0, 3).map((genre) => (
-                  <Badge key={genre}>{genre}</Badge>
-                ))}
+            <Card className="p-5">
+              <div className="flex flex-col gap-6">
+                {userSections.continueReading.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Continue Reading</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {userSections.continueReading.map((novel) => (
+                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {userSections.planning.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Plan to Read</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {userSections.planning.map((novel) => (
+                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {userSections.completed.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Completed</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {userSections.completed.map((novel) => (
+                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {userSections.topRated.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Top Rated</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {userSections.topRated.map((novel) => (
+                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {libraryNovels.length === 0 && (
+                  <p className="text-sm text-muted-copy">Your library is empty. Browse the catalog to add novels.</p>
+                )}
               </div>
-              <Button asChild>
-                <Link href={`/novels/${spotlightNovel._id}`}>View Novel</Link>
-              </Button>
+            </Card>
+          </section>
+        )}
+
+        {spotlightNovel && (
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-serif text-xl font-medium text-foreground">Featured Pick</h2>
             </div>
+            <Card className="overflow-hidden p-0">
+              <div className="grid md:grid-cols-[180px_1fr]">
+                <div className="relative min-h-[240px] bg-gradient-to-br from-surface to-surface-muted">
+                  <Link href={`/novels/${spotlightNovel._id}`} className="absolute inset-0">
+                    <img
+                      src={spotlightNovel.coverUrl || '/placeholder.svg'}
+                      alt={spotlightNovel.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </Link>
+                </div>
+                <div className="flex flex-col gap-3 p-6">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-copy">
+                    <Sparkles className="size-3.5" /> Featured Pick
+                  </span>
+                  <h3 className="font-serif text-2xl font-medium text-foreground">
+                    <Link href={`/novels/${spotlightNovel._id}`}>{spotlightNovel.title}</Link>
+                  </h3>
+                  <p className="text-sm text-muted-copy">by {getAuthor(spotlightNovel)}</p>
+                  <p className="line-clamp-3 text-sm leading-relaxed text-copy">
+                    {spotlightNovel.description || 'No summary available yet.'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {spotlightNovel.publicationStatus && <Badge variant="outline">{spotlightNovel.publicationStatus}</Badge>}
+                    {(spotlightNovel.genres || []).slice(0, 3).map((genre) => (
+                      <Badge key={genre} variant="outline">{genre}</Badge>
+                    ))}
+                  </div>
+                  <div className="mt-auto">
+                    <Button asChild variant="secondary">
+                      <Link href={`/novels/${spotlightNovel._id}`}>View Novel</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </section>
         )}
 
         {sections.newest.length > 0 && (
-          <section className="catalog-section">
-            <div className="section-heading">
-              <h2 className="section-title">New Arrivals</h2>
-              <Link href="/novels" className="text-sm font-bold text-primary hover:underline">
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-serif text-xl font-medium text-foreground">New Arrivals</h2>
+              <Link href="/novels" className="text-sm font-semibold text-primary hover:underline">
                 View all <ArrowRight className="inline size-4" />
               </Link>
             </div>
-            <div className="catalog-card-grid">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {sections.newest.map((novel) => (
                 <NovelCard key={novel._id} novel={novel} mode="catalog" />
               ))}
@@ -263,14 +369,14 @@ export default function PublicHomePage() {
         )}
 
         {showLongReads && sections.longReads.length > 0 && (
-          <section className="catalog-section">
-            <div className="section-heading">
-              <h2 className="section-title">Long Reads</h2>
-              <Link href="/novels?sort=chaptersTotal" className="text-sm font-bold text-primary hover:underline">
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-serif text-xl font-medium text-foreground">Long Reads</h2>
+              <Link href="/novels?sort=chaptersTotal" className="text-sm font-semibold text-primary hover:underline">
                 View all <ArrowRight className="inline size-4" />
               </Link>
             </div>
-            <div className="catalog-card-grid">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {sections.longReads.map((novel) => (
                 <NovelCard key={novel._id} novel={novel} mode="catalog" />
               ))}
@@ -279,94 +385,97 @@ export default function PublicHomePage() {
         )}
 
         {sections.recent.length > 0 && (
-          <section className="catalog-section">
-            <div className="section-heading">
-              <h2 className="section-title">Recent Updates</h2>
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-serif text-xl font-medium text-foreground">Recent Updates</h2>
             </div>
-            <Card className="divide-y divide-border">
+            <Card className="divide-y divide-border overflow-hidden">
               {sections.recent.map((novel) => (
-                <Link key={novel._id} href={`/novels/${novel._id}`} className="recent-row">
-                  <div>
-                    <strong>{novel.title}</strong>
-                    <span>{getAuthor(novel)}</span>
+                <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-surface-muted">
+                  <div className="min-w-0">
+                    <strong className="block truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
+                    <span className="text-xs text-muted-copy">{getAuthor(novel)}</span>
                   </div>
-                  <small>{new Date(novel.updatedAt).toLocaleDateString()}</small>
-                  <small>{getChapterCount(novel)} chapters</small>
+                  <div className="flex shrink-0 items-center gap-4 text-xs text-muted-copy">
+                    <span className="hidden sm:inline">{new Date(novel.updatedAt).toLocaleDateString()}</span>
+                    <span>{getChapterCount(novel)} chapters</span>
+                  </div>
                 </Link>
               ))}
             </Card>
           </section>
         )}
-      </section>
+      </main>
 
-      <aside className="public-sidebar">
-        <Card className="sidebar-panel">
-          <div className="section-heading">
-            <h2 className="section-title">
-              <TrendingUp className="inline size-4" /> Trending
-            </h2>
-          </div>
-          <div className="sidebar-list">
+      <aside className="sticky top-24 self-start flex flex-col gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="inline-flex items-center gap-2 font-serif text-base font-medium">
+              <TrendingUp className="size-4" /> Trending
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-0">
             {sections.ranked.map((novel, index) => (
-              <Link key={novel._id} href={`/novels/${novel._id}`} className="rank-row">
-                <span className="rank-number">{index + 1}</span>
-                <div>
-                  <strong>{novel.title}</strong>
-                  <small>{getAuthor(novel)}</small>
+              <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex items-center gap-3 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-surface text-xs font-bold text-muted-copy">{index + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <strong className="block truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
+                  <small className="text-xs text-muted-copy">{getAuthor(novel)}</small>
                 </div>
-                <small>{(novel.rating || 0).toFixed(1)}</small>
+                <small className="text-xs font-semibold text-muted-copy">{(novel.rating || 0).toFixed(1)}</small>
               </Link>
             ))}
-          </div>
+          </CardContent>
         </Card>
 
         {sections.genres.length > 0 && (
-          <Card className="sidebar-panel">
-            <div className="section-heading">
-              <h2 className="section-title">Genres</h2>
-            </div>
-            <div className="sidebar-tags">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-base font-medium">Genres</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
               {sections.genres.map((genre) => (
-                <Link key={genre} href={`/genres/${encodeURIComponent(genre)}`} className="sidebar-tag">
-                  {genre}
+                <Link key={genre} href={`/genres/${encodeURIComponent(genre)}`}>
+                  <Badge variant="outline">{genre}</Badge>
                 </Link>
               ))}
-            </div>
+            </CardContent>
           </Card>
         )}
 
         {sections.completed.length > 0 && (
-          <Card className="sidebar-panel">
-            <div className="section-heading">
-              <h2 className="section-title">Completed</h2>
-            </div>
-            <div className="sidebar-list">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-base font-medium">Completed</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-0">
               {sections.completed.map((novel) => (
-                <Link key={novel._id} href={`/novels/${novel._id}`} className="mini-novel">
-                  <strong>{novel.title}</strong>
-                  <small>{getAuthor(novel)}</small>
+                <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex flex-col gap-0.5 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
+                  <strong className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
+                  <small className="text-xs text-muted-copy">{getAuthor(novel)}</small>
                 </Link>
               ))}
-            </div>
+            </CardContent>
           </Card>
         )}
 
         {sections.random.length > 0 && (
-          <Card className="sidebar-panel">
-            <div className="section-heading">
-              <h2 className="section-title">Random</h2>
-            </div>
-            <div className="sidebar-list">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-base font-medium">Random</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-0">
               {sections.random.map((novel) => (
-                <Link key={novel._id} href={`/novels/${novel._id}`} className="mini-novel">
-                  <strong>{novel.title}</strong>
-                  <small>{getAuthor(novel)}</small>
+                <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex flex-col gap-0.5 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
+                  <strong className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
+                  <small className="text-xs text-muted-copy">{getAuthor(novel)}</small>
                 </Link>
               ))}
-            </div>
+            </CardContent>
           </Card>
         )}
       </aside>
+      </div>
     </div>
   );
 }

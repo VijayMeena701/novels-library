@@ -350,7 +350,7 @@ export async function listCatalogNovelsHandler(request: FastifyRequest, reply: F
     const sortDir = query.sortDir === 'asc' ? 'asc' : 'desc';
     const sort: Record<string, 1 | -1> = { [sortField]: sortDir === 'asc' ? 1 : -1 };
 
-    const page = parseNumber(query.page, undefined, 1);
+    const page = parseNumber(query.page, query.pageSize ? 1 : undefined, 1);
 
     if (page !== undefined) {
       const pageSize = parseNumber(query.pageSize, 24, 1, 100) ?? 24;
