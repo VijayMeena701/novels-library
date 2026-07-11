@@ -4,7 +4,7 @@ import { Genre } from '../models/Genre.js';
 import { PublicationStatus } from '../models/PublicationStatus.js';
 import { Novel, normalizeFilterKey } from '../models/Novel.js';
 import { backfillNovelTaxonomy } from '../services/taxonomy.js';
-import { isAdminRequest } from '../services/permissions.js';
+import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 export async function listGenresHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -53,7 +53,7 @@ export async function getGenreHandler(request: FastifyRequest, reply: FastifyRep
 }
 
 export async function upsertGenreHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await isAdminRequest(request))) {
+  if (!(await hasCapability(request, CAPABILITY.GENRE_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to manage genres.' });
   }
 
@@ -129,7 +129,7 @@ export async function getPublicationStatusHandler(request: FastifyRequest, reply
 }
 
 export async function upsertPublicationStatusHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await isAdminRequest(request))) {
+  if (!(await hasCapability(request, CAPABILITY.PUBLICATION_STATUS_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to manage publication statuses.' });
   }
 

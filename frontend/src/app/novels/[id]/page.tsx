@@ -4,6 +4,8 @@ import Link from "next/link";
 import { use, useEffect, useMemo, useState, type FormEvent } from "react";
 import { api, getNovelCoverUrl, type BackgroundJob, type ChapterContent, type JobType, type Novel, type SourceKind } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
+import { useToast } from "../../../context/ToastContext";
+import { CAPABILITY } from "../../../utils/permissions";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
@@ -695,7 +697,8 @@ function DetailsSidebar({ novel, chaptersCount, sortedItemsCount }: SidebarProps
 
 export default function PublicNovelDetails({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = use(params);
-	const { user } = useAuth();
+	const { user, hasCapability } = useAuth();
+	const { showToast } = useToast();
 
 	// Page & Core UI Data States
 	const [novel, setNovel] = useState<Novel | null>(null);
@@ -743,7 +746,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 	const [chapterSort, setChapterSort] = useState<"asc" | "desc">("asc");
 
 	const fetchNovelJobs = async () => {
-		if (user?.role !== "admin") return;
+		if (!hasCapability(CAPABILITY.JOB_READ)) return;
 		setJobsLoading(true);
 		try {
 			const jobData = await api.getNovelJobs(id);
@@ -805,12 +808,12 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 
 	// Fetch Jobs Loop
 	useEffect(() => {
-		if (user?.role === "admin") {
+		if (hasCapability(CAPABILITY.JOB_READ)) {
 			fetchNovelJobs();
 		} else {
 			setJobs([]);
 		}
-	}, [id, user?.role]);
+	}, [id, user?.capabilities, hasCapability]);
 
 	const firstReadableChapter = useMemo(() => chapters[0]?.chapterNumber || 1, [chapters]);
 
@@ -819,26 +822,26 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		if (!novel) return [];
 		const archivedByNumber = new Map(rawChapters.map((chapter) => [chapter.chapterNumber, chapter]));
 		const seen = new Set<number>();
-		const indexedItems = (novel.rawChaptersList || [])
-			.filter((chapter) => Number.isFinite(chapter.number) && !seen.has(chapter.number))
-			.map((chapter) => {
-				seen.add(chapter.number);
-				const archived = archivedByNumber.get(chapter.number);
-				const archivedTitle = archived?.title?.trim() || "";
-				const indexedTitle = chapter.title?.trim() || "";
-				return {
-					number: chapter.number,
-					title:
-						archivedTitle && !isGenericChapterTitle(archivedTitle, novel.title, chapter.number)
-							? archivedTitle
-							: indexedTitle || archivedTitle || `Raw Chapter ${chapter.number}`,
-					archived: Boolean(archived),
-					sourceUrl: archived?.sourceUrl || chapter.url,
-					scrapedAt: archived?.scrapedAt,
-				};
+		const indexedItems: any[] = [];
+		for (const chapter of novel.rawChaptersList || []) {
+			if (!Number.isFinite(chapter.number) || seen.has(chapter.number)) continue;
+			seen.add(chapter.number);
+			const archived = archivedByNumber.get(chapter.number);
+			const archivedTitle = archived?.title?.trim() || "";
+			const indexedTitle = chapter.title?.trim() || "";
+			indexedItems.push({
+				number: chapter.number,
+				title:
+					archivedTitle && !isGenericChapterTitle(archivedTitle, novel.title, chapter.number)
+						? archivedTitle
+						: indexedTitle || archivedTitle || `Raw Chapter ${chapter.number}`,
+				archived: Boolean(archived),
+				sourceUrl: archived?.sourceUrl || chapter.url,
+				scrapedAt: archived?.scrapedAt,
 			});
+		}
 
-		const archivedOnlyItems = rawChapters
+		const archivedOnlyItems = Array.from(archivedByNumber.values())
 			.filter((chapter) => !seen.has(chapter.chapterNumber))
 			.map((chapter) => ({
 				number: chapter.chapterNumber,
@@ -855,26 +858,26 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		if (!novel) return [];
 		const archivedByNumber = new Map(chapters.map((chapter) => [chapter.chapterNumber, chapter]));
 		const seen = new Set<number>();
-		const indexedItems = (novel.chaptersList || [])
-			.filter((chapter) => Number.isFinite(chapter.number) && !seen.has(chapter.number))
-			.map((chapter) => {
-				seen.add(chapter.number);
-				const archived = archivedByNumber.get(chapter.number);
-				const archivedTitle = archived?.title?.trim() || "";
-				const indexedTitle = chapter.title?.trim() || "";
-				return {
-					number: chapter.number,
-					title:
-						archivedTitle && !isGenericChapterTitle(archivedTitle, novel.title, chapter.number)
-							? archivedTitle
-							: indexedTitle || archivedTitle || `Chapter ${chapter.number}`,
-					archived: Boolean(archived),
-					sourceUrl: archived?.sourceUrl || chapter.url,
-					scrapedAt: archived?.scrapedAt,
-				};
+		const indexedItems: any[] = [];
+		for (const chapter of novel.chaptersList || []) {
+			if (!Number.isFinite(chapter.number) || seen.has(chapter.number)) continue;
+			seen.add(chapter.number);
+			const archived = archivedByNumber.get(chapter.number);
+			const archivedTitle = archived?.title?.trim() || "";
+			const indexedTitle = chapter.title?.trim() || "";
+			indexedItems.push({
+				number: chapter.number,
+				title:
+					archivedTitle && !isGenericChapterTitle(archivedTitle, novel.title, chapter.number)
+						? archivedTitle
+						: indexedTitle || archivedTitle || `Chapter ${chapter.number}`,
+				archived: Boolean(archived),
+				sourceUrl: archived?.sourceUrl || chapter.url,
+				scrapedAt: archived?.scrapedAt,
 			});
+		}
 
-		const archivedOnlyItems = chapters
+		const archivedOnlyItems = Array.from(archivedByNumber.values())
 			.filter((chapter) => !seen.has(chapter.chapterNumber))
 			.map((chapter) => ({
 				number: chapter.chapterNumber,
@@ -915,13 +918,17 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 	}, [rawCatalogItems, chapterSearch, chapterSort]);
 
 	const coverSrc = novel ? getNovelCoverUrl(novel) : "";
-	const isAdmin = user?.role === "admin";
+	const canManageCatalog = hasCapability(CAPABILITY.CATALOG_MANAGE);
+	const canReadJobs = hasCapability(CAPABILITY.JOB_READ);
+	const canScrape = hasCapability(CAPABILITY.JOB_SCRAPE);
+	const canImport = hasCapability(CAPABILITY.JOB_IMPORT);
+	const canAdmin = canManageCatalog || canReadJobs || canScrape || canImport;
 	const activeJobTypes = useMemo(() => new Set(jobs.filter((job) => job.status === "pending" || job.status === "processing").map((job) => job.type)), [jobs]);
 	const processingJobCount = jobs.filter((job) => job.status === "pending" || job.status === "processing").length;
 	const translatedChapterTotal = novel?.chaptersTotal || translatedCatalogItems.length || 0;
 	const translatedArchivePercent = translatedChapterTotal ? Math.min(100, Math.round((chapters.length / translatedChapterTotal) * 100)) : 0;
 
-	const translatedPipelineSections = [
+	const translatedPipelineSections = canScrape || canImport ? [
 		{
 			key: "translated-indexing",
 			title: "Indexing",
@@ -930,7 +937,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_metadata-queue",
 					label: "Queue translated index",
 					tone: "translated",
-					disabled: !novel?.sourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_metadata"),
+					disabled: !canScrape || !novel?.sourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_metadata"),
 					busy: queueing === "scrape_metadata",
 					onClick: () => handleTriggerScrape("scrape_metadata"),
 				},
@@ -938,7 +945,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_metadata-now",
 					label: "Index translated now",
 					tone: "raw",
-					disabled: !novel?.sourceUrl || Boolean(runningNow),
+					disabled: !canScrape || !novel?.sourceUrl || Boolean(runningNow),
 					busy: runningNow === "scrape_metadata",
 					onClick: () => handleRunScrapeNow("scrape_metadata"),
 				},
@@ -952,7 +959,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_chapters-queue",
 					label: "Queue translated archive",
 					tone: "translated",
-					disabled: !(novel?.chaptersList || []).length || Boolean(queueing) || activeJobTypes.has("scrape_chapters"),
+					disabled: !canScrape || !(novel?.chaptersList || []).length || Boolean(queueing) || activeJobTypes.has("scrape_chapters"),
 					busy: queueing === "scrape_chapters",
 					onClick: () => handleTriggerScrape("scrape_chapters"),
 				},
@@ -960,7 +967,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_chapters-now",
 					label: "Archive next 5 translated",
 					tone: "success",
-					disabled: translatedCatalogItems.length === 0 || Boolean(runningNow),
+					disabled: !canScrape || translatedCatalogItems.length === 0 || Boolean(runningNow),
 					busy: runningNow === "scrape_chapters",
 					onClick: () => handleRunScrapeNow("scrape_chapters"),
 				},
@@ -974,15 +981,15 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "translated-import-html",
 					label: "Import translated index HTML",
 					tone: "translated",
-					disabled: !novel?.sourceUrl,
+					disabled: !canImport || !novel?.sourceUrl,
 					busy: false,
 					onClick: () => openIndexHtmlImport("translated"),
 				},
 			],
 		},
-	];
+	] : [];
 
-	const rawPipelineSections = [
+	const rawPipelineSections = canScrape || canImport ? [
 		{
 			key: "raw-indexing",
 			title: "Indexing",
@@ -991,7 +998,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_raw_metadata-queue",
 					label: "Queue raw index",
 					tone: "raw",
-					disabled: !novel?.rawSourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_raw_metadata"),
+					disabled: !canScrape || !novel?.rawSourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_raw_metadata"),
 					busy: queueing === "scrape_raw_metadata",
 					onClick: () => handleTriggerScrape("scrape_raw_metadata"),
 				},
@@ -999,7 +1006,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_raw_metadata-now",
 					label: "Index raw now",
 					tone: "raw",
-					disabled: !novel?.rawSourceUrl || Boolean(runningNow),
+					disabled: !canScrape || !novel?.rawSourceUrl || Boolean(runningNow),
 					busy: runningNow === "scrape_raw_metadata",
 					onClick: () => handleRunScrapeNow("scrape_raw_metadata"),
 				},
@@ -1013,7 +1020,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_raw_chapters-queue",
 					label: "Queue raw archive",
 					tone: "raw",
-					disabled: rawCatalogItems.length === 0 || Boolean(queueing) || activeJobTypes.has("scrape_raw_chapters"),
+					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(queueing) || activeJobTypes.has("scrape_raw_chapters"),
 					busy: queueing === "scrape_raw_chapters",
 					onClick: () => handleTriggerScrape("scrape_raw_chapters"),
 				},
@@ -1021,7 +1028,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_raw_chapters-now",
 					label: "Archive next 5 raw",
 					tone: "success",
-					disabled: rawCatalogItems.length === 0 || Boolean(runningNow),
+					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(runningNow),
 					busy: runningNow === "scrape_raw_chapters",
 					onClick: () => handleRunScrapeNow("scrape_raw_chapters"),
 				},
@@ -1035,20 +1042,20 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "raw-import-html",
 					label: "Import raw index HTML",
 					tone: "raw",
-					disabled: !novel?.rawSourceUrl,
+					disabled: !canImport || !novel?.rawSourceUrl,
 					busy: false,
 					onClick: () => openIndexHtmlImport("raw"),
 				},
 			],
 		},
-	];
+	] : [];
 
 	const commonAdminActions = [
 		{
 			key: "edit-catalog",
 			label: "Edit Book Details",
 			tone: "neutral",
-			disabled: false,
+			disabled: !canManageCatalog,
 			onClick: () => setIsEditCatalogOpen(true),
 		},
 		novel?.sourceUrl
@@ -1073,7 +1080,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			key: "refresh-jobs",
 			label: jobsLoading ? "Refreshing jobs..." : "Refresh Log Jobs",
 			tone: "neutral",
-			disabled: jobsLoading,
+			disabled: !canReadJobs || jobsLoading,
 			onClick: fetchNovelJobs,
 		},
 	].filter(Boolean);
@@ -1202,7 +1209,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			/>
 
 			{/* Custom Segmented Tabs (replaces old .detail-tabs) */}
-			{isAdmin && (
+			{canAdmin && (
 				<div className="flex gap-6 border-b-2 border-[#dfd6c8] mt-2 pb-0.5">
 					<button
 						className={`relative pb-2.5 text-sm font-bold transition-all ${
@@ -1228,7 +1235,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			)}
 
 			{/* Scraper / Admin Board view */}
-			{isAdmin && activeTab === "admin" && (
+			{canAdmin && activeTab === "admin" && (
 				<AdminConsole
 					novel={novel}
 					jobs={jobs}
@@ -1245,7 +1252,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			)}
 
 			{/* Reader view standard layout */}
-			{(!isAdmin || activeTab === "read") && (
+			{(!canAdmin || activeTab === "read") && (
 				<div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
 					<main className="flex flex-col gap-6">
 						{/* Summary Block */}
@@ -1352,7 +1359,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			)}
 
 			{/* HTML import modal portal */}
-			{isIndexHtmlModalOpen && user?.role === "admin" && (
+			{isIndexHtmlModalOpen && canImport && (
 				<div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/45 backdrop-blur-[6px]">
 					<Card className="w-full max-w-[760px] p-5 flex flex-col gap-4 bg-[#fffdf8] border-[#dfd6c8] shadow-2xl overflow-auto max-h-[90vh]">
 						<div className="flex justify-between items-center border-b border-[#dfd6c8] pb-2">
@@ -1409,7 +1416,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			)}
 
 			{/* Edit metadata form config modal */}
-			{isEditCatalogOpen && user?.role === "admin" && (
+			{isEditCatalogOpen && canManageCatalog && (
 				<div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/45 backdrop-blur-[6px]">
 					<Card className="w-full max-w-[760px] p-5 flex flex-col gap-4 bg-[#fffdf8] border-[#dfd6c8] shadow-2xl overflow-auto max-h-[90vh]">
 						<div className="flex justify-between items-center border-b border-[#dfd6c8] pb-2">
@@ -1454,8 +1461,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 									setIsEditCatalogOpen(false);
 								} catch (err: any) {
 									console.error("Failed to update catalog novel:", err);
-									alert(err.message || "Failed to update catalog novel.");
-								} finally {
+									showToast({ message: err.message || "Failed to update catalog novel.", variant: "error" });								} finally {
 									setEditingCatalog(false);
 								}
 							}}

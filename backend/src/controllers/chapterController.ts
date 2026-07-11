@@ -7,7 +7,7 @@ import { ReadingSession } from '../models/ReadingSession.js';
 import { ChapterVisit } from '../models/ChapterVisit.js';
 import { UserNovel } from '../models/UserNovel.js';
 import { translateChapterHtml } from '../services/translation.js';
-import { isAdminRequest } from '../services/permissions.js';
+import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -291,7 +291,7 @@ export async function translateRawChapterHandler(request: FastifyRequest, reply:
   }
 
   try {
-    if (!(await isAdminRequest(request))) {
+    if (!(await hasCapability(request, CAPABILITY.CHAPTER_TRANSLATE))) {
       return reply.status(403).send({ error: 'Admin access is required to generate and store translated chapters.' });
     }
 

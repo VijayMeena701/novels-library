@@ -25,6 +25,10 @@ module.exports = {
         foreground: 'var(--text-primary)',
         copy: 'var(--text-secondary)',
         'muted-copy': 'var(--text-muted)',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
+        info: 'var(--info)',
       },
       boxShadow: {
         card: 'var(--shadow-sm)',
@@ -35,6 +39,10 @@ module.exports = {
         sm: 'var(--radius-sm)',
         md: 'var(--radius-md)',
         lg: 'var(--radius-lg)',
+      },
+      fontFamily: {
+        sans: 'var(--font-sans)',
+        serif: 'var(--font-serif)',
       },
     },
   },

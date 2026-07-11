@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, getNovelCoverUrl, Novel, ReadingSession, ChapterContent, ChapterVisit, NovelStatus } from '../../../../utils/api';
 import { useAuth } from '../../../../context/AuthContext';
+import { useToast } from '../../../../context/ToastContext';
 
 function splitListInput(value: string): string[] {
   return value
@@ -37,6 +38,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
   const { id: novelId } = use(params);
   const router = useRouter();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   // Page state
   const [novel, setNovel] = useState<Novel | null>(null);
@@ -123,7 +125,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
       setIsEditing(false);
     } catch (err) {
       console.error('Failed to update novel:', err);
-      alert('Error updating novel details.');
+      showToast({ message: 'Error updating novel details.', variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -140,8 +142,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
       router.push('/');
     } catch (err) {
       console.error('Delete failed:', err);
-      alert('Failed to delete novel.');
-    }
+      showToast({ message: 'Failed to delete novel.', variant: 'error' });    }
   };
 
   // Re-read Log Actions

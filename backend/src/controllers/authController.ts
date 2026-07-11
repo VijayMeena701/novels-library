@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
+import { getRoleCapabilities } from '../services/rbac.js';
 
 function roleForEmail(email: string): 'user' | 'admin' {
   const adminEmails = new Set(
@@ -13,7 +14,8 @@ function roleForEmail(email: string): 'user' | 'admin' {
   return adminEmails.has(email.toLowerCase()) ? 'admin' : 'user';
 }
 
-function serializeUser(user: any) {
+async function serializeUser(user: any) {
+  const capabilities = await getRoleCapabilities(user.role || 'anonymous');
   return {
     id: user._id,
     username: user.username,
@@ -21,6 +23,7 @@ function serializeUser(user: any) {
     avatarUrl: user.avatarUrl,
     authProvider: user.authProvider,
     role: user.role,
+    capabilities,
   };
 }
 
@@ -56,7 +59,7 @@ export async function registerHandler(request: FastifyRequest, reply: FastifyRep
 
     return reply.status(201).send({
       token,
-      user: serializeUser(user),
+      user: await serializeUser(user),
     });
   } catch (err: any) {
     request.log.error(err);
@@ -94,7 +97,7 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
 
     return reply.send({
       token,
-      user: serializeUser(user),
+      user: await serializeUser(user),
     });
   } catch (err: any) {
     request.log.error(err);
@@ -222,9 +225,38 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
     if (!user) {
       return reply.status(404).send({ error: 'User not found.' });
     }
-    return reply.send({ user: serializeUser(user) });
+    return reply.send({ user: await serializeUser(user) });
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error fetching user.' });
+  }
+}
+
+export async function updateMeHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const userId = (request.user as any).id;
+    const { username, avatarUrl } = request.body as any;
+    const update: Record<string, string> = {};
+
+    if (typeof username === 'string' && username.trim()) {
+      update.username = username.trim();
+    }
+    if (typeof avatarUrl === 'string') {
+      update.avatarUrl = avatarUrl.trim();
+    }
+
+    if (Object.keys(update).length === 0) {
+      return reply.status(400).send({ error: 'No valid fields to update.' });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, { $set: update }, { new: true }).select('-passwordHash');
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found.' });
+    }
+
+    return reply.send({ user: await serializeUser(user) });
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error updating user profile.' });
   }
 }

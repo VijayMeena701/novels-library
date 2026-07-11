@@ -105,6 +105,17 @@ textarea {
 	gap: 1.15rem;
 }
 
+.toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 1rem;
+}
+
+.toolbar > div {
+	flex: 1 1 180px;
+}
+
 .page-header {
 	display: flex;
 	align-items: flex-end;
@@ -2443,6 +2454,48 @@ tbody tr:hover {
 	.reader-dock-tabs button {
 		min-height: 48px;
 		font-size: 0.74rem;
+	}
+}
+
+@media (max-width: 640px) {
+	.grid-cols-2 {
+		grid-template-columns: 1fr;
+	}
+
+	.toolbar {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.reader-dock-tabs {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.reader-dock-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.public-hero-stats {
+		justify-content: center;
+	}
+
+	.public-hero-stats div {
+		flex: 1 1 96px;
+	}
+
+	.chapter-row {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.chapter-title {
+		white-space: normal;
+	}
+
+	.page-header,
+	.flex-between {
+		align-items: flex-start;
+		flex-direction: column;
 	}
 }
 

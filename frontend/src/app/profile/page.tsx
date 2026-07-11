@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { api, Novel, NovelStatus } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { NovelCard } from '../../components/NovelCard';
+import { CAPABILITY } from '../../utils/permissions';
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, hasCapability } = useAuth();
   
   // Library state
   const [novels, setNovels] = useState<Novel[]>([]);
@@ -156,7 +157,7 @@ export default function Dashboard() {
             Track reading status, personal notes, rereads, characters, and recall details.
           </p>
         </div>
-        {user?.role === 'admin' ? (
+        {hasCapability(CAPABILITY.CATALOG_MANAGE) ? (
           <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
             + Create Catalog Novel
           </button>
@@ -217,7 +218,7 @@ export default function Dashboard() {
           <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
             {search || statusFilter !== 'all' ? 'No novels match your filter query.' : 'Your reading library is empty.'}
           </p>
-          {user?.role === 'admin' ? (
+          {hasCapability(CAPABILITY.CATALOG_MANAGE) ? (
             <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
               + Create Catalog Novel
             </button>
@@ -305,7 +306,7 @@ export default function Dashboard() {
                 </span>
               </div>
 
-              <div className="grid-cols-2" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem' }}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.5fr_1fr]">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Raw Source URL (Optional)</label>
                   <input
@@ -328,7 +329,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="grid-cols-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Title {newUrl ? '(Optional)' : '(Required)'}</label>
                   <input 

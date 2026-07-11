@@ -10,7 +10,7 @@ import { UserNovel } from '../models/UserNovel.js';
 import { deleteCoverImageFile } from '../services/coverImage.js';
 import { resolveAuthorIds, toAuthorObjectId, toAuthorObjectIds } from '../services/authors.js';
 import { resolveGenres, resolvePublicationStatus } from '../services/taxonomy.js';
-import { isAdminRequest } from '../services/permissions.js';
+import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 const VALID_NOVEL_STATUSES = new Set<NovelStatus>(['reading', 'completed', 'on_hold', 'dropped', 'planning']);
 
@@ -122,6 +122,38 @@ function toFilterKeys(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function toObjectIds(value: unknown): mongoose.Types.ObjectId[] {
+  if (typeof value !== 'string') {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseNumber(value: unknown, fallback?: number, min?: number, max?: number): number | undefined {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  let result = parsed;
+  if (min !== undefined && result < min) result = min;
+  if (max !== undefined && result > max) result = max;
+  return result;
+}
+
 function pushFilter(andFilters: any[], condition: Record<string, any>) {
   if (Object.keys(condition).length > 0) {
     andFilters.push(condition);
@@ -129,39 +161,68 @@ function pushFilter(andFilters: any[], condition: Record<string, any>) {
 }
 
 function applySharedNovelFilters(andFilters: any[], query: Record<string, any>) {
-  const genreIds = typeof query.genreId === 'string' && mongoose.Types.ObjectId.isValid(query.genreId)
-    ? [new mongoose.Types.ObjectId(query.genreId)]
-    : [];
+  const search = typeof query.search === 'string' ? query.search.trim().slice(0, 100) : '';
+  if (search) {
+    const escaped = escapeRegex(search);
+    const regex = new RegExp(escaped, 'i');
+    pushFilter(andFilters, {
+      $or: [
+        { title: regex },
+        { author: regex },
+        { authorPenName: regex },
+        { authorRealName: regex },
+        { alternativeNames: regex },
+      ],
+    });
+  }
+
+  const genreIds = toObjectIds(query.genreId);
   const genreKeys = toFilterKeys(query.genre);
   if (genreIds.length > 0) {
     pushFilter(andFilters, { genreIds: { $in: genreIds } });
   } else if (genreKeys.length > 0) {
-    pushFilter(andFilters, { genreKeys: { $all: genreKeys } });
+    pushFilter(andFilters, { genreKeys: { $in: genreKeys } });
   }
 
   const sourceKeys = toFilterKeys(query.source);
   if (sourceKeys.length > 0) {
-    pushFilter(andFilters, { originalSourceKey: sourceKeys[0] });
+    pushFilter(andFilters, { originalSourceKey: { $in: sourceKeys } });
   }
 
   const publicationStatusId = typeof query.publicationStatusId === 'string' && mongoose.Types.ObjectId.isValid(query.publicationStatusId)
     ? new mongoose.Types.ObjectId(query.publicationStatusId)
     : undefined;
-  const publicationStatusKeys = toFilterKeys(query.publicationStatus || query.catalogStatus || query.status);
+  const publicationStatusKeys = toFilterKeys(query.publicationStatus || query.catalogStatus);
   if (publicationStatusId) {
     pushFilter(andFilters, { publicationStatusId });
   } else if (publicationStatusKeys.length > 0) {
-    pushFilter(andFilters, { publicationStatusKey: publicationStatusKeys[0] });
+    pushFilter(andFilters, { publicationStatusKey: { $in: publicationStatusKeys } });
   }
 
-  if (typeof query.authorId === 'string' && mongoose.Types.ObjectId.isValid(query.authorId)) {
-    const authorId = new mongoose.Types.ObjectId(query.authorId);
+  const statusValues = typeof query.status === 'string'
+    ? query.status.split(',').map((s: string) => s.trim()).filter((s: string) => VALID_NOVEL_STATUSES.has(s as NovelStatus))
+    : [];
+  if (statusValues.length > 0) {
+    pushFilter(andFilters, { status: { $in: statusValues } });
+  }
+
+  const authorIds = toObjectIds(query.authorId);
+  if (authorIds.length > 0) {
     pushFilter(andFilters, {
       $or: [
-        { authorIds: authorId },
-        { authorId },
+        { authorIds: { $in: authorIds } },
+        { authorId: { $in: authorIds } },
       ],
     });
+  }
+
+  const ratingFilter: Record<string, number> = {};
+  const minRating = parseNumber(query.minRating, undefined);
+  const maxRating = parseNumber(query.maxRating, undefined);
+  if (minRating !== undefined) ratingFilter.$gte = minRating;
+  if (maxRating !== undefined) ratingFilter.$lte = maxRating;
+  if (Object.keys(ratingFilter).length > 0) {
+    pushFilter(andFilters, { rating: ratingFilter });
   }
 }
 
@@ -279,15 +340,56 @@ export async function listNovelsHandler(request: FastifyRequest, reply: FastifyR
 
 export async function listCatalogNovelsHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
+    const query = request.query as any;
     const andFilters: any[] = [];
-    applySharedNovelFilters(andFilters, request.query as any);
+    applySharedNovelFilters(andFilters, query);
     const filter = andFilters.length > 0 ? { $and: andFilters } : {};
 
-    const novels = await Novel.find(filter).sort({ updatedAt: -1 });
+    const allowedSortFields = ['updatedAt', 'title', 'chaptersTotal', 'rawChaptersTotal', 'rating', 'publicationStatus', 'createdAt', 'author', 'originalSource'];
+    const sortField = (allowedSortFields.includes(query.sort) ? query.sort : 'updatedAt') as string;
+    const sortDir = query.sortDir === 'asc' ? 'asc' : 'desc';
+    const sort: Record<string, 1 | -1> = { [sortField]: sortDir === 'asc' ? 1 : -1 };
+
+    const page = parseNumber(query.page, undefined, 1);
+
+    if (page !== undefined) {
+      const pageSize = parseNumber(query.pageSize, 24, 1, 100) ?? 24;
+      const skip = (page - 1) * pageSize;
+
+      const [novels, total] = await Promise.all([
+        Novel.find(filter).sort(sort).skip(skip).limit(pageSize).lean(),
+        Novel.countDocuments(filter),
+      ]);
+
+      return reply.send({
+        novels,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize) || 1,
+      });
+    }
+
+    const novels = await Novel.find(filter).sort(sort).lean();
     return reply.send(novels);
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing catalog novels.' });
+  }
+}
+
+export async function listNovelSourcesHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const sources = await Novel.aggregate([
+      { $match: { originalSourceKey: { $ne: '' } } },
+      { $group: { _id: '$originalSourceKey', originalSource: { $first: '$originalSource' }, count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+    ]);
+
+    return reply.send(sources.map((source) => ({ key: source._id, name: source.originalSource, count: source.count })));
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error listing novel sources.' });
   }
 }
 
@@ -334,7 +436,7 @@ export async function createNovelHandler(request: FastifyRequest, reply: Fastify
   } = request.body as any;
 
   try {
-    if (!(await isAdminRequest(request))) {
+    if (!(await hasCapability(request, CAPABILITY.CATALOG_MANAGE))) {
       return reply.status(403).send({ error: 'Admin access is required to create catalog novels.' });
     }
 
@@ -510,7 +612,7 @@ export async function updateNovelHandler(request: FastifyRequest, reply: Fastify
       return reply.status(404).send({ error: 'Novel not found in your library.' });
     }
 
-    const isAdmin = await isAdminRequest(request);
+    const isAdmin = await hasCapability(request, CAPABILITY.CATALOG_MANAGE);
     const personalUpdates = pickPersonalLibraryUpdates(updates);
     const sharedUpdates = pickSharedNovelUpdates(updates);
     const nextCoverUrl = typeof updates.coverUrl === 'string' ? updates.coverUrl.trim() : undefined;
@@ -550,7 +652,7 @@ export async function updateNovelHandler(request: FastifyRequest, reply: Fastify
 }
 
 export async function updateCatalogNovelHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await isAdminRequest(request))) {
+  if (!(await hasCapability(request, CAPABILITY.CATALOG_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to edit catalog novel metadata.' });
   }
 
@@ -625,7 +727,7 @@ export async function deleteNovelHandler(request: FastifyRequest, reply: Fastify
 }
 
 export async function deleteCatalogNovelHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await isAdminRequest(request))) {
+  if (!(await hasCapability(request, CAPABILITY.CATALOG_DELETE))) {
     return reply.status(403).send({ error: 'Admin access is required to delete catalog novels.' });
   }
 

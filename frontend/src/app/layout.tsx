@@ -1,11 +1,19 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '../context/AuthContext';
+import { ToastProvider } from '../context/ToastContext';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import Header from '../components/Header';
 
 export const metadata: Metadata = {
-  title: 'Novels Library & Crawler Archiver',
-  description: 'Track read novels, logs history, and automatically download and archive offline chapters.',
+  title: 'Novels Library',
+  description: 'Track, read, and archive web novels. A personal library with a clean reader, TTS, and automatic chapter archiving.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#f3f1eb',
 };
 
 export default function RootLayout({
@@ -15,13 +23,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" style={{ height: '100%' }}>
-      <body style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-        <AuthProvider>
-          <Header />
-          <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {children}
-          </main>
-        </AuthProvider>
+      <body className="min-h-screen bg-slate-50 text-slate-900">
+        <ToastProvider>
+          <AuthProvider>
+            <ErrorBoundary name="Navigation">
+              <Header />
+            </ErrorBoundary>
+            <main className="flex min-h-[calc(100vh-4rem)] flex-col">
+              <ErrorBoundary name="Page content">{children}</ErrorBoundary>
+            </main>
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

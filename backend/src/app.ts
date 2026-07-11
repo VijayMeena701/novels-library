@@ -3,14 +3,21 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import { Socket } from "net";
+import crypto from "crypto";
 import { connectDB, disconnectDB } from "./config/db.js";
 import { apiRoutes } from "./routes/api.js";
 import { startWorker, stopWorker } from "./worker/jobProcessor.js";
 import { closeBrowser } from "./services/scraper.js";
+import { ensureRolesAndCapabilities } from "./services/rbac.js";
 
 const app = Fastify({
-	logger: true,
+	logger: {
+		level: process.env.LOG_LEVEL || 'info',
+		redact: ['req.headers.authorization', 'req.headers.cookie'],
+	},
 	forceCloseConnections: true,
+	requestIdHeader: 'x-request-id',
+	genReqId: () => crypto.randomUUID(),
 });
 const activeSockets = new Set<Socket>();
 const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.SHUTDOWN_TIMEOUT_MS || "8000", 10);
@@ -51,8 +58,21 @@ await app.register(cors, {
 });
 
 // Register JWT plugin
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret && process.env.NODE_ENV === 'production') {
+	throw new Error('JWT_SECRET must be configured in production.');
+}
+
 await app.register(jwt, {
-	secret: process.env.JWT_SECRET || "super-secret-key-novels-library-321!",
+	secret: jwtSecret || "super-secret-key-novels-library-321!",
+});
+
+app.setErrorHandler((error, request, reply) => {
+	request.log.error({ err: error }, 'Unhandled request error');
+	if (reply.sent) return;
+	const statusCode = error.validation ? 400 : error.statusCode && error.statusCode >= 400 ? error.statusCode : 500;
+	const message = error.validation ? 'Request validation failed.' : statusCode >= 500 ? 'Internal server error.' : error.message;
+	reply.status(statusCode).send({ error: message, code: error.code, requestId: request.id });
 });
 
 // Register API Routes
@@ -71,10 +91,13 @@ const start = async () => {
 		// 1. Connect MongoDB
 		await connectDB();
 
-		// 2. Start Background Job Worker
+		// 2. Ensure default RBAC roles and capabilities
+		await ensureRolesAndCapabilities();
+
+		// 3. Start Background Job Worker
 		startWorker();
 
-		// 3. Bind server port
+		// 4. Bind server port
 		const port = parseInt(process.env.PORT || "5050", 10);
 		const host = process.env.HOST || "0.0.0.0";
 

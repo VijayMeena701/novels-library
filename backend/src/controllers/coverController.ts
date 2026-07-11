@@ -6,7 +6,7 @@ import {
   getCoverImageSize,
   syncNovelCoverImage,
 } from '../services/coverImage.js';
-import { isAdminRequest } from '../services/permissions.js';
+import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 export async function getPublicNovelCoverHandler(request: FastifyRequest, reply: FastifyReply) {
   const { id, token } = request.params as any;
@@ -46,7 +46,7 @@ export async function syncNovelCoverHandler(request: FastifyRequest, reply: Fast
   }
 
   try {
-    if (!(await isAdminRequest(request))) {
+    if (!(await hasCapability(request, CAPABILITY.COVER_SYNC))) {
       return reply.status(403).send({ error: 'Admin access is required to sync catalog cover images.' });
     }
 

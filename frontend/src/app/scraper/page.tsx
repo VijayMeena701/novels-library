@@ -4,12 +4,15 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, BackgroundJob } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { CAPABILITY } from '../../utils/permissions';
+import { useToast } from '../../context/ToastContext';
 
 export default function ScraperMonitor() {
-  const { user } = useAuth();
+  const { user, hasCapability } = useAuth();
+  const { showToast } = useToast();
   const [jobs, setJobs] = useState<BackgroundJob[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(3000); // Poll every 3s when processing
+  const refreshInterval = 3000;
   const [chapterHtmlJob, setChapterHtmlJob] = useState<BackgroundJob | null>(null);
   const [chapterHtmlPageUrl, setChapterHtmlPageUrl] = useState('');
   const [chapterHtmlContent, setChapterHtmlContent] = useState('');
@@ -27,16 +30,16 @@ export default function ScraperMonitor() {
   };
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (hasCapability(CAPABILITY.JOB_READ)) {
       fetchJobs();
     } else if (user) {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, hasCapability]);
 
   // Auto-refresh when jobs are active
   useEffect(() => {
-    if (user?.role !== 'admin') return;
+    if (!hasCapability(CAPABILITY.JOB_READ)) return;
     
     const hasActiveJobs = jobs.some(j => j.status === 'pending' || j.status === 'processing');
     
@@ -62,18 +65,18 @@ export default function ScraperMonitor() {
       await fetchJobs();
     } catch (err) {
       console.error('Failed to retry job:', err);
-      alert('Error triggering retry: ' + (err as any).message);
+      showToast({ message: 'Error triggering retry: ' + (err instanceof Error ? err.message : 'Unknown error.'), variant: 'error' });
     }
   };
 
   const handleOpenManualIntervention = async (jobId: string) => {
     try {
       const result = await api.openManualIntervention(jobId);
-      alert(result.message);
+      showToast({ message: result.message, variant: 'info' });
       await fetchJobs();
     } catch (err) {
       console.error('Failed to open manual browser:', err);
-      alert('Error opening manual browser: ' + (err as any).message);
+      showToast({ message: 'Error opening manual browser: ' + (err instanceof Error ? err.message : 'Unknown error.'), variant: 'error' });
     }
   };
 
@@ -95,11 +98,11 @@ export default function ScraperMonitor() {
       });
       setChapterHtmlJob(null);
       setChapterHtmlContent('');
-      alert(`${result.message} Retry the job to continue archiving.`);
+      showToast({ message: `${result.message} Retry the job to continue archiving.`, variant: 'success' });
       await fetchJobs();
     } catch (err) {
       console.error('Failed to import chapter HTML:', err);
-      alert('Error importing chapter HTML: ' + (err as any).message);
+      showToast({ message: 'Error importing chapter HTML: ' + (err instanceof Error ? err.message : 'Unknown error.'), variant: 'error' });
     } finally {
       setImportingChapterHtml(false);
     }
@@ -116,11 +119,11 @@ export default function ScraperMonitor() {
     );
   }
 
-  if (user?.role !== 'admin') {
+  if (!hasCapability(CAPABILITY.JOB_READ)) {
     return (
       <div className="container">
         <div className="glass-card empty-state">
-          <h1>Admin Access Required</h1>
+          <h1>Access Required</h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
             Scraper jobs, raw imports, and archive controls are catalog administration tools.
           </p>

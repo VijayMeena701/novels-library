@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { Author } from '../models/Author.js';
 import { Novel } from '../models/Novel.js';
 import { findOrCreateAuthor } from '../services/authors.js';
-import { isAdminRequest } from '../services/permissions.js';
+import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 async function backfillMissingNovelAuthors() {
   const novels = await Novel.find({
@@ -109,7 +109,7 @@ export async function getAuthorHandler(request: FastifyRequest, reply: FastifyRe
 }
 
 export async function upsertAuthorHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (!(await isAdminRequest(request))) {
+  if (!(await hasCapability(request, CAPABILITY.AUTHOR_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to manage authors.' });
   }
 

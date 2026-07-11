@@ -2,7 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
 import { BackgroundJob, JobType } from '../models/BackgroundJob.js';
 import { Novel } from '../models/Novel.js';
-import { isAdminRequest } from '../services/permissions.js';
+import { hasCapability, CAPABILITY } from '../services/rbac.js';
 import { NovelArchiveService, SourceKind, isManualInterventionError } from '../services/novelArchive.js';
 import { openManualBrowserSession } from '../services/scraper.js';
 
@@ -39,7 +39,7 @@ function defaultSourceUrl(novel: any, sourceKind: SourceKind): string {
 
 export async function listJobsHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
-    if (!(await isAdminRequest(request))) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_READ))) {
       return reply.status(403).send({ error: 'Admin access is required to view scraper jobs.' });
     }
 
@@ -59,7 +59,7 @@ export async function getJobsForNovelHandler(request: FastifyRequest, reply: Fas
   }
 
   try {
-    if (!(await isAdminRequest(request))) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_READ))) {
       return reply.status(403).send({ error: 'Admin access is required to view scraper jobs.' });
     }
 
@@ -79,7 +79,7 @@ export async function retryJobHandler(request: FastifyRequest, reply: FastifyRep
   }
 
   try {
-    if (!(await isAdminRequest(request))) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_RETRY))) {
       return reply.status(403).send({ error: 'Admin access is required to retry scraper jobs.' });
     }
 
@@ -113,8 +113,7 @@ export async function openManualInterventionHandler(request: FastifyRequest, rep
   }
 
   try {
-    const isAdmin = await isAdminRequest(request);
-    if (!isAdmin) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_MANUAL_INTERVENTION))) {
       return reply.status(403).send({ error: 'Admin access is required to open a manual scraper browser.' });
     }
 
@@ -180,8 +179,7 @@ async function importMetadataHtmlForSource(request: FastifyRequest, reply: Fasti
   }
 
   try {
-    const isAdmin = await isAdminRequest(request);
-    if (!isAdmin) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_IMPORT))) {
       return reply.status(403).send({ error: 'Admin access is required to import source HTML.' });
     }
 
@@ -238,8 +236,7 @@ export async function importFailedChapterHtmlHandler(request: FastifyRequest, re
   }
 
   try {
-    const isAdmin = await isAdminRequest(request);
-    if (!isAdmin) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_IMPORT))) {
       return reply.status(403).send({ error: 'Admin access is required to import chapter HTML.' });
     }
 
@@ -315,8 +312,7 @@ export async function importChapterHtmlHandler(request: FastifyRequest, reply: F
   }
 
   try {
-    const isAdmin = await isAdminRequest(request);
-    if (!isAdmin) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_IMPORT))) {
       return reply.status(403).send({ error: 'Admin access is required to import chapter HTML.' });
     }
 
@@ -369,8 +365,7 @@ export async function runScrapeNowHandler(request: FastifyRequest, reply: Fastif
   }
 
   try {
-    const isAdmin = await isAdminRequest(request);
-    if (!isAdmin) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_SCRAPE))) {
       return reply.status(403).send({ error: 'Admin access is required to run scraper tasks.' });
     }
 
@@ -483,8 +478,7 @@ export async function triggerScrapeHandler(request: FastifyRequest, reply: Fasti
   }
 
   try {
-    const isAdmin = await isAdminRequest(request);
-    if (!isAdmin) {
+    if (!(await hasCapability(request, CAPABILITY.JOB_SCRAPE))) {
       return reply.status(403).send({ error: 'Admin access is required to trigger scraper jobs.' });
     }
 

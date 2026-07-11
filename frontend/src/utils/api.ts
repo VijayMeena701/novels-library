@@ -1,10 +1,26 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050/api";
+const API_REQUEST_TIMEOUT_MS = 30000;
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly details?: unknown;
+
+  constructor(message: string, status: number, code?: string, details?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
 
 export interface User {
 	id: string;
 	username: string;
 	email: string;
-	role?: "user" | "admin";
+	role?: string;
+	capabilities?: string[];
 	avatarUrl?: string;
 	authProvider?: "password" | "google" | "both";
 }
@@ -107,12 +123,91 @@ export interface NovelListFilters {
 	authorId?: string;
 }
 
+export interface CatalogNovelFilters extends NovelListFilters {
+	search?: string;
+	minRating?: number;
+	maxRating?: number;
+	sort?: "updatedAt" | "title" | "chaptersTotal" | "rawChaptersTotal" | "rating" | "publicationStatus" | "createdAt" | "author" | "originalSource";
+	sortDir?: "asc" | "desc";
+	page?: number;
+	pageSize?: number;
+}
+
+export interface PaginatedNovels {
+	novels: Novel[];
+	total: number;
+	page: number;
+	pageSize: number;
+	totalPages: number;
+}
+
+export interface Source {
+	key: string;
+	name: string;
+	count: number;
+}
+
 export function getNovelCoverUrl(novel: Pick<Novel, "_id" | "coverUrl" | "coverImageToken" | "coverImageSyncedAt">): string {
 	if (novel.coverImageToken && novel.coverImageSyncedAt) {
 		return `${API_BASE_URL}/public/novels/${novel._id}/cover/${novel.coverImageToken}?v=${encodeURIComponent(novel.coverImageSyncedAt)}`;
 	}
 
 	return novel.coverUrl || "";
+}
+
+export interface PronunciationRule {
+	_id: string;
+	userId: string;
+	novelId?: string | null;
+	isGlobal: boolean;
+	pattern: string;
+	replacement: string;
+	wholeWord: boolean;
+	caseSensitive: boolean;
+	enabled: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface CreatePronunciationRulePayload {
+	pattern: string;
+	replacement?: string;
+	wholeWord?: boolean;
+	caseSensitive?: boolean;
+	enabled?: boolean;
+	isGlobal?: boolean;
+}
+
+export interface UpdatePronunciationRulePayload {
+	pattern?: string;
+	replacement?: string;
+	wholeWord?: boolean;
+	caseSensitive?: boolean;
+	enabled?: boolean;
+	isGlobal?: boolean;
+}
+
+export interface Genre {
+	_id: string;
+	name: string;
+	key: string;
+	aliases: string[];
+	description?: string;
+	novelCount?: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface PublicationStatus {
+	_id: string;
+	name: string;
+	key: string;
+	aliases: string[];
+	color?: string;
+	sortOrder?: number;
+	novelCount?: number;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export interface ReadingSession {
@@ -210,17 +305,28 @@ class ApiClient {
 			headers["Content-Type"] = "application/json";
 		}
 
-		const response = await fetch(url, {
-			...options,
-			headers,
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
-			throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+		const controller = new AbortController();
+		const timeout = typeof window !== "undefined" ? window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS) : undefined;
+		try {
+			const response = await fetch(url, { ...options, headers, signal: options.signal || controller.signal });
+			const contentType = response.headers.get("content-type") || "";
+			const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : await response.text().catch(() => "");
+			if (!response.ok) {
+				const errorData = typeof payload === "object" && payload ? payload as { error?: string; code?: string; details?: unknown } : {};
+				const message = errorData.error || (typeof payload === "string" && payload.trim()) || `Request failed (${response.status}).`;
+				const error = new ApiError(message, response.status, errorData.code, errorData.details);
+				if (typeof window !== "undefined" && response.status !== 401) window.dispatchEvent(new CustomEvent("novels-library:api-error", { detail: { message, variant: "error" } }));
+				throw error;
+			}
+			return payload as T;
+		} catch (error) {
+			if (error instanceof ApiError) throw error;
+			const message = error instanceof DOMException && error.name === "AbortError" ? "The request timed out. Check the backend and try again." : error instanceof Error ? error.message : "Network request failed.";
+			if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("novels-library:api-error", { detail: { message, variant: "error" } }));
+			throw new ApiError(message, 0);
+		} finally {
+			if (timeout !== undefined) window.clearTimeout(timeout);
 		}
-
-		return response.json() as Promise<T>;
 	}
 
 	// Auth Methods
@@ -261,6 +367,13 @@ class ApiClient {
 
 	async getMe(): Promise<{ user: User }> {
 		return this.request<{ user: User }>("/auth/me");
+	}
+
+	async updateMe(payload: { username?: string; avatarUrl?: string }): Promise<{ user: User }> {
+		return this.request<{ user: User }>("/auth/me", {
+			method: "PUT",
+			body: JSON.stringify(payload),
+		});
 	}
 
 	// User Settings Methods
@@ -329,7 +442,7 @@ class ApiClient {
 		});
 	}
 
-	async getPublicCatalogNovels(filters: NovelListFilters = {}): Promise<Novel[]> {
+	private buildCatalogQuery(filters: CatalogNovelFilters, includePagination: boolean): URLSearchParams {
 		const query = new URLSearchParams();
 
 		if (filters.status && filters.status !== "all") {
@@ -347,9 +460,44 @@ class ApiClient {
 		if (filters.authorId) {
 			query.set("authorId", filters.authorId);
 		}
+		if (filters.search) {
+			query.set("search", filters.search);
+		}
+		if (filters.minRating !== undefined && filters.minRating !== null) {
+			query.set("minRating", String(filters.minRating));
+		}
+		if (filters.maxRating !== undefined && filters.maxRating !== null) {
+			query.set("maxRating", String(filters.maxRating));
+		}
+		if (filters.sort) {
+			query.set("sort", filters.sort);
+		}
+		if (filters.sortDir) {
+			query.set("sortDir", filters.sortDir);
+		}
 
+		if (includePagination) {
+			if (filters.page !== undefined && filters.page !== null) {
+				query.set("page", String(filters.page));
+			}
+			if (filters.pageSize !== undefined && filters.pageSize !== null) {
+				query.set("pageSize", String(filters.pageSize));
+			}
+		}
+
+		return query;
+	}
+
+	async getPublicCatalogNovels(filters: CatalogNovelFilters = {}): Promise<Novel[]> {
+		const query = this.buildCatalogQuery(filters, false);
 		const suffix = query.toString() ? `?${query.toString()}` : "";
 		return this.request<Novel[]>(`/public/catalog/novels${suffix}`);
+	}
+
+	async getPublicCatalogNovelsPaginated(filters: CatalogNovelFilters = {}): Promise<PaginatedNovels> {
+		const query = this.buildCatalogQuery(filters, true);
+		const suffix = query.toString() ? `?${query.toString()}` : "";
+		return this.request<PaginatedNovels>(`/public/catalog/novels${suffix}`);
 	}
 
 	async getPublicNovel(id: string): Promise<Novel> {
@@ -370,6 +518,18 @@ class ApiClient {
 
 	async getPublicAuthor(id: string): Promise<{ author: Author; novels: Novel[] }> {
 		return this.request<{ author: Author; novels: Novel[] }>(`/public/authors/${id}`);
+	}
+
+	async getPublicGenres(): Promise<Genre[]> {
+		return this.request<Genre[]>("/public/genres");
+	}
+
+	async getPublicPublicationStatuses(): Promise<PublicationStatus[]> {
+		return this.request<PublicationStatus[]>("/public/publication-statuses");
+	}
+
+	async getSources(): Promise<Source[]> {
+		return this.request<Source[]>("/public/sources");
 	}
 
 	async getNovel(id: string): Promise<Novel> {
@@ -425,6 +585,31 @@ class ApiClient {
 		return this.request<ReadingSession>(`/novels/${novelId}/re-read/${sessionId}`, {
 			method: "PUT",
 			body: JSON.stringify(data),
+		});
+	}
+
+	// TTS Pronunciation Rules Methods (per-user, per-novel or global)
+	async getPronunciationRules(novelId: string): Promise<PronunciationRule[]> {
+		return this.request<PronunciationRule[]>(`/novels/${novelId}/pronunciation-rules`);
+	}
+
+	async createPronunciationRule(novelId: string, data: CreatePronunciationRulePayload): Promise<PronunciationRule> {
+		return this.request<PronunciationRule>(`/novels/${novelId}/pronunciation-rules`, {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	}
+
+	async updatePronunciationRule(ruleId: string, data: UpdatePronunciationRulePayload): Promise<PronunciationRule> {
+		return this.request<PronunciationRule>(`/pronunciation-rules/${ruleId}`, {
+			method: "PUT",
+			body: JSON.stringify(data),
+		});
+	}
+
+	async deletePronunciationRule(ruleId: string): Promise<{ success: boolean; message: string }> {
+		return this.request<{ success: boolean; message: string }>(`/pronunciation-rules/${ruleId}`, {
+			method: "DELETE",
 		});
 	}
 
