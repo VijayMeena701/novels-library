@@ -10,9 +10,9 @@ export interface ResourceDefinition {
 
 export const RESOURCES: ResourceDefinition[] = [
   {
-    key: 'novels',
-    name: 'Catalog Novels',
-    description: 'Public catalog novels.',
+    key: 'books',
+    name: 'Catalog Books',
+    description: 'Public catalog books.',
     category: 'catalog',
     actions: ['list', 'read', 'create', 'update', 'delete', 'manage'],
     isSystem: true,
@@ -26,10 +26,10 @@ export const RESOURCES: ResourceDefinition[] = [
     isSystem: true,
   },
   {
-    key: 'chapters',
-    name: 'Chapters',
-    description: 'Translated and raw chapters.',
-    category: 'chapters',
+    key: 'units',
+    name: 'Units',
+    description: 'Translated and raw units.',
+    category: 'units',
     actions: ['list', 'read', 'read_raw', 'translate', 'visit', 'manage'],
     isSystem: true,
   },
@@ -100,7 +100,7 @@ export const RESOURCES: ResourceDefinition[] = [
   {
     key: 'translation',
     name: 'Translation',
-    description: 'Raw chapter translation.',
+    description: 'Raw unit translation.',
     category: 'translation',
     actions: ['execute', 'manage'],
     isSystem: true,

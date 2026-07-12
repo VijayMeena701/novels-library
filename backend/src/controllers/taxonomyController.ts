@@ -2,23 +2,23 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
 import { Genre } from '../models/Genre.js';
 import { PublicationStatus } from '../models/PublicationStatus.js';
-import { Novel, normalizeFilterKey } from '../models/Novel.js';
-import { backfillNovelTaxonomy } from '../services/taxonomy.js';
+import { Book, normalizeFilterKey } from '../models/Novel.js';
+import { backfillBookTaxonomy } from '../services/taxonomy.js';
 import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 export async function listGenresHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
-    await backfillNovelTaxonomy();
+    await backfillBookTaxonomy();
     const genres = await Genre.find().sort({ name: 1 });
-    const counts = await Novel.aggregate([
+    const counts = await Book.aggregate([
       { $unwind: '$genreIds' },
-      { $group: { _id: '$genreIds', novelCount: { $sum: 1 } } },
+      { $group: { _id: '$genreIds', bookCount: { $sum: 1 } } },
     ]);
-    const countByGenreId = new Map(counts.map((item) => [item._id.toString(), item.novelCount]));
+    const countByGenreId = new Map(counts.map((item) => [item._id.toString(), item.bookCount]));
 
     return reply.send(genres.map((genre) => ({
       ...genre.toObject(),
-      novelCount: countByGenreId.get(genre._id.toString()) || 0,
+      bookCount: countByGenreId.get(genre._id.toString()) || 0,
     })));
   } catch (err: any) {
     request.log.error(err);
@@ -38,14 +38,14 @@ export async function getGenreHandler(request: FastifyRequest, reply: FastifyRep
       return reply.status(404).send({ error: 'Genre not found.' });
     }
 
-    const novels = await Novel.find({
+    const books = await Book.find({
       $or: [
         { genreIds: genre._id },
         { genreKeys: genre.key },
       ],
     }).sort({ updatedAt: -1 });
 
-    return reply.send({ genre, novels });
+    return reply.send({ genre, books });
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error fetching genre.' });
@@ -84,17 +84,17 @@ export async function upsertGenreHandler(request: FastifyRequest, reply: Fastify
 
 export async function listPublicationStatusesHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
-    await backfillNovelTaxonomy();
+    await backfillBookTaxonomy();
     const statuses = await PublicationStatus.find().sort({ sortOrder: 1, name: 1 });
-    const counts = await Novel.aggregate([
+    const counts = await Book.aggregate([
       { $match: { publicationStatusId: { $ne: null } } },
-      { $group: { _id: '$publicationStatusId', novelCount: { $sum: 1 } } },
+      { $group: { _id: '$publicationStatusId', bookCount: { $sum: 1 } } },
     ]);
-    const countByStatusId = new Map(counts.map((item) => [item._id.toString(), item.novelCount]));
+    const countByStatusId = new Map(counts.map((item) => [item._id.toString(), item.bookCount]));
 
     return reply.send(statuses.map((status) => ({
       ...status.toObject(),
-      novelCount: countByStatusId.get(status._id.toString()) || 0,
+      bookCount: countByStatusId.get(status._id.toString()) || 0,
     })));
   } catch (err: any) {
     request.log.error(err);
@@ -114,14 +114,14 @@ export async function getPublicationStatusHandler(request: FastifyRequest, reply
       return reply.status(404).send({ error: 'Publication status not found.' });
     }
 
-    const novels = await Novel.find({
+    const books = await Book.find({
       $or: [
         { publicationStatusId: status._id },
         { publicationStatusKey: status.key },
       ],
     }).sort({ updatedAt: -1 });
 
-    return reply.send({ status, novels });
+    return reply.send({ status, books });
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error fetching publication status.' });

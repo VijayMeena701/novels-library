@@ -1,344 +1,344 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { Novel } from '../models/Novel.js';
-import { ChapterContent } from '../models/ChapterContent.js';
-import { RawChapterContent } from '../models/RawChapterContent.js';
+import { Book } from '../models/Novel.js';
+import { BookContent } from '../models/ChapterContent.js';
+import { RawBookContent } from '../models/RawChapterContent.js';
 import { ReadingSession } from '../models/ReadingSession.js';
-import { ChapterVisit } from '../models/ChapterVisit.js';
-import { UserNovel } from '../models/UserNovel.js';
-import { translateChapterHtml } from '../services/translation.js';
+import { BookVisit } from '../models/ChapterVisit.js';
+import { UserBook } from '../models/UserNovel.js';
+import { translateUnitHtml } from '../services/translation.js';
 import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function isGenericChapterTitle(value: string, novelTitle: string, chapterNumber: number): boolean {
+function isGenericUnitTitle(value: string, bookTitle: string, unitNumber: number): boolean {
   const normalized = normalizeTitle(value);
   return !normalized ||
-    normalized === normalizeTitle(novelTitle) ||
-    normalized === `chapter ${chapterNumber}` ||
-    normalized === `ch ${chapterNumber}`;
+    normalized === normalizeTitle(bookTitle) ||
+    normalized === `unit ${unitNumber}` ||
+    normalized === `ch ${unitNumber}`;
 }
 
-function selectDisplayChapterTitle(
+function selectDisplayUnitTitle(
   indexedTitle: string | undefined,
   archivedTitle: string | undefined,
-  novelTitle: string,
-  chapterNumber: number,
+  bookTitle: string,
+  unitNumber: number,
 ): string {
   const cleanIndexedTitle = indexedTitle?.replace(/\s+/g, ' ').trim() || '';
   const cleanArchivedTitle = archivedTitle?.replace(/\s+/g, ' ').trim() || '';
 
-  if (cleanIndexedTitle && isGenericChapterTitle(cleanArchivedTitle, novelTitle, chapterNumber)) {
+  if (cleanIndexedTitle && isGenericUnitTitle(cleanArchivedTitle, bookTitle, unitNumber)) {
     return cleanIndexedTitle;
   }
 
-  return cleanArchivedTitle || cleanIndexedTitle || `Chapter ${chapterNumber}`;
+  return cleanArchivedTitle || cleanIndexedTitle || `Unit ${unitNumber}`;
 }
 
-async function findUserLibraryNovel(novelId: string, userId: string) {
-  const novel = await Novel.findById(novelId);
-  if (!novel) return null;
+async function findUserLibraryBook(bookId: string, userId: string) {
+  const book = await Book.findById(bookId);
+  if (!book) return null;
 
-  const userNovel = await UserNovel.findOne({ novelId, userId });
-  if (userNovel || novel.userId?.toString() === userId) {
-    return novel;
+  const userBook = await UserBook.findOne({ bookId, userId });
+  if (userBook || book.userId?.toString() === userId) {
+    return book;
   }
 
   return null;
 }
 
-export async function listChaptersHandler(request: FastifyRequest, reply: FastifyReply) {
+export async function listUnitsHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { id: novelId } = request.params as any;
+  const { id: bookId } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   try {
-    const novel = await findUserLibraryNovel(novelId, userId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found or unauthorized.' });
+    const book = await findUserLibraryBook(bookId, userId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    // Find all chapters matching this novel, project metadata only (exclude the raw content body)
-    const chapters = await ChapterContent.find({ novelId })
-      .select('chapterNumber title sourceUrl scrapedAt')
-      .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((novel.chaptersList || []).map((chapter) => [chapter.number, chapter]));
+    // Find all units matching this book, project metadata only (exclude the raw content body)
+    const units = await BookContent.find({ bookId })
+      .select('unitNumber title sourceUrl scrapedAt')
+      .sort({ unitNumber: 1 });
+    const unitIndexByNumber = new Map((book.translatedUnitsList || []).map((unit) => [unit.unitNumber, unit]));
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    return reply.send(units.map((unit) => {
+      const indexedUnit = unitIndexByNumber.get(unit.unitNumber);
+      const serialized = unit.toObject();
+      serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
       return serialized;
     }));
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error listing archived chapters.' });
+    return reply.status(500).send({ error: 'Server error listing archived units.' });
   }
 }
 
-export async function listPublicChaptersHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { id: novelId } = request.params as any;
+export async function listPublicUnitsHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { id: bookId } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   try {
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const chapters = await ChapterContent.find({ novelId })
-      .select('chapterNumber title sourceUrl scrapedAt')
-      .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((novel.chaptersList || []).map((chapter) => [chapter.number, chapter]));
+    const units = await BookContent.find({ bookId })
+      .select('unitNumber title sourceUrl scrapedAt')
+      .sort({ unitNumber: 1 });
+    const unitIndexByNumber = new Map((book.translatedUnitsList || []).map((unit) => [unit.unitNumber, unit]));
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    return reply.send(units.map((unit) => {
+      const indexedUnit = unitIndexByNumber.get(unit.unitNumber);
+      const serialized = unit.toObject();
+      serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
       return serialized;
     }));
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error listing public chapters.' });
+    return reply.status(500).send({ error: 'Server error listing public units.' });
   }
 }
 
-export async function getChapterHandler(request: FastifyRequest, reply: FastifyReply) {
+export async function getUnitHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { id: novelId, chapterNumber } = request.params as any;
+  const { id: bookId, unitNumber } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChNumber = parseInt(chapterNumber, 10);
-  if (isNaN(parsedChNumber)) {
-    return reply.status(400).send({ error: 'Invalid chapter number.' });
+  const parsedUnitNumber = parseInt(unitNumber, 10);
+  if (isNaN(parsedUnitNumber)) {
+    return reply.status(400).send({ error: 'Invalid unit number.' });
   }
 
   try {
-    const novel = await findUserLibraryNovel(novelId, userId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found or unauthorized.' });
+    const book = await findUserLibraryBook(bookId, userId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    // Retrieve full chapter contents including the content body
-    const chapter = await ChapterContent.findOne({ novelId, chapterNumber: parsedChNumber });
-    if (!chapter) {
-      return reply.status(404).send({ error: `Chapter ${parsedChNumber} has not been scraped/archived yet.` });
+    // Retrieve full unit contents including the content body
+    const unit = await BookContent.findOne({ bookId, unitNumber: parsedUnitNumber });
+    if (!unit) {
+      return reply.status(404).send({ error: `Unit ${parsedUnitNumber} has not been scraped/archived yet.` });
     }
 
-    const indexedChapter = (novel.chaptersList || []).find((item) => item.number === chapter.chapterNumber);
-    const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    const indexedUnit = (book.translatedUnitsList || []).find((item) => item.unitNumber === unit.unitNumber);
+    const serialized = unit.toObject();
+    serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
 
     return reply.send(serialized);
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error fetching chapter content.' });
+    return reply.status(500).send({ error: 'Server error fetching unit content.' });
   }
 }
 
-export async function listRawChaptersHandler(request: FastifyRequest, reply: FastifyReply) {
+export async function listRawUnitsHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { id: novelId } = request.params as any;
+  const { id: bookId } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   try {
-    const novel = await findUserLibraryNovel(novelId, userId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found or unauthorized.' });
+    const book = await findUserLibraryBook(bookId, userId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    const chapters = await RawChapterContent.find({ novelId })
-      .select('chapterNumber title sourceUrl language scrapedAt')
-      .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((novel.rawChaptersList || []).map((chapter) => [chapter.number, chapter]));
+    const units = await RawBookContent.find({ bookId })
+      .select('unitNumber title sourceUrl language scrapedAt')
+      .sort({ unitNumber: 1 });
+    const unitIndexByNumber = new Map((book.rawUnitsList || []).map((unit) => [unit.unitNumber, unit]));
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    return reply.send(units.map((unit) => {
+      const indexedUnit = unitIndexByNumber.get(unit.unitNumber);
+      const serialized = unit.toObject();
+      serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
       return serialized;
     }));
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error listing archived raw chapters.' });
+    return reply.status(500).send({ error: 'Server error listing archived raw units.' });
   }
 }
 
-export async function listPublicRawChaptersHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { id: novelId } = request.params as any;
+export async function listPublicRawUnitsHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { id: bookId } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   try {
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const chapters = await RawChapterContent.find({ novelId })
-      .select('chapterNumber title sourceUrl language scrapedAt')
-      .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((novel.rawChaptersList || []).map((chapter) => [chapter.number, chapter]));
+    const units = await RawBookContent.find({ bookId })
+      .select('unitNumber title sourceUrl language scrapedAt')
+      .sort({ unitNumber: 1 });
+    const unitIndexByNumber = new Map((book.rawUnitsList || []).map((unit) => [unit.unitNumber, unit]));
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    return reply.send(units.map((unit) => {
+      const indexedUnit = unitIndexByNumber.get(unit.unitNumber);
+      const serialized = unit.toObject();
+      serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
       return serialized;
     }));
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error listing public raw chapters.' });
+    return reply.status(500).send({ error: 'Server error listing public raw units.' });
   }
 }
 
-export async function getRawChapterHandler(request: FastifyRequest, reply: FastifyReply) {
+export async function getRawUnitHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { id: novelId, chapterNumber } = request.params as any;
+  const { id: bookId, unitNumber } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChNumber = Number.parseInt(chapterNumber, 10);
-  if (Number.isNaN(parsedChNumber)) {
-    return reply.status(400).send({ error: 'Invalid chapter number.' });
+  const parsedUnitNumber = Number.parseInt(unitNumber, 10);
+  if (Number.isNaN(parsedUnitNumber)) {
+    return reply.status(400).send({ error: 'Invalid unit number.' });
   }
 
   try {
-    const novel = await findUserLibraryNovel(novelId, userId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found or unauthorized.' });
+    const book = await findUserLibraryBook(bookId, userId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    const chapter = await RawChapterContent.findOne({ novelId, chapterNumber: parsedChNumber });
-    if (!chapter) {
-      return reply.status(404).send({ error: `Raw chapter ${parsedChNumber} has not been archived yet.` });
+    const unit = await RawBookContent.findOne({ bookId, unitNumber: parsedUnitNumber });
+    if (!unit) {
+      return reply.status(404).send({ error: `Raw unit ${parsedUnitNumber} has not been archived yet.` });
     }
 
-    const indexedChapter = (novel.rawChaptersList || []).find((item) => item.number === chapter.chapterNumber);
-    const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    const indexedUnit = (book.rawUnitsList || []).find((item) => item.unitNumber === unit.unitNumber);
+    const serialized = unit.toObject();
+    serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
 
     return reply.send(serialized);
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error fetching raw chapter content.' });
+    return reply.status(500).send({ error: 'Server error fetching raw unit content.' });
   }
 }
 
-export async function getPublicRawChapterHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { id: novelId, chapterNumber } = request.params as any;
+export async function getPublicRawUnitHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { id: bookId, unitNumber } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChNumber = Number.parseInt(chapterNumber, 10);
-  if (Number.isNaN(parsedChNumber)) {
-    return reply.status(400).send({ error: 'Invalid chapter number.' });
+  const parsedUnitNumber = Number.parseInt(unitNumber, 10);
+  if (Number.isNaN(parsedUnitNumber)) {
+    return reply.status(400).send({ error: 'Invalid unit number.' });
   }
 
   try {
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const chapter = await RawChapterContent.findOne({ novelId, chapterNumber: parsedChNumber });
-    if (!chapter) {
-      return reply.status(404).send({ error: `Raw chapter ${parsedChNumber} has not been archived yet.` });
+    const unit = await RawBookContent.findOne({ bookId, unitNumber: parsedUnitNumber });
+    if (!unit) {
+      return reply.status(404).send({ error: `Raw unit ${parsedUnitNumber} has not been archived yet.` });
     }
 
-    const indexedChapter = (novel.rawChaptersList || []).find((item) => item.number === chapter.chapterNumber);
-    const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    const indexedUnit = (book.rawUnitsList || []).find((item) => item.unitNumber === unit.unitNumber);
+    const serialized = unit.toObject();
+    serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
 
     return reply.send(serialized);
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error fetching public raw chapter.' });
+    return reply.status(500).send({ error: 'Server error fetching public raw unit.' });
   }
 }
 
-export async function translateRawChapterHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { id: novelId, chapterNumber } = request.params as any;
+export async function translateRawUnitHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { id: bookId, unitNumber } = request.params as any;
   const { targetLanguage, overwrite } = (request.body || {}) as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChNumber = Number.parseInt(chapterNumber, 10);
-  if (Number.isNaN(parsedChNumber)) {
-    return reply.status(400).send({ error: 'Invalid chapter number.' });
+  const parsedUnitNumber = Number.parseInt(unitNumber, 10);
+  if (Number.isNaN(parsedUnitNumber)) {
+    return reply.status(400).send({ error: 'Invalid unit number.' });
   }
 
   try {
-    if (!(await hasCapability(request, CAPABILITY.CHAPTERS_TRANSLATE))) {
-      return reply.status(403).send({ error: 'Admin access is required to generate and store translated chapters.' });
+    if (!(await hasCapability(request, CAPABILITY.UNITS_TRANSLATE))) {
+      return reply.status(403).send({ error: 'Admin access is required to generate and store translated units.' });
     }
 
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const rawChapter = await RawChapterContent.findOne({ novelId, chapterNumber: parsedChNumber });
-    if (!rawChapter) {
-      return reply.status(404).send({ error: `Raw chapter ${parsedChNumber} has not been archived yet.` });
+    const rawUnit = await RawBookContent.findOne({ bookId, unitNumber: parsedUnitNumber });
+    if (!rawUnit) {
+      return reply.status(404).send({ error: `Raw unit ${parsedUnitNumber} has not been archived yet.` });
     }
 
-    const existingTranslated = await ChapterContent.findOne({ novelId, chapterNumber: parsedChNumber });
+    const existingTranslated = await BookContent.findOne({ bookId, unitNumber: parsedUnitNumber });
     if (existingTranslated && !overwrite) {
       return reply.send({
         success: true,
-        message: `Translated chapter ${parsedChNumber} already exists.`,
-        chapter: existingTranslated,
+        message: `Translated unit ${parsedUnitNumber} already exists.`,
+        unit: existingTranslated,
         reusedExisting: true,
       });
     }
 
-    request.log.info(`[translateRawChapter] starting chapter ${parsedChNumber} for novel ${novelId} targetLanguage=${targetLanguage || 'default'} overwrite=${Boolean(overwrite)}`);
+    request.log.info(`[translateRawUnit] starting unit ${parsedUnitNumber} for book ${bookId} targetLanguage=${targetLanguage || 'default'} overwrite=${Boolean(overwrite)}`);
 
-    const translated = await translateChapterHtml({
-      html: rawChapter.content,
-      title: rawChapter.title,
-      sourceLanguage: rawChapter.language || novel.rawOriginalLanguage,
+    const translated = await translateUnitHtml({
+      html: rawUnit.content,
+      title: rawUnit.title,
+      sourceLanguage: rawUnit.language || book.rawOriginalLanguage,
       targetLanguage,
       logger: request.log,
     });
 
-    request.log.info(`[translateRawChapter] completed chapter ${parsedChNumber} model=${translated.model} title="${translated.title}" contentLength=${translated.content.length}`);
+    request.log.info(`[translateRawUnit] completed unit ${parsedUnitNumber} model=${translated.model} title="${translated.title}" contentLength=${translated.content.length}`);
 
-    const chapter = await ChapterContent.findOneAndUpdate(
+    const unit = await BookContent.findOneAndUpdate(
       {
-        novelId,
-        chapterNumber: parsedChNumber,
+        bookId,
+        unitNumber: parsedUnitNumber,
       },
       {
         $set: {
-          novelId,
-          chapterNumber: parsedChNumber,
+          bookId,
+          unitNumber: parsedUnitNumber,
           title: translated.title,
           content: translated.content,
-          sourceUrl: rawChapter.sourceUrl,
+          sourceUrl: rawUnit.sourceUrl,
           scrapedAt: new Date(),
         },
       },
@@ -347,124 +347,152 @@ export async function translateRawChapterHandler(request: FastifyRequest, reply:
 
     return reply.send({
       success: true,
-      message: `Generated translated chapter ${parsedChNumber}.`,
-      chapter,
+      message: `Generated translated unit ${parsedUnitNumber}.`,
+      unit,
       model: translated.model,
       reusedExisting: false,
     });
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: err.message || 'Server error translating raw chapter.' });
+    return reply.status(500).send({ error: err.message || 'Server error translating raw unit.' });
   }
 }
 
-export async function getPublicChapterHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { id: novelId, chapterNumber } = request.params as any;
+export async function getPublicUnitHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { id: bookId, unitNumber } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChNumber = parseInt(chapterNumber, 10);
-  if (isNaN(parsedChNumber)) {
-    return reply.status(400).send({ error: 'Invalid chapter number.' });
+  const parsedUnitNumber = parseInt(unitNumber, 10);
+  if (isNaN(parsedUnitNumber)) {
+    return reply.status(400).send({ error: 'Invalid unit number.' });
   }
 
   try {
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const chapter = await ChapterContent.findOne({ novelId, chapterNumber: parsedChNumber });
-    if (!chapter) {
-      return reply.status(404).send({ error: `Chapter ${parsedChNumber} has not been archived yet.` });
+    const unit = await BookContent.findOne({ bookId, unitNumber: parsedUnitNumber });
+    if (!unit) {
+      return reply.status(404).send({ error: `Unit ${parsedUnitNumber} has not been archived yet.` });
     }
 
-    const indexedChapter = (novel.chaptersList || []).find((item) => item.number === chapter.chapterNumber);
-    const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, novel.title, chapter.chapterNumber);
+    const indexedUnit = (book.translatedUnitsList || []).find((item) => item.unitNumber === unit.unitNumber);
+    const serialized = unit.toObject();
+    serialized.title = selectDisplayUnitTitle(indexedUnit?.title, serialized.title, book.title, unit.unitNumber);
 
     return reply.send(serialized);
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error fetching public chapter.' });
+    return reply.status(500).send({ error: 'Server error fetching public unit.' });
   }
 }
 
-export async function listChapterVisitsHandler(request: FastifyRequest, reply: FastifyReply) {
+export async function listBookVisitsHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { id: novelId } = request.params as any;
+  const { id: bookId } = request.params as any;
   const { limit } = request.query as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   const parsedLimit = Number.parseInt(limit || '100', 10);
   const safeLimit = Number.isFinite(parsedLimit) ? Math.min(500, Math.max(1, parsedLimit)) : 100;
 
   try {
-    const novel = await findUserLibraryNovel(novelId, userId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found or unauthorized.' });
+    const book = await findUserLibraryBook(bookId, userId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    const visits = await ChapterVisit.find({ novelId, userId })
+    const visits = await BookVisit.find({ bookId, userId })
       .sort({ openedAt: -1 })
       .limit(safeLimit);
 
     return reply.send(visits);
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error listing chapter visits.' });
+    return reply.status(500).send({ error: 'Server error listing unit visits.' });
   }
 }
 
-export async function recordChapterVisitHandler(request: FastifyRequest, reply: FastifyReply) {
+export async function recordBookVisitHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { id: novelId, chapterNumber } = request.params as any;
+  const { id: bookId, unitNumber } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChNumber = Number.parseInt(chapterNumber, 10);
-  if (Number.isNaN(parsedChNumber)) {
-    return reply.status(400).send({ error: 'Invalid chapter number.' });
+  const parsedUnitNumber = Number.parseInt(unitNumber, 10);
+  if (Number.isNaN(parsedUnitNumber)) {
+    return reply.status(400).send({ error: 'Invalid unit number.' });
   }
 
   try {
-    const novel = await findUserLibraryNovel(novelId, userId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found or unauthorized.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const chapter = await ChapterContent.findOne({ novelId, chapterNumber: parsedChNumber })
-      .select('chapterNumber title sourceUrl');
-    if (!chapter) {
-      return reply.status(404).send({ error: `Chapter ${parsedChNumber} has not been scraped/archived yet.` });
+    const unit = await BookContent.findOne({ bookId, unitNumber: parsedUnitNumber })
+      .select('unitNumber title sourceUrl');
+    if (!unit) {
+      return reply.status(404).send({ error: `Unit ${parsedUnitNumber} has not been scraped/archived yet.` });
     }
 
     const activeSession = await ReadingSession.findOne({
-      novelId,
+      bookId,
       userId,
       completed: false,
     }).sort({ startDate: -1 });
 
-    const visit = await ChapterVisit.create({
-      novelId: novel._id,
+    const visit = await BookVisit.create({
+      bookId: book._id,
       userId: new mongoose.Types.ObjectId(userId),
       sessionId: activeSession?._id,
-      chapterNumber: chapter.chapterNumber,
-      chapterTitle: chapter.title || `Chapter ${chapter.chapterNumber}`,
-      sourceUrl: chapter.sourceUrl || '',
+      unitNumber: unit.unitNumber,
+      unitType: 'chapter',
+      unitTitle: unit.title || `Unit ${unit.unitNumber}`,
+      sourceUrl: unit.sourceUrl || '',
       openedAt: new Date(),
     });
+
+    await UserBook.findOneAndUpdate(
+      { userId: new mongoose.Types.ObjectId(userId), bookId: book._id },
+      {
+        $setOnInsert: {
+          status: 'reading',
+          unitsRead: 0,
+          rating: 0,
+          review: '',
+          personalNotes: '',
+          rawLegacyEntry: '',
+          characterNotes: '',
+          relationshipNotes: '',
+          personalTags: [],
+        },
+      },
+      { new: true, upsert: true }
+    );
+
+    await UserBook.findOneAndUpdate(
+      { userId: new mongoose.Types.ObjectId(userId), bookId: book._id },
+      {
+        $max: { unitsRead: parsedUnitNumber },
+        $set: { lastVisitedUnitNumber: parsedUnitNumber, lastVisitedAt: new Date() },
+      },
+      { new: true }
+    );
 
     return reply.status(201).send(visit);
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error recording chapter visit.' });
+    return reply.status(500).send({ error: 'Server error recording unit visit.' });
   }
 }

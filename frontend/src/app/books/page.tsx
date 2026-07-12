@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, type CatalogNovelFilters, type NovelStatus, type PaginatedNovels, type Author, type Genre, type PublicationStatus, type Source } from "../../utils/api";
-import { NovelCard } from "../../components/NovelCard";
-import { NovelsFilterPanel } from "../../components/NovelsFilterPanel";
-import { NovelsPagination } from "../../components/NovelsPagination";
+import { api, type CatalogBookFilters, type BookStatus, type PaginatedBooks, type Author, type Genre, type PublicationStatus, type Source } from "../../utils/api";
+import { BookCard } from "../../components/BookCard";
+import { BooksFilterPanel } from "../../components/BooksFilterPanel";
+import { BooksPagination } from "../../components/BooksPagination";
 import { Card } from "../../components/ui/card";
 
-const READING_STATUSES: { value: NovelStatus; label: string }[] = [
+const READING_STATUSES: { value: BookStatus; label: string }[] = [
 	{ value: "reading", label: "Reading" },
 	{ value: "completed", label: "Completed" },
 	{ value: "on_hold", label: "On Hold" },
@@ -28,24 +28,24 @@ function parseOptionalNumberParam(value: string | null): number | undefined {
 	return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function parseFilters(searchParams: URLSearchParams): CatalogNovelFilters {
+function parseFilters(searchParams: URLSearchParams): CatalogBookFilters {
 	return {
 		search: searchParams.get("search") || undefined,
 		genre: searchParams.get("genre") || undefined,
 		source: searchParams.get("source") || undefined,
 		publicationStatus: searchParams.get("publicationStatus") || undefined,
-		status: (searchParams.get("status") as NovelStatus | "all") || "all",
+		status: (searchParams.get("status") as BookStatus | "all") || "all",
 		authorId: searchParams.get("authorId") || undefined,
 		minRating: parseOptionalNumberParam(searchParams.get("minRating")),
 		maxRating: parseOptionalNumberParam(searchParams.get("maxRating")),
-		sort: (searchParams.get("sort") as CatalogNovelFilters["sort"]) || "updatedAt",
+		sort: (searchParams.get("sort") as CatalogBookFilters["sort"]) || "updatedAt",
 		sortDir: (searchParams.get("sortDir") as "asc" | "desc") || "desc",
 		page: parseNumberParam(searchParams.get("page"), 1),
 		pageSize: parseNumberParam(searchParams.get("pageSize"), 24),
 	};
 }
 
-function buildQueryString(filters: CatalogNovelFilters): string {
+function buildQueryString(filters: CatalogBookFilters): string {
 	const params = new URLSearchParams();
 
 	if (filters.search) params.set("search", filters.search);
@@ -65,7 +65,7 @@ function buildQueryString(filters: CatalogNovelFilters): string {
 	return query ? `?${query}` : "";
 }
 
-function NovelsPageContent() {
+function BooksPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const searchParamsKey = searchParams.toString();
@@ -74,7 +74,7 @@ function NovelsPageContent() {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	const filters = useMemo(() => parseFilters(searchParams), [searchParamsKey]);
 
-	const [result, setResult] = useState<PaginatedNovels | null>(null);
+	const [result, setResult] = useState<PaginatedBooks | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [options, setOptions] = useState<{
@@ -82,7 +82,7 @@ function NovelsPageContent() {
 		publicationStatuses: PublicationStatus[];
 		sources: Source[];
 		authors: Author[];
-		readingStatuses: { value: NovelStatus; label: string }[];
+		readingStatuses: { value: BookStatus; label: string }[];
 	}>({
 		genres: [],
 		publicationStatuses: [],
@@ -94,7 +94,7 @@ function NovelsPageContent() {
 	useEffect(() => {
 		let cancelled = false;
 		api
-			.getPublicCatalogNovelsPaginated(filters)
+			.getPublicCatalogBooksPaginated(filters)
 			.then((data) => {
 				if (!cancelled) {
 					setResult(data);
@@ -103,7 +103,7 @@ function NovelsPageContent() {
 			})
 			.catch((err) => {
 				if (!cancelled) {
-					setError(err.message || "Failed to load novels.");
+					setError(err.message || "Failed to load books.");
 				}
 			})
 			.finally(() => {
@@ -134,12 +134,12 @@ function NovelsPageContent() {
 		};
 	}, []);
 
-	const updateFilters = (next: CatalogNovelFilters) => {
+	const updateFilters = (next: CatalogBookFilters) => {
 		setLoading(true);
-		router.push(`/novels${buildQueryString(next)}`, { scroll: false });
+		router.push(`/books${buildQueryString(next)}`, { scroll: false });
 	};
 
-	const handleFilterChange = (partial: Partial<CatalogNovelFilters>) => {
+	const handleFilterChange = (partial: Partial<CatalogBookFilters>) => {
 		updateFilters({ ...filters, ...partial, page: 1 });
 	};
 
@@ -172,14 +172,14 @@ function NovelsPageContent() {
 		<div className="container page-stack">
 			<div className="page-header">
 				<div>
-					<h1 className="page-title">Novels</h1>
+					<h1 className="page-title">Books</h1>
 					<p className="page-subtitle">Browse and filter the full catalog.</p>
 				</div>
 			</div>
 
 			<div className="flex flex-col gap-6 lg:flex-row">
 				<aside className="w-full shrink-0 lg:w-72">
-					<NovelsFilterPanel filters={filters} options={options} onChange={handleFilterChange} onClear={handleClear} />
+					<BooksFilterPanel filters={filters} options={options} onChange={handleFilterChange} onClear={handleClear} />
 				</aside>
 
 				<main className="flex min-w-0 flex-1 flex-col gap-4">
@@ -189,15 +189,15 @@ function NovelsPageContent() {
 						<div className="flex items-center justify-center py-16">
 							<div className="spinner" />
 						</div>
-					) : result?.novels.length === 0 ? (
-						<Card className="p-6 text-center text-muted-copy">No novels match your filters.</Card>
+					) : result?.books.length === 0 ? (
+						<Card className="p-6 text-center text-muted-copy">No books match your filters.</Card>
 					) : (
 						<>
 							<div className="catalog-card-grid">
-								{result?.novels.map((novel) => <NovelCard key={novel._id} novel={novel} mode="catalog" />)}
+								{result?.books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
 							</div>
 							{result && (
-								<NovelsPagination
+								<BooksPagination
 									page={result.page}
 									pageSize={result.pageSize}
 									total={result.total}
@@ -214,7 +214,7 @@ function NovelsPageContent() {
 	);
 }
 
-export default function NovelsPage() {
+export default function BooksPage() {
 	return (
 		<Suspense
 			fallback={
@@ -223,7 +223,7 @@ export default function NovelsPage() {
 				</div>
 			}
 		>
-			<NovelsPageContent />
+			<BooksPageContent />
 		</Suspense>
 	);
 }

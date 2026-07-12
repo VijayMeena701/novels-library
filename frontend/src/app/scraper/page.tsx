@@ -13,10 +13,10 @@ export default function ScraperMonitor() {
   const [jobs, setJobs] = useState<BackgroundJob[]>([]);
   const [loading, setLoading] = useState(false);
   const refreshInterval = 3000;
-  const [chapterHtmlJob, setChapterHtmlJob] = useState<BackgroundJob | null>(null);
-  const [chapterHtmlPageUrl, setChapterHtmlPageUrl] = useState('');
-  const [chapterHtmlContent, setChapterHtmlContent] = useState('');
-  const [importingChapterHtml, setImportingChapterHtml] = useState(false);
+  const [unitHtmlJob, setUnitHtmlJob] = useState<BackgroundJob | null>(null);
+  const [unitHtmlPageUrl, setUnitHtmlPageUrl] = useState('');
+  const [unitHtmlContent, setUnitHtmlContent] = useState('');
+  const [importingUnitHtml, setImportingUnitHtml] = useState(false);
 
   const fetchJobs = async () => {
     try {
@@ -94,31 +94,31 @@ export default function ScraperMonitor() {
     }
   };
 
-  const openChapterHtmlImport = (job: BackgroundJob) => {
-    setChapterHtmlJob(job);
-    setChapterHtmlPageUrl(job.error?.url || '');
-    setChapterHtmlContent('');
+  const openUnitHtmlImport = (job: BackgroundJob) => {
+    setUnitHtmlJob(job);
+    setUnitHtmlPageUrl(job.error?.url || '');
+    setUnitHtmlContent('');
   };
 
-  const handleImportChapterHtml = async (event: React.FormEvent) => {
+  const handleImportUnitHtml = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!chapterHtmlJob) return;
+    if (!unitHtmlJob) return;
 
-    setImportingChapterHtml(true);
+    setImportingUnitHtml(true);
     try {
-      const result = await api.importFailedChapterHtml(chapterHtmlJob._id, {
-        html: chapterHtmlContent,
-        pageUrl: chapterHtmlPageUrl || chapterHtmlJob.error?.url,
+      const result = await api.importFailedUnitHtml(unitHtmlJob._id, {
+        html: unitHtmlContent,
+        pageUrl: unitHtmlPageUrl || unitHtmlJob.error?.url,
       });
-      setChapterHtmlJob(null);
-      setChapterHtmlContent('');
+      setUnitHtmlJob(null);
+      setUnitHtmlContent('');
       showToast({ message: `${result.message} Retry the job to continue archiving.`, variant: 'success' });
       await fetchJobs();
     } catch (err) {
-      console.error('Failed to import chapter HTML:', err);
-      showToast({ message: 'Error importing chapter HTML: ' + (err instanceof Error ? err.message : 'Unknown error.'), variant: 'error' });
+      console.error('Failed to import unit HTML:', err);
+      showToast({ message: 'Error importing unit HTML: ' + (err instanceof Error ? err.message : 'Unknown error.'), variant: 'error' });
     } finally {
-      setImportingChapterHtml(false);
+      setImportingUnitHtml(false);
     }
   };
 
@@ -280,7 +280,7 @@ export default function ScraperMonitor() {
                           </span>
                           {job.error.url && (
                             <a href={job.error.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', wordBreak: 'break-all' }}>
-                              {job.error.sourceKind === 'raw' ? 'Raw' : 'Translated'} chapter {job.error.chapterNumber || ''}: {job.error.url}
+                              {job.error.sourceKind === 'raw' ? 'Raw' : 'Translated'} unit {job.error.unitNumber || ''}: {job.error.url}
                             </a>
                           )}
                         </div>
@@ -302,11 +302,11 @@ export default function ScraperMonitor() {
                           >
                             Open Browser
                           </button>
-                          {job.error?.chapterNumber && job.error?.url && (
+                          {job.error?.unitNumber && job.error?.url && (
                             <button 
                               className="btn btn-secondary" 
                               style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                              onClick={() => openChapterHtmlImport(job)}
+                              onClick={() => openUnitHtmlImport(job)}
                             >
                               Import HTML
                             </button>
@@ -321,11 +321,11 @@ export default function ScraperMonitor() {
                         </div>
                       ) : job.status === 'failed' ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                          {job.error?.chapterNumber && job.error?.url && (
+                          {job.error?.unitNumber && job.error?.url && (
                             <button 
                               className="btn btn-secondary" 
                               style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                              onClick={() => openChapterHtmlImport(job)}
+                              onClick={() => openUnitHtmlImport(job)}
                             >
                               Import HTML
                             </button>
@@ -353,40 +353,40 @@ export default function ScraperMonitor() {
         )}
       </div>
 
-      {chapterHtmlJob && (
+      {unitHtmlJob && (
         <div className="modal-backdrop">
           <div className="glass-card modal-panel" style={{ maxWidth: '720px' }}>
             <div className="flex-between">
               <h2 style={{ fontSize: '1.4rem' }}>
-                Import {chapterHtmlJob.error?.sourceKind === 'raw' ? 'Raw ' : ''}Chapter {chapterHtmlJob.error?.chapterNumber || ''}
+                Import {unitHtmlJob.error?.sourceKind === 'raw' ? 'Raw ' : ''}Unit {unitHtmlJob.error?.unitNumber || ''}
               </h2>
               <button
-                onClick={() => setChapterHtmlJob(null)}
+                onClick={() => setUnitHtmlJob(null)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
               >
                 &times;
               </button>
             </div>
 
-            <form onSubmit={handleImportChapterHtml} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleImportUnitHtml} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Chapter Page URL</label>
+                <label className="form-label">Unit Page URL</label>
                 <input
                   type="url"
                   className="form-input"
-                  value={chapterHtmlPageUrl}
-                  onChange={(e) => setChapterHtmlPageUrl(e.target.value)}
+                  value={unitHtmlPageUrl}
+                  onChange={(e) => setUnitHtmlPageUrl(e.target.value)}
                   required
                 />
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Saved Chapter HTML</label>
+                <label className="form-label">Saved Unit HTML</label>
                 <textarea
                   className="form-textarea"
                   rows={14}
-                  value={chapterHtmlContent}
-                  onChange={(e) => setChapterHtmlContent(e.target.value)}
+                  value={unitHtmlContent}
+                  onChange={(e) => setUnitHtmlContent(e.target.value)}
                   placeholder="<html>..."
                   required
                 />
@@ -396,13 +396,13 @@ export default function ScraperMonitor() {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setChapterHtmlJob(null)}
-                  disabled={importingChapterHtml}
+                  onClick={() => setUnitHtmlJob(null)}
+                  disabled={importingUnitHtml}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={importingChapterHtml}>
-                  {importingChapterHtml ? 'Importing...' : 'Save Chapter'}
+                <button type="submit" className="btn btn-primary" disabled={importingUnitHtml}>
+                  {importingUnitHtml ? 'Importing...' : 'Save Unit'}
                 </button>
               </div>
             </form>

@@ -2,20 +2,20 @@
 
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
-import { api, Author, Novel } from '../../../utils/api';
-import { NovelCard } from '../../../components/NovelCard';
+import { api, Author, Book } from '../../../utils/api';
+import { BookCard } from '../../../components/BookCard';
 
 export default function AuthorDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [author, setAuthor] = useState<Author | null>(null);
-  const [novels, setNovels] = useState<Novel[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.getPublicAuthor(id)
       .then((data) => {
         setAuthor(data.author);
-        setNovels(data.novels);
+        setBooks(data.books);
       })
       .catch((err) => console.error('Failed to load author:', err))
       .finally(() => setLoading(false));
@@ -47,12 +47,12 @@ export default function AuthorDetailsPage({ params }: { params: Promise<{ id: st
       </div>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h2 style={{ fontSize: '1.35rem' }}>Novels by {author.displayName}</h2>
-        {novels.length === 0 ? (
-          <div className="glass-card empty-state">No linked novels yet.</div>
+        <h2 style={{ fontSize: '1.35rem' }}>Books by {author.displayName}</h2>
+        {books.length === 0 ? (
+          <div className="glass-card empty-state">No linked books yet.</div>
         ) : (
-          <div className="novel-grid">
-            {novels.map((novel) => <NovelCard key={novel._id} novel={novel} mode="catalog" />)}
+          <div className="book-grid">
+            {books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
           </div>
         )}
       </section>

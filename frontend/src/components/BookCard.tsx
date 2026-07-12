@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
-import { getNovelCoverUrl, Novel } from '../utils/api';
+import { getBookCoverUrl, Book } from '../utils/api';
 import { Badge } from './ui/badge';
 import { Card, CardFooter } from './ui/card';
 
@@ -15,8 +15,8 @@ const COVER_PALETTES = [
   ['#6d4b7e', '#25243c', '#4d8795'],
 ];
 
-function getCoverPalette(novel: Novel): CSSProperties {
-  const seed = `${novel._id}${novel.title}`;
+function getCoverPalette(book: Book): CSSProperties {
+  const seed = `${book._id}${book.title}`;
   const hash = Array.from(seed).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   const [a, b, c] = COVER_PALETTES[hash % COVER_PALETTES.length];
 
@@ -40,40 +40,40 @@ function getStatusBadgeVariant(status: string) {
   return 'default';
 }
 
-export function NovelCard({
-  novel,
+export function BookCard({
+  book,
   action,
   href,
   mode = 'profile',
 }: {
-  novel: Novel;
+  book: Book;
   action?: ReactNode;
   href?: string;
   mode?: 'profile' | 'catalog';
 }) {
-  const coverSrc = getNovelCoverUrl(novel);
-  const authorName = novel.authorPenName || novel.author || novel.authorRealName || 'Unknown Author';
-  const progress = novel.chaptersTotal > 0
-    ? Math.min(100, Math.round((novel.chaptersRead / novel.chaptersTotal) * 100))
+  const coverSrc = getBookCoverUrl(book);
+  const authorName = book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
+  const progress = book.translatedUnitsTotal > 0
+    ? Math.min(100, Math.round((book.unitsRead / book.translatedUnitsTotal) * 100))
     : 0;
   const isCatalog = mode === 'catalog';
 
-  const detailHref = href || `/novels/${novel._id}`;
+  const detailHref = href || `/books/${book._id}`;
 
   return (
     <Card className="group flex h-full min-w-0 flex-col overflow-hidden transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
       <Link href={detailHref} className="flex min-h-0 flex-1 flex-col text-inherit no-underline">
         <div
           className="flex aspect-[3/4] min-h-[230px] items-center justify-center overflow-hidden border-b border-border bg-surface-muted"
-          style={getCoverPalette(novel)}
+          style={getCoverPalette(book)}
         >
           {coverSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]" src={coverSrc} alt={novel.title} />
+            <img className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]" src={coverSrc} alt={book.title} />
           ) : (
-            <div className="novel-card-fallback">
-              <span>{(novel.genres || [])[0] || novel.publicationStatus || 'Novel'}</span>
-              <strong>{novel.title}</strong>
+            <div className="book-card-fallback">
+              <span>{(book.genres || [])[0] || book.publicationStatus || 'Book'}</span>
+              <strong>{book.title}</strong>
               <small>{authorName}</small>
             </div>
           )}
@@ -81,32 +81,32 @@ export function NovelCard({
 
         <div className="flex flex-1 flex-col gap-2.5 px-4 py-3">
           <div>
-            <h3 className="line-clamp-2 break-words text-base font-extrabold leading-snug text-foreground">{novel.title}</h3>
+            <h3 className="line-clamp-2 break-words text-base font-extrabold leading-snug text-foreground">{book.title}</h3>
             <p className="mt-1 truncate text-sm text-copy">{authorName}</p>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
             {isCatalog ? (
-              novel.publicationStatus && <Badge>{novel.publicationStatus}</Badge>
+              book.publicationStatus && <Badge>{book.publicationStatus}</Badge>
             ) : (
-              <Badge variant={getStatusBadgeVariant(novel.status)}>{novel.status.replace('_', ' ')}</Badge>
+              <Badge variant={getStatusBadgeVariant(book.status)}>{book.status.replace('_', ' ')}</Badge>
             )}
-            {!isCatalog && novel.publicationStatus && <Badge>{novel.publicationStatus}</Badge>}
-            {(novel.genres || []).slice(0, 2).map((genre) => (
+            {!isCatalog && book.publicationStatus && <Badge>{book.publicationStatus}</Badge>}
+            {(book.genres || []).slice(0, 2).map((genre) => (
               <Badge key={genre}>{genre}</Badge>
             ))}
           </div>
 
           {isCatalog ? (
             <div className="mt-auto flex justify-between gap-2 text-xs text-copy">
-              <span>{novel.chaptersTotal || novel.chaptersList?.length || '?'} chapters</span>
-              <span className="truncate">{novel.originalSource || 'Translated'}</span>
+              <span>{book.translatedUnitsTotal || book.translatedUnitsList?.length || '?'} units</span>
+              <span className="truncate">{book.originalSource || 'Translated'}</span>
             </div>
           ) : (
             <div>
               <div className="mb-1 flex justify-between gap-2 text-xs text-copy">
                 <span>Progress</span>
-                <span>{novel.chaptersRead} / {novel.chaptersTotal || '?'} ch</span>
+                <span>{book.unitsRead} / {book.translatedUnitsTotal || '?'} ch</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[#e8dfd1]">
                 <div
@@ -122,7 +122,7 @@ export function NovelCard({
 
       <CardFooter className="mt-auto px-4 py-3">
         <span>
-          {novel.rawChaptersTotal > 0 ? `${novel.rawChaptersTotal} raw indexed` : `Updated ${new Date(novel.updatedAt).toLocaleDateString()}`}
+          {book.rawUnitsTotal > 0 ? `${book.rawUnitsTotal} raw indexed` : `Updated ${new Date(book.updatedAt).toLocaleDateString()}`}
         </span>
         {action}
       </CardFooter>

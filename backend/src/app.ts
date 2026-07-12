@@ -2,11 +2,17 @@ import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
+import helmet from "@fastify/helmet";
+import compress from "@fastify/compress";
+import rateLimit from "@fastify/rate-limit";
+import underPressure from "@fastify/under-pressure";
 import { Socket } from "net";
 import crypto from "crypto";
 import { connectDB, disconnectDB } from "./config/db.js";
+import { redisClient } from "./config/redis.js";
 import { apiRoutes } from "./routes/api.js";
 import { startWorker, stopWorker } from "./worker/jobProcessor.js";
+import { stopNotificationWorker } from "./services/notificationQueue.js";
 import { closeBrowser } from "./services/scraper.js";
 import { seedRbac } from "./seed/index.js";
 
@@ -29,7 +35,7 @@ app.server.on("connection", (socket) => {
 });
 
 const defaultCorsOrigins = [
-	"https://novels-library.vijaymeena.dev",
+	"https://books-library.vijaymeena.dev",
 	"http://localhost:3000",
 	"http://127.0.0.1:3000",
 	"http://localhost:3001",
@@ -64,7 +70,32 @@ if (!jwtSecret && process.env.NODE_ENV === 'production') {
 }
 
 await app.register(jwt, {
-	secret: jwtSecret || "super-secret-key-novels-library-321!",
+	secret: jwtSecret || "super-secret-key-books-library-321!",
+});
+
+// Security headers
+await app.register(helmet, {
+	contentSecurityPolicy: false,
+	crossOriginResourcePolicy: false,
+});
+
+// Response compression
+await app.register(compress, { encodings: ["gzip", "br"] });
+
+// Rate limiting with optional Redis store
+await app.register(rateLimit, {
+	max: 100,
+	timeWindow: 60 * 1000,
+	keyGenerator: (req) => String((req.user as any)?.id || req.ip || req.id),
+	...(redisClient ? { redis: redisClient } : {}),
+});
+
+// Under-pressure circuit breaker
+await app.register(underPressure, {
+	maxEventLoopDelay: 1000,
+	maxHeapUsedBytes: 1024 * 1024 * 1024,
+	maxRssBytes: 1024 * 1024 * 1024,
+	maxEventLoopUtilization: 0.98,
 });
 
 app.setErrorHandler((error, request, reply) => {
@@ -158,6 +189,7 @@ const handleShutdown = async (signal: string) => {
 			withTimeout(app.close(), 3000, "Timed out closing Fastify server."),
 			withTimeout(closeBrowser(), 3000, "Timed out closing Puppeteer browser."),
 			withTimeout(disconnectDB(), 3000, "Timed out disconnecting MongoDB."),
+			withTimeout(stopNotificationWorker(), 3000, "Timed out stopping notification worker."),
 		]);
 
 		clearTimeout(hardExitTimer);

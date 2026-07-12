@@ -1,10 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type JobType = 'scrape_metadata' | 'scrape_chapters' | 'scrape_raw_metadata' | 'scrape_raw_chapters';
+export type JobType = 'scrape_metadata' | 'scrape_units' | 'scrape_raw_metadata' | 'scrape_raw_units';
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'requires_manual_intervention';
 
 export interface IBackgroundJob extends Document {
-  novelId: mongoose.Types.ObjectId;
+  bookId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   type: JobType;
   status: JobStatus;
@@ -18,7 +18,7 @@ export interface IBackgroundJob extends Document {
     stack?: string;
     code?: string;
     url?: string;
-    chapterNumber?: number;
+    unitNumber?: number;
     sourceKind?: 'translated' | 'raw';
   };
   retryCount: number;
@@ -30,9 +30,9 @@ export interface IBackgroundJob extends Document {
 }
 
 const BackgroundJobSchema = new Schema<IBackgroundJob>({
-  novelId: { type: Schema.Types.ObjectId, ref: 'Novel', required: true, index: true },
+  bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  type: { type: String, enum: ['scrape_metadata', 'scrape_chapters', 'scrape_raw_metadata', 'scrape_raw_chapters'], required: true },
+  type: { type: String, enum: ['scrape_metadata', 'scrape_units', 'scrape_raw_metadata', 'scrape_raw_units'], required: true },
   status: { type: String, enum: ['pending', 'processing', 'completed', 'failed', 'requires_manual_intervention'], default: 'pending', index: true },
   progress: {
     current: { type: Number, default: 0 },
@@ -44,7 +44,7 @@ const BackgroundJobSchema = new Schema<IBackgroundJob>({
     stack: { type: String },
     code: { type: String },
     url: { type: String },
-    chapterNumber: { type: Number },
+    unitNumber: { type: Number },
     sourceKind: { type: String, enum: ['translated', 'raw'] }
   },
   retryCount: { type: Number, default: 0 },

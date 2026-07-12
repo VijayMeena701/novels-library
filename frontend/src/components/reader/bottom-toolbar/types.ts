@@ -17,16 +17,16 @@ export interface ReaderBottomToolbarProps {
 	onTabChange: (tab: ReaderBottomToolbarTab) => void;
 
 	// Read tab
-	onPreviousChapter: () => void;
-	onNextChapter: () => void;
+	onPreviousUnit: () => void;
+	onNextUnit: () => void;
 	onOpenCatalog: () => void;
-	hasPreviousChapter: boolean;
-	hasNextChapter: boolean;
-	previousChapterNumber: number;
-	nextChapterNumber: number;
+	hasPreviousUnit: boolean;
+	hasNextUnit: boolean;
+	previousUnitNumber: number;
+	nextUnitNumber: number;
 	catalogItemsLength: number;
-	novelId: string;
-	novelTitle: string;
+	bookId: string;
+	bookTitle: string;
 
 	// Display tab
 	theme: ReaderTheme;
@@ -70,7 +70,7 @@ export interface ReaderBottomToolbarProps {
 	switchReaderSource: (source: SourceKind) => void;
 	autoOpenNext: boolean;
 	onAutoOpenNextChange: (enabled: boolean) => void;
-	hasRawChapters: boolean;
+	hasRawUnits: boolean;
 
 	// More tab
 	sourceUrl?: string;

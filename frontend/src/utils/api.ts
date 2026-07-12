@@ -155,15 +155,55 @@ export interface UpdateUserSettingsPayload {
 	reader?: Partial<ReaderSettings>;
 }
 
-export type NovelStatus = "reading" | "completed" | "on_hold" | "dropped" | "planning";
+export type BookStatus = "reading" | "completed" | "on_hold" | "dropped" | "planning";
 
-export interface ChapterIndex {
+export interface UnitIndex {
 	title: string;
 	url: string;
-	number: number;
+	unitNumber: number;
+	unitType?: string;
 }
 
-export interface Novel {
+export interface BookReview {
+	_id: string;
+	userId: string;
+	username: string;
+	review: string;
+	createdAt: string;
+}
+
+export interface Notification {
+	_id: string;
+	userId: string;
+	type: string;
+	title: string;
+	message: string;
+	link?: string;
+	read: boolean;
+	createdAt: string;
+}
+
+export interface Report {
+	_id: string;
+	bookId: Book | string;
+	reporterUserId: string;
+	reason: string;
+	description: string;
+	status: string;
+	createdAt: string;
+}
+
+export interface BookRequest {
+	_id: string;
+	title: string;
+	description: string;
+	requestedByUserId: { _id: string; username: string } | string;
+	status: string;
+	votes: number;
+	createdAt: string;
+}
+
+export interface Book {
 	_id: string;
 	authorId?: string;
 	title: string;
@@ -187,11 +227,11 @@ export interface Novel {
 	sourceUrl: string;
 	rawSourceUrl: string;
 	rawOriginalLanguage: string;
-	rawChaptersTotal: number;
-	rawChaptersList: ChapterIndex[];
-	status: NovelStatus;
-	chaptersTotal: number;
-	chaptersRead: number;
+	rawUnitsTotal: number;
+	rawUnitsList: UnitIndex[];
+	status: BookStatus;
+	translatedUnitsTotal: number;
+	unitsRead: number;
 	rating: number;
 	review: string;
 	personalNotes: string;
@@ -201,31 +241,82 @@ export interface Novel {
 	personalTags: string[];
 	personalTagKeys: string[];
 	completedAt?: string | null;
-	chaptersList: ChapterIndex[];
+	translatedUnitsList: UnitIndex[];
+	lastVisitedUnitNumber?: number;
+	lastVisitedAt?: string;
+	ratingAverage?: number;
+	ratingCount?: number;
+	reviewCount?: number;
+	totalVisits?: number;
+	totalVotes?: number;
 	createdAt: string;
 	updatedAt: string;
 }
 
-export interface NovelListFilters {
-	status?: NovelStatus | "all";
+export interface HomeStats {
+	totalBooks: number;
+	totalUnits: number;
+}
+
+export interface HomePersonalStats {
+	reading: number;
+	completed: number;
+	planning: number;
+	onHold: number;
+	dropped: number;
+	totalUnitsRead: number;
+}
+
+export interface HomeResponse {
+	stats: HomeStats;
+	personal: { library: HomePersonalStats } | Record<string, never>;
+	recentlyUpdated: Book[];
+	topRated: Book[];
+	mostVisited: Book[];
+	topVoted: Book[];
+	continueReading: Book[];
+	activities: { _id: string; bookId: Book | string; activityType: string; unitNumber?: number; unitTitle?: string; createdAt: string }[];
+}
+
+export interface HistoryPagination {
+	page: number;
+	limit: number;
+	total: number;
+	totalPages: number;
+}
+
+export interface Pagination {
+	page: number;
+	limit: number;
+	total: number;
+	pages: number;
+}
+
+export interface HistoryResponse {
+	visits: BookVisit[];
+	pagination: HistoryPagination;
+}
+
+export interface BookListFilters {
+	status?: BookStatus | "all";
 	genre?: string;
 	source?: string;
 	publicationStatus?: string;
 	authorId?: string;
 }
 
-export interface CatalogNovelFilters extends NovelListFilters {
+export interface CatalogBookFilters extends BookListFilters {
 	search?: string;
 	minRating?: number;
 	maxRating?: number;
-	sort?: "updatedAt" | "title" | "chaptersTotal" | "rawChaptersTotal" | "rating" | "publicationStatus" | "createdAt" | "author" | "originalSource";
+	sort?: "updatedAt" | "title" | "translatedUnitsTotal" | "rawUnitsTotal" | "rating" | "publicationStatus" | "createdAt" | "author" | "originalSource";
 	sortDir?: "asc" | "desc";
 	page?: number;
 	pageSize?: number;
 }
 
-export interface PaginatedNovels {
-	novels: Novel[];
+export interface PaginatedBooks {
+	books: Book[];
 	total: number;
 	page: number;
 	pageSize: number;
@@ -238,18 +329,18 @@ export interface Source {
 	count: number;
 }
 
-export function getNovelCoverUrl(novel: Pick<Novel, "_id" | "coverUrl" | "coverImageToken" | "coverImageSyncedAt">): string {
-	if (novel.coverImageToken && novel.coverImageSyncedAt) {
-		return `${API_BASE_URL}/public/novels/${novel._id}/cover/${novel.coverImageToken}?v=${encodeURIComponent(novel.coverImageSyncedAt)}`;
+export function getBookCoverUrl(book: Pick<Book, "_id" | "coverUrl" | "coverImageToken" | "coverImageSyncedAt">): string {
+	if (book.coverImageToken && book.coverImageSyncedAt) {
+		return `${API_BASE_URL}/public/books/${book._id}/cover/${book.coverImageToken}?v=${encodeURIComponent(book.coverImageSyncedAt)}`;
 	}
 
-	return novel.coverUrl || "";
+	return book.coverUrl || "";
 }
 
 export interface PronunciationRule {
 	_id: string;
 	userId: string;
-	novelId?: string | null;
+	bookId?: string | null;
 	isGlobal: boolean;
 	pattern: string;
 	replacement: string;
@@ -284,7 +375,7 @@ export interface Genre {
 	key: string;
 	aliases: string[];
 	description?: string;
-	novelCount?: number;
+	bookCount?: number;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -296,17 +387,17 @@ export interface PublicationStatus {
 	aliases: string[];
 	color?: string;
 	sortOrder?: number;
-	novelCount?: number;
+	bookCount?: number;
 	createdAt: string;
 	updatedAt: string;
 }
 
 export interface ReadingSession {
 	_id: string;
-	novelId: string;
+	bookId: string;
 	startDate: string;
 	endDate?: string;
-	chaptersRead: number;
+	unitsRead: number;
 	notes: string;
 	completed: boolean;
 }
@@ -321,15 +412,16 @@ export interface Author {
 	originalLanguage: string;
 	officialUrls: string[];
 	notes: string;
-	novelCount?: number;
+	bookCount?: number;
 	createdAt: string;
 	updatedAt: string;
 }
 
-export interface ChapterContent {
+export interface BookContent {
 	_id: string;
-	novelId: string;
-	chapterNumber: number;
+	bookId: string;
+	unitNumber: number;
+	unitType?: string;
 	title: string;
 	content: string;
 	sourceUrl: string;
@@ -337,26 +429,27 @@ export interface ChapterContent {
 	scrapedAt: string;
 }
 
-export interface ChapterVisit {
+export interface BookVisit {
 	_id: string;
-	novelId: string;
+	bookId: string | Book;
 	userId: string;
 	sessionId?: string;
-	chapterNumber: number;
-	chapterTitle: string;
+	unitNumber: number;
+	unitTitle: string;
+	unitType?: string;
 	sourceUrl: string;
 	openedAt: string;
 	createdAt: string;
 	updatedAt: string;
 }
 
-export type JobType = "scrape_metadata" | "scrape_chapters" | "scrape_raw_metadata" | "scrape_raw_chapters";
+export type JobType = "scrape_metadata" | "scrape_units" | "scrape_raw_metadata" | "scrape_raw_units";
 export type JobStatus = "pending" | "processing" | "completed" | "failed" | "requires_manual_intervention";
 export type SourceKind = "translated" | "raw";
 
 export interface BackgroundJob {
 	_id: string;
-	novelId: string;
+	bookId: string;
 	type: JobType;
 	status: JobStatus;
 	progress: {
@@ -369,7 +462,7 @@ export interface BackgroundJob {
 		stack?: string;
 		code?: string;
 		url?: string;
-		chapterNumber?: number;
+		unitNumber?: number;
 		sourceKind?: "translated" | "raw";
 	};
 	retryCount: number;
@@ -555,8 +648,8 @@ class ApiClient {
 		});
 	}
 
-	// Novels Methods
-	async getNovels(filters: NovelListFilters = {}): Promise<Novel[]> {
+	// Books Methods
+	async getBooks(filters: BookListFilters = {}): Promise<Book[]> {
 		const query = new URLSearchParams();
 
 		if (filters.status && filters.status !== "all") {
@@ -576,10 +669,10 @@ class ApiClient {
 		}
 
 		const suffix = query.toString() ? `?${query.toString()}` : "";
-		return this.request<Novel[]>(`/novels${suffix}`);
+		return this.request<Book[]>(`/books${suffix}`);
 	}
 
-	async getCatalogNovels(filters: NovelListFilters = {}): Promise<Novel[]> {
+	async getCatalogBooks(filters: BookListFilters = {}): Promise<Book[]> {
 		const query = new URLSearchParams();
 
 		if (filters.status && filters.status !== "all") {
@@ -599,17 +692,17 @@ class ApiClient {
 		}
 
 		const suffix = query.toString() ? `?${query.toString()}` : "";
-		return this.request<Novel[]>(`/catalog/novels${suffix}`);
+		return this.request<Book[]>(`/catalog/books${suffix}`);
 	}
 
-	async updateCatalogNovel(id: string, novelData: Partial<Novel>): Promise<Novel> {
-		return this.request<Novel>(`/catalog/novels/${id}`, {
+	async updateCatalogBook(id: string, bookData: Partial<Book>): Promise<Book> {
+		return this.request<Book>(`/catalog/books/${id}`, {
 			method: "PUT",
-			body: JSON.stringify(novelData),
+			body: JSON.stringify(bookData),
 		});
 	}
 
-	private buildCatalogQuery(filters: CatalogNovelFilters, includePagination: boolean): URLSearchParams {
+	private buildCatalogQuery(filters: CatalogBookFilters, includePagination: boolean): URLSearchParams {
 		const query = new URLSearchParams();
 
 		if (filters.status && filters.status !== "all") {
@@ -655,36 +748,90 @@ class ApiClient {
 		return query;
 	}
 
-	async getPublicCatalogNovels(filters: CatalogNovelFilters = {}): Promise<Novel[]> {
+	async getPublicCatalogBooks(filters: CatalogBookFilters = {}): Promise<Book[]> {
 		const query = this.buildCatalogQuery(filters, false);
 		const suffix = query.toString() ? `?${query.toString()}` : "";
-		return this.request<Novel[]>(`/public/catalog/novels${suffix}`);
+		return this.request<Book[]>(`/public/catalog/books${suffix}`);
 	}
 
-	async getPublicCatalogNovelsPaginated(filters: CatalogNovelFilters = {}): Promise<PaginatedNovels> {
+	async getPublicCatalogBooksPaginated(filters: CatalogBookFilters = {}): Promise<PaginatedBooks> {
 		const query = this.buildCatalogQuery({ ...filters, page: filters.page ?? 1 }, true);
 		const suffix = query.toString() ? `?${query.toString()}` : "";
-		return this.request<PaginatedNovels>(`/public/catalog/novels${suffix}`);
+		return this.request<PaginatedBooks>(`/public/catalog/books${suffix}`);
 	}
 
-	async getPublicNovel(id: string): Promise<Novel> {
-		return this.request<Novel>(`/public/novels/${id}`);
+	async getPublicBook(id: string): Promise<Book> {
+		return this.request<Book>(`/public/books/${id}`);
+	}
+
+	async getBookReviews(id: string): Promise<{ reviews: BookReview[]; pagination: Pagination }> {
+		return this.request<{ reviews: BookReview[]; pagination: Pagination }>(`/public/books/${id}/reviews`);
+	}
+
+	async voteBook(id: string): Promise<{ voted: boolean; totalVotes: number }> {
+		return this.request<{ voted: boolean; totalVotes: number }>(`/books/${id}/vote`, { method: "POST" });
+	}
+
+	async getNotifications(unreadOnly?: boolean): Promise<{ notifications: Notification[]; unreadCount: number; pagination: Pagination }> {
+		const query = unreadOnly ? "?unreadOnly=true" : "";
+		return this.request<{ notifications: Notification[]; unreadCount: number; pagination: Pagination }>(`/notifications${query}`);
+	}
+
+	async markNotificationRead(id: string): Promise<{ notification: Notification }> {
+		return this.request<{ notification: Notification }>(`/notifications/${id}/read`, { method: "PUT" });
+	}
+
+	async markAllNotificationsRead(): Promise<{ success: boolean }> {
+		return this.request<{ success: boolean }>("/notifications/read-all", { method: "PUT" });
+	}
+
+	async createReport(bookId: string, reason: string, description: string): Promise<{ report: Report }> {
+		return this.request<{ report: Report }>(`/books/${bookId}/report`, {
+			method: "POST",
+			body: JSON.stringify({ reason, description }),
+		});
+	}
+
+	async getReports(): Promise<{ reports: Report[]; pagination: Pagination }> {
+		return this.request<{ reports: Report[]; pagination: Pagination }>("/reports");
+	}
+
+	async updateReportStatus(reportId: string, status: string): Promise<{ report: Report }> {
+		return this.request<{ report: Report }>(`/reports/${reportId}/status`, {
+			method: "PUT",
+			body: JSON.stringify({ status }),
+		});
+	}
+
+	async getBookRequests(): Promise<{ requests: BookRequest[]; pagination: Pagination }> {
+		return this.request<{ requests: BookRequest[]; pagination: Pagination }>("/requests");
+	}
+
+	async createBookRequest(title: string, description: string): Promise<{ request: BookRequest }> {
+		return this.request<{ request: BookRequest }>("/requests", {
+			method: "POST",
+			body: JSON.stringify({ title, description }),
+		});
+	}
+
+	async voteBookRequest(id: string): Promise<{ request: BookRequest }> {
+		return this.request<{ request: BookRequest }>(`/requests/${id}/vote`, { method: "POST" });
 	}
 
 	async getAuthors(): Promise<Author[]> {
 		return this.request<Author[]>("/authors");
 	}
 
-	async getAuthor(id: string): Promise<{ author: Author; novels: Novel[] }> {
-		return this.request<{ author: Author; novels: Novel[] }>(`/authors/${id}`);
+	async getAuthor(id: string): Promise<{ author: Author; books: Book[] }> {
+		return this.request<{ author: Author; books: Book[] }>(`/authors/${id}`);
 	}
 
 	async getPublicAuthors(): Promise<Author[]> {
 		return this.request<Author[]>("/public/authors");
 	}
 
-	async getPublicAuthor(id: string): Promise<{ author: Author; novels: Novel[] }> {
-		return this.request<{ author: Author; novels: Novel[] }>(`/public/authors/${id}`);
+	async getPublicAuthor(id: string): Promise<{ author: Author; books: Book[] }> {
+		return this.request<{ author: Author; books: Book[] }>(`/public/authors/${id}`);
 	}
 
 	async getPublicGenres(): Promise<Genre[]> {
@@ -699,69 +846,69 @@ class ApiClient {
 		return this.request<Source[]>("/public/sources");
 	}
 
-	async getNovel(id: string): Promise<Novel> {
-		return this.request<Novel>(`/novels/${id}`);
+	async getBook(id: string): Promise<Book> {
+		return this.request<Book>(`/books/${id}`);
 	}
 
-	async createNovel(novelData: Partial<Novel>): Promise<Novel> {
-		return this.request<Novel>("/novels", {
+	async createBook(bookData: Partial<Book>): Promise<Book> {
+		return this.request<Book>("/books", {
 			method: "POST",
-			body: JSON.stringify(novelData),
+			body: JSON.stringify(bookData),
 		});
 	}
 
-	async addNovelToLibrary(id: string): Promise<Novel> {
-		return this.request<Novel>(`/novels/${id}/library`, {
+	async addBookToLibrary(id: string): Promise<Book> {
+		return this.request<Book>(`/books/${id}/library`, {
 			method: "POST",
 		});
 	}
 
-	async updateNovel(id: string, novelData: Partial<Novel>): Promise<Novel> {
-		return this.request<Novel>(`/novels/${id}`, {
+	async updateBook(id: string, bookData: Partial<Book>): Promise<Book> {
+		return this.request<Book>(`/books/${id}`, {
 			method: "PUT",
-			body: JSON.stringify(novelData),
+			body: JSON.stringify(bookData),
 		});
 	}
 
-	async syncCover(id: string, coverUrl?: string): Promise<Novel> {
-		return this.request<Novel>(`/novels/${id}/cover/sync`, {
+	async syncCover(id: string, coverUrl?: string): Promise<Book> {
+		return this.request<Book>(`/books/${id}/cover/sync`, {
 			method: "POST",
 			body: JSON.stringify(coverUrl ? { coverUrl } : {}),
 		});
 	}
 
-	async deleteNovel(id: string): Promise<{ success: boolean; message: string }> {
-		return this.request<{ success: boolean; message: string }>(`/novels/${id}`, {
+	async deleteBook(id: string): Promise<{ success: boolean; message: string }> {
+		return this.request<{ success: boolean; message: string }>(`/books/${id}`, {
 			method: "DELETE",
 		});
 	}
 
 	// Re-read Sessions Methods
-	async getSessions(novelId: string): Promise<ReadingSession[]> {
-		return this.request<ReadingSession[]>(`/novels/${novelId}/re-read`);
+	async getSessions(bookId: string): Promise<ReadingSession[]> {
+		return this.request<ReadingSession[]>(`/books/${bookId}/re-read`);
 	}
 
-	async startSession(novelId: string, data: { notes?: string; chaptersRead?: number }): Promise<ReadingSession> {
-		return this.request<ReadingSession>(`/novels/${novelId}/re-read`, {
+	async startSession(bookId: string, data: { notes?: string; unitsRead?: number }): Promise<ReadingSession> {
+		return this.request<ReadingSession>(`/books/${bookId}/re-read`, {
 			method: "POST",
 			body: JSON.stringify(data),
 		});
 	}
 
-	async updateSession(novelId: string, sessionId: string, data: { notes?: string; chaptersRead?: number; completed?: boolean }): Promise<ReadingSession> {
-		return this.request<ReadingSession>(`/novels/${novelId}/re-read/${sessionId}`, {
+	async updateSession(bookId: string, sessionId: string, data: { notes?: string; unitsRead?: number; completed?: boolean }): Promise<ReadingSession> {
+		return this.request<ReadingSession>(`/books/${bookId}/re-read/${sessionId}`, {
 			method: "PUT",
 			body: JSON.stringify(data),
 		});
 	}
 
-	// TTS Pronunciation Rules Methods (per-user, per-novel or global)
-	async getPronunciationRules(novelId: string): Promise<PronunciationRule[]> {
-		return this.request<PronunciationRule[]>(`/novels/${novelId}/pronunciation-rules`);
+	// TTS Pronunciation Rules Methods (per-user, per-book or global)
+	async getPronunciationRules(bookId: string): Promise<PronunciationRule[]> {
+		return this.request<PronunciationRule[]>(`/books/${bookId}/pronunciation-rules`);
 	}
 
-	async createPronunciationRule(novelId: string, data: CreatePronunciationRulePayload): Promise<PronunciationRule> {
-		return this.request<PronunciationRule>(`/novels/${novelId}/pronunciation-rules`, {
+	async createPronunciationRule(bookId: string, data: CreatePronunciationRulePayload): Promise<PronunciationRule> {
+		return this.request<PronunciationRule>(`/books/${bookId}/pronunciation-rules`, {
 			method: "POST",
 			body: JSON.stringify(data),
 		});
@@ -780,30 +927,30 @@ class ApiClient {
 		});
 	}
 
-	// Chapters Methods
-	async getChapters(novelId: string): Promise<Omit<ChapterContent, "content">[]> {
-		return this.request<Omit<ChapterContent, "content">[]>(`/novels/${novelId}/chapters`);
+	// Units Methods
+	async getUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
+		return this.request<Omit<BookContent, "content">[]>(`/books/${bookId}/units`);
 	}
 
-	async getChapter(novelId: string, chapterNumber: number): Promise<ChapterContent> {
-		return this.request<ChapterContent>(`/novels/${novelId}/chapters/${chapterNumber}`);
+	async getUnit(bookId: string, unitNumber: number): Promise<BookContent> {
+		return this.request<BookContent>(`/books/${bookId}/units/${unitNumber}`);
 	}
 
-	async getRawChapters(novelId: string): Promise<Omit<ChapterContent, "content">[]> {
-		return this.request<Omit<ChapterContent, "content">[]>(`/novels/${novelId}/raw-chapters`);
+	async getRawUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
+		return this.request<Omit<BookContent, "content">[]>(`/books/${bookId}/raw-units`);
 	}
 
-	async getRawChapter(novelId: string, chapterNumber: number): Promise<ChapterContent> {
-		return this.request<ChapterContent>(`/novels/${novelId}/raw-chapters/${chapterNumber}`);
+	async getRawUnit(bookId: string, unitNumber: number): Promise<BookContent> {
+		return this.request<BookContent>(`/books/${bookId}/raw-units/${unitNumber}`);
 	}
 
-	async translateRawChapter(
-		novelId: string,
-		chapterNumber: number,
+	async translateRawUnit(
+		bookId: string,
+		unitNumber: number,
 		data: { targetLanguage?: string; overwrite?: boolean } = {},
-	): Promise<{ success: boolean; message: string; chapter: ChapterContent; model?: string; reusedExisting: boolean }> {
-		return this.request<{ success: boolean; message: string; chapter: ChapterContent; model?: string; reusedExisting: boolean }>(
-			`/novels/${novelId}/raw-chapters/${chapterNumber}/translate`,
+	): Promise<{ success: boolean; message: string; unit: BookContent; model?: string; reusedExisting: boolean }> {
+		return this.request<{ success: boolean; message: string; unit: BookContent; model?: string; reusedExisting: boolean }>(
+			`/books/${bookId}/raw-units/${unitNumber}/translate`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -812,29 +959,29 @@ class ApiClient {
 		);
 	}
 
-	async getPublicChapters(novelId: string): Promise<Omit<ChapterContent, "content">[]> {
-		return this.request<Omit<ChapterContent, "content">[]>(`/public/novels/${novelId}/chapters`);
+	async getPublicUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
+		return this.request<Omit<BookContent, "content">[]>(`/public/books/${bookId}/units`);
 	}
 
-	async getPublicChapter(novelId: string, chapterNumber: number): Promise<ChapterContent> {
-		return this.request<ChapterContent>(`/public/novels/${novelId}/chapters/${chapterNumber}`);
+	async getPublicUnit(bookId: string, unitNumber: number): Promise<BookContent> {
+		return this.request<BookContent>(`/public/books/${bookId}/units/${unitNumber}`);
 	}
 
-	async getPublicRawChapters(novelId: string): Promise<Omit<ChapterContent, "content">[]> {
-		return this.request<Omit<ChapterContent, "content">[]>(`/public/novels/${novelId}/raw-chapters`);
+	async getPublicRawUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
+		return this.request<Omit<BookContent, "content">[]>(`/public/books/${bookId}/raw-units`);
 	}
 
-	async getPublicRawChapter(novelId: string, chapterNumber: number): Promise<ChapterContent> {
-		return this.request<ChapterContent>(`/public/novels/${novelId}/raw-chapters/${chapterNumber}`);
+	async getPublicRawUnit(bookId: string, unitNumber: number): Promise<BookContent> {
+		return this.request<BookContent>(`/public/books/${bookId}/raw-units/${unitNumber}`);
 	}
 
-	async getChapterVisits(novelId: string, limit = 100): Promise<ChapterVisit[]> {
+	async getBookVisits(bookId: string, limit = 100): Promise<BookVisit[]> {
 		const query = new URLSearchParams({ limit: String(limit) });
-		return this.request<ChapterVisit[]>(`/novels/${novelId}/chapter-visits?${query.toString()}`);
+		return this.request<BookVisit[]>(`/books/${bookId}/visits?${query.toString()}`);
 	}
 
-	async recordChapterVisit(novelId: string, chapterNumber: number): Promise<ChapterVisit> {
-		return this.request<ChapterVisit>(`/novels/${novelId}/chapters/${chapterNumber}/visits`, {
+	async recordBookVisit(bookId: string, unitNumber: number): Promise<BookVisit> {
+		return this.request<BookVisit>(`/books/${bookId}/units/${unitNumber}/visits`, {
 			method: "POST",
 		});
 	}
@@ -844,8 +991,8 @@ class ApiClient {
 		return this.request<BackgroundJob[]>("/jobs");
 	}
 
-	async getNovelJobs(novelId: string): Promise<BackgroundJob[]> {
-		return this.request<BackgroundJob[]>(`/jobs/novel/${novelId}`);
+	async getBookJobs(bookId: string): Promise<BackgroundJob[]> {
+		return this.request<BackgroundJob[]>(`/jobs/book/${bookId}`);
 	}
 
 	async retryJob(jobId: string): Promise<{ success: boolean; message: string; job: BackgroundJob }> {
@@ -861,11 +1008,11 @@ class ApiClient {
 	}
 
 	async importRawHtmlIndex(
-		novelId: string,
+		bookId: string,
 		data: { html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; chaptersFound: number; novel: Novel; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; chaptersFound: number; novel: Novel; job: BackgroundJob }>(
-			`/jobs/novel/${novelId}/import-raw-html`,
+	): Promise<{ success: boolean; message: string; unitsFound: number; book: Book; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; unitsFound: number; book: Book; job: BackgroundJob }>(
+			`/jobs/book/${bookId}/import-raw-html`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -874,11 +1021,11 @@ class ApiClient {
 	}
 
 	async importHtmlIndex(
-		novelId: string,
+		bookId: string,
 		data: { sourceKind: SourceKind; html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; chaptersFound: number; novel: Novel; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; chaptersFound: number; novel: Novel; job: BackgroundJob }>(
-			`/jobs/novel/${novelId}/import-html-index`,
+	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; unitsFound: number; book: Book; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; unitsFound: number; book: Book; job: BackgroundJob }>(
+			`/jobs/book/${bookId}/import-html-index`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -886,12 +1033,12 @@ class ApiClient {
 		);
 	}
 
-	async importFailedChapterHtml(
+	async importFailedUnitHtml(
 		jobId: string,
 		data: { html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; chapterNumber: number; title: string; sourceUrl: string; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; chapterNumber: number; title: string; sourceUrl: string; job: BackgroundJob }>(
-			`/jobs/${jobId}/import-chapter-html`,
+	): Promise<{ success: boolean; message: string; unitNumber: number; title: string; sourceUrl: string; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; unitNumber: number; title: string; sourceUrl: string; job: BackgroundJob }>(
+			`/jobs/${jobId}/import-unit-html`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -899,12 +1046,12 @@ class ApiClient {
 		);
 	}
 
-	async importChapterHtml(
-		novelId: string,
-		data: { sourceKind: SourceKind; chapterNumber: number; html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; chapterNumber: number; title: string; sourceUrl: string }> {
-		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; chapterNumber: number; title: string; sourceUrl: string }>(
-			`/jobs/novel/${novelId}/import-chapter-html`,
+	async importUnitHtml(
+		bookId: string,
+		data: { sourceKind: SourceKind; unitNumber: number; html: string; pageUrl?: string },
+	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; unitNumber: number; title: string; sourceUrl: string }> {
+		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; unitNumber: number; title: string; sourceUrl: string }>(
+			`/jobs/book/${bookId}/import-unit-html`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -912,22 +1059,30 @@ class ApiClient {
 		);
 	}
 
-	async triggerScrape(novelId: string, type: JobType): Promise<{ success: boolean; message: string; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; job: BackgroundJob }>(`/jobs/novel/${novelId}/scrape`, {
+	async triggerScrape(bookId: string, type: JobType): Promise<{ success: boolean; message: string; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; job: BackgroundJob }>(`/jobs/book/${bookId}/scrape`, {
 			method: "POST",
 			body: JSON.stringify({ type }),
 		});
 	}
 
 	async runScrapeNow(
-		novelId: string,
+		bookId: string,
 		type: JobType,
-		data: { limit?: number; chapterNumber?: number } = {},
-	): Promise<{ success: boolean; message: string; result: unknown; novel: Novel; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; result: unknown; novel: Novel; job: BackgroundJob }>(`/jobs/novel/${novelId}/scrape-now`, {
+		data: { limit?: number; unitNumber?: number } = {},
+	): Promise<{ success: boolean; message: string; result: unknown; book: Book; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; result: unknown; book: Book; job: BackgroundJob }>(`/jobs/book/${bookId}/scrape-now`, {
 			method: "POST",
 			body: JSON.stringify({ type, ...data }),
 		});
+	}
+
+	async getHome(): Promise<HomeResponse> {
+		return this.request<HomeResponse>("/home");
+	}
+
+	async getHistory(page = 1, limit = 50): Promise<HistoryResponse> {
+		return this.request<HistoryResponse>(`/history?page=${page}&limit=${limit}`);
 	}
 }
 

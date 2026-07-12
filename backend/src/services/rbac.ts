@@ -13,12 +13,12 @@ export const CAPABILITY = {
   SETTINGS_UPDATE: 'settings:update',
 
   // Catalog
-  NOVELS_LIST: 'novels:list',
-  NOVELS_READ: 'novels:read',
-  NOVELS_CREATE: 'novels:create',
-  NOVELS_UPDATE: 'novels:update',
-  NOVELS_DELETE: 'novels:delete',
-  NOVELS_MANAGE: 'novels:manage',
+  BOOKS_LIST: 'books:list',
+  BOOKS_READ: 'books:read',
+  BOOKS_CREATE: 'books:create',
+  BOOKS_UPDATE: 'books:update',
+  BOOKS_DELETE: 'books:delete',
+  BOOKS_MANAGE: 'books:manage',
 
   // Library
   LIBRARY_READ: 'library:read',
@@ -28,12 +28,12 @@ export const CAPABILITY = {
   LIBRARY_MANAGE: 'library:manage',
 
   // Chapters
-  CHAPTERS_LIST: 'chapters:list',
-  CHAPTERS_READ: 'chapters:read',
-  CHAPTERS_READ_RAW: 'chapters:read_raw',
-  CHAPTERS_TRANSLATE: 'chapters:translate',
-  CHAPTERS_VISIT: 'chapters:visit',
-  CHAPTERS_MANAGE: 'chapters:manage',
+  UNITS_LIST: 'units:list',
+  UNITS_READ: 'units:read',
+  UNITS_READ_RAW: 'units:read_raw',
+  UNITS_TRANSLATE: 'units:translate',
+  UNITS_VISIT: 'units:visit',
+  UNITS_MANAGE: 'units:manage',
 
   // Taxonomy
   AUTHORS_LIST: 'authors:list',
@@ -237,7 +237,7 @@ export function requireCapability(
     const auditMeta: any = {
       action: capability,
       method: request.method,
-      path: request.routerPath || request.url,
+      path: request.routeOptions?.url || request.url,
       resourceType: parsed.resource,
       resourceId: undefined,
       userId: (request.user as any)?.id,

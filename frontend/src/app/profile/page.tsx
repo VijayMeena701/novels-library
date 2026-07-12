@@ -2,16 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, Novel, NovelStatus } from '../../utils/api';
+import { api, Book, BookStatus } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
-import { NovelCard } from '../../components/NovelCard';
+import { BookCard } from '../../components/BookCard';
 import { CAPABILITY } from '../../utils/permissions';
 
 export default function Dashboard() {
   const { user, loading: authLoading, hasCapability } = useAuth();
   
   // Library state
-  const [novels, setNovels] = useState<Novel[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -27,13 +27,13 @@ export default function Dashboard() {
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch novels list
-  const fetchNovels = async () => {
+  // Fetch books list
+  const fetchBooks = async () => {
     try {
-      const data = await api.getNovels();
-      setNovels(data);
+      const data = await api.getBooks();
+      setBooks(data);
     } catch (err) {
-      console.error('Failed to load novels:', err);
+      console.error('Failed to load books:', err);
     } finally {
       setLoading(false);
     }
@@ -43,52 +43,52 @@ export default function Dashboard() {
     if (!user) return;
     let cancelled = false;
 
-    async function loadNovels() {
+    async function loadBooks() {
       try {
-        const data = await api.getNovels();
-        if (!cancelled) setNovels(data);
+        const data = await api.getBooks();
+        if (!cancelled) setBooks(data);
       } catch (err) {
-        if (!cancelled) console.error('Failed to load novels:', err);
+        if (!cancelled) console.error('Failed to load books:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    void loadNovels();
+    void loadBooks();
     return () => {
       cancelled = true;
     };
   }, [user]);
 
-  // Quick increment chaptersRead
-  const handleQuickIncrement = async (e: React.MouseEvent, novel: Novel) => {
+  // Quick increment unitsRead
+  const handleQuickIncrement = async (e: React.MouseEvent, book: Book) => {
     e.preventDefault(); // Prevent navigating to details link
     e.stopPropagation();
     
-    const nextCh = novel.chaptersRead + 1;
+    const nextCh = book.unitsRead + 1;
     // Optimistic UI update
-    setNovels(prev => prev.map(n => {
-      if (n._id === novel._id) {
+    setBooks(prev => prev.map(n => {
+      if (n._id === book._id) {
         let updatedStatus = n.status;
-        if (n.chaptersTotal > 0 && nextCh >= n.chaptersTotal) {
+        if (n.translatedUnitsTotal > 0 && nextCh >= n.translatedUnitsTotal) {
           updatedStatus = 'completed';
         }
-        return { ...n, chaptersRead: nextCh, status: updatedStatus as NovelStatus };
+        return { ...n, unitsRead: nextCh, status: updatedStatus as BookStatus };
       }
       return n;
     }));
 
     try {
-      await api.updateNovel(novel._id, { chaptersRead: nextCh });
+      await api.updateBook(book._id, { unitsRead: nextCh });
     } catch (err) {
-      console.error('Failed to update chapters read:', err);
+      console.error('Failed to update units read:', err);
       // Rollback on error
-      fetchNovels();
+      fetchBooks();
     }
   };
 
-  // Create novel submit
-  const handleCreateNovel = async (e: React.FormEvent) => {
+  // Create book submit
+  const handleCreateBook = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError('');
     
@@ -107,7 +107,7 @@ export default function Dashboard() {
 
     setSubmitting(true);
     try {
-      const created = await api.createNovel({
+      const created = await api.createBook({
         title: newTitle,
         author: newAuthor,
         sourceUrl: newUrl,
@@ -124,32 +124,32 @@ export default function Dashboard() {
       setNewRawSourceUrl('');
       setNewRawOriginalLanguage('');
       setIsModalOpen(false);
-      window.location.href = `/novels/${created._id}`;
+      window.location.href = `/books/${created._id}`;
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to create novel entry.');
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create book entry.');
     } finally {
       setSubmitting(false);
     }
   };
 
   // Filters logic
-  const filteredNovels = novels.filter((novel) => {
+  const filteredBooks = books.filter((book) => {
     const query = search.toLowerCase();
-    const matchQuery = novel.title.toLowerCase().includes(search.toLowerCase()) || 
-                       (novel.authorPenName || novel.author || novel.authorRealName || 'Unknown Author').toLowerCase().includes(query) ||
-                       (novel.alternativeNames || []).some((name) => name.toLowerCase().includes(query)) ||
-                       (novel.genres || []).some((genre) => genre.toLowerCase().includes(query)) ||
-                       (novel.personalTags || []).some((tag) => tag.toLowerCase().includes(query)) ||
-                       (novel.characterNotes || '').toLowerCase().includes(query) ||
-                       (novel.relationshipNotes || '').toLowerCase().includes(query);
-    const matchStatus = statusFilter === 'all' || novel.status === statusFilter;
+    const matchQuery = book.title.toLowerCase().includes(search.toLowerCase()) || 
+                       (book.authorPenName || book.author || book.authorRealName || 'Unknown Author').toLowerCase().includes(query) ||
+                       (book.alternativeNames || []).some((name) => name.toLowerCase().includes(query)) ||
+                       (book.genres || []).some((genre) => genre.toLowerCase().includes(query)) ||
+                       (book.personalTags || []).some((tag) => tag.toLowerCase().includes(query)) ||
+                       (book.characterNotes || '').toLowerCase().includes(query) ||
+                       (book.relationshipNotes || '').toLowerCase().includes(query);
+    const matchStatus = statusFilter === 'all' || book.status === statusFilter;
     return matchQuery && matchStatus;
   });
   const stats = {
-    total: novels.length,
-    reading: novels.filter((novel) => novel.status === 'reading').length,
-    completed: novels.filter((novel) => novel.status === 'completed').length,
-    rawReady: novels.filter((novel) => Boolean(novel.rawSourceUrl || novel.rawChaptersTotal > 0)).length,
+    total: books.length,
+    reading: books.filter((book) => book.status === 'reading').length,
+    completed: books.filter((book) => book.status === 'completed').length,
+    rawReady: books.filter((book) => Boolean(book.rawSourceUrl || book.rawUnitsTotal > 0)).length,
   };
 
   if (authLoading || loading) {
@@ -172,9 +172,9 @@ export default function Dashboard() {
             Track reading status, personal notes, rereads, characters, and recall details.
           </p>
         </div>
-        {hasCapability(CAPABILITY.NOVELS_CREATE) ? (
+        {hasCapability(CAPABILITY.BOOKS_CREATE) ? (
           <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            + Create Catalog Novel
+            + Create Catalog Book
           </button>
         ) : (
           <Link href="/" className="btn btn-primary">
@@ -228,14 +228,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {filteredNovels.length === 0 ? (
+      {filteredBooks.length === 0 ? (
         <div className="glass-card empty-state">
           <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            {search || statusFilter !== 'all' ? 'No novels match your filter query.' : 'Your reading library is empty.'}
+            {search || statusFilter !== 'all' ? 'No books match your filter query.' : 'Your reading library is empty.'}
           </p>
-          {hasCapability(CAPABILITY.NOVELS_CREATE) ? (
+          {hasCapability(CAPABILITY.BOOKS_CREATE) ? (
             <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-              + Create Catalog Novel
+              + Create Catalog Book
             </button>
           ) : (
             <Link href="/" className="btn btn-primary">
@@ -244,15 +244,15 @@ export default function Dashboard() {
           )}
         </div>
       ) : (
-        <div className="novel-grid">
-          {filteredNovels.map((novel) => (
-            <NovelCard
-              key={novel._id}
-              novel={novel}
-              href={`/profile/novels/${novel._id}`}
+        <div className="book-grid">
+          {filteredBooks.map((book) => (
+            <BookCard
+              key={book._id}
+              book={book}
+              href={`/books/${book._id}`}
               action={
                 <button
-                  onClick={(e) => handleQuickIncrement(e, novel)}
+                  onClick={(e) => handleQuickIncrement(e, book)}
                   className="btn btn-secondary"
                   style={{ minHeight: '30px', padding: '0.25rem 0.55rem', fontSize: '0.75rem' }}
                 >
@@ -264,12 +264,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Add Novel Dialog Modal */}
+      {/* Add Book Dialog Modal */}
       {isModalOpen && (
         <div className="modal-backdrop">
           <div className="glass-card modal-panel">
             <div className="flex-between">
-              <h2 style={{ fontSize: '1.5rem' }}>Create Catalog Novel</h2>
+              <h2 style={{ fontSize: '1.5rem' }}>Create Catalog Book</h2>
               <button 
                 onClick={() => { setIsModalOpen(false); setSubmitError(''); }}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
@@ -291,19 +291,19 @@ export default function Dashboard() {
               </div>
             )}
 
-            <form onSubmit={handleCreateNovel} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form onSubmit={handleCreateBook} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Novel Web Link (Optional - for automated background scraping)</label>
+                <label className="form-label">Book Web Link (Optional - for automated background scraping)</label>
                 <input 
                   type="url" 
                   className="form-input" 
-                  placeholder="https://example.com/novel/title"
+                  placeholder="https://example.com/book/title"
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
                 />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                  If provided, our background crawler will download and archive metadata & chapters automatically.
+                  If provided, our background crawler will download and archive metadata & units automatically.
                 </span>
               </div>
 
@@ -317,7 +317,7 @@ export default function Dashboard() {
                   onChange={(e) => setNewCoverUrl(e.target.value)}
                 />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                  Add this for manual entries, then use Sync Cover from the novel page to cache it locally.
+                  Add this for manual entries, then use Sync Cover from the book page to cache it locally.
                 </span>
               </div>
 
@@ -382,7 +382,7 @@ export default function Dashboard() {
                   className="btn btn-primary"
                   disabled={submitting}
                 >
-                  {submitting ? <span className="spinner"></span> : 'Create Catalog Novel'}
+                  {submitting ? <span className="spinner"></span> : 'Create Catalog Book'}
                 </button>
               </div>
             </form>

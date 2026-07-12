@@ -9,7 +9,7 @@ import type { ReaderBottomToolbarProps } from "./types";
 export function SettingsTab(props: ReaderBottomToolbarProps) {
 	return (
 		<div className="flex flex-col gap-4">
-			{props.hasRawChapters && (
+			{props.hasRawUnits && (
 				<Field label="Reader Source">
 					<div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border">
 						<button
@@ -36,7 +36,7 @@ export function SettingsTab(props: ReaderBottomToolbarProps) {
 				</Field>
 			)}
 
-			<ToggleRow label="Auto-advance to next chapter" checked={props.autoOpenNext} onChange={props.onAutoOpenNextChange} />
+			<ToggleRow label="Auto-advance to next unit" checked={props.autoOpenNext} onChange={props.onAutoOpenNextChange} />
 
 			<Field label="Reader Type">
 				<div className="grid grid-cols-3 overflow-hidden rounded-lg border border-border">

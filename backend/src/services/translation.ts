@@ -127,7 +127,7 @@ function getProviderConfig(prompt: string): ProviderConfig {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new TranslationConfigurationError('OPENAI_API_KEY is not configured for AI chapter translation.');
+    throw new TranslationConfigurationError('OPENAI_API_KEY is not configured for AI unit translation.');
   }
 
   const model = process.env.OPENAI_TRANSLATION_MODEL || DEFAULT_OPENAI_MODEL;
@@ -154,7 +154,7 @@ function getAbortSignal(timeoutMs: number): AbortSignal {
   return controller.signal;
 }
 
-export async function translateChapterHtml(input: {
+export async function translateUnitHtml(input: {
   html: string;
   title: string;
   targetLanguage?: string;
@@ -165,18 +165,18 @@ export async function translateChapterHtml(input: {
   const targetLanguage = input.targetLanguage?.trim() || process.env.DEFAULT_TRANSLATION_TARGET_LANGUAGE || 'English';
   const sourceLanguage = input.sourceLanguage?.trim() || 'auto-detected source language';
   const html = normalizeHtmlFragment(input.html);
-  const title = input.title || 'Untitled Chapter';
+  const title = input.title || 'Untitled Unit';
 
   if (!html || html.length < 20) {
-    throw new Error('Raw chapter content is empty or too short to translate.');
+    throw new Error('Raw unit content is empty or too short to translate.');
   }
 
   if (html.length > MAX_TRANSLATION_INPUT_CHARS) {
-    throw new Error(`Raw chapter content is too large to translate in one request (${html.length} chars).`);
+    throw new Error(`Raw unit content is too large to translate in one request (${html.length} chars).`);
   }
 
   const prompt = [
-    `Translate this web novel chapter from ${sourceLanguage} to ${targetLanguage}.`,
+    `Translate this web novel unit from ${sourceLanguage} to ${targetLanguage}.`,
     'Return only a JSON object with exactly these keys: "title" and "html".',
     'The "html" value must be an HTML fragment suitable for display in the reader.',
     'Preserve paragraph breaks and basic inline formatting. Do not summarize, censor, add notes, or wrap the JSON in markdown.',

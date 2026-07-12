@@ -18,7 +18,7 @@ export function MoreTab(props: ReaderBottomToolbarProps) {
 			<DockButton onClick={props.onScrollToTop} label="Top">
 				<span className="text-[0.65rem] text-muted-copy">Return to title</span>
 			</DockButton>
-			<Link href={props.isLoggedIn ? `/profile/novels/${props.novelId}` : "/login"} className="contents">
+			<Link href={props.isLoggedIn ? `/books/${props.bookId}` : "/login"} className="contents">
 				<DockButton label={props.isLoggedIn ? "Profile Details" : "Login"}>
 					<span className="text-[0.65rem] text-muted-copy">
 						{props.isLoggedIn ? "Open your private notes" : "Track reading progress"}

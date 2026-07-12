@@ -1,16 +1,18 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type NovelStatus = 'reading' | 'completed' | 'on_hold' | 'dropped' | 'planning';
+export type BookStatus = 'reading' | 'completed' | 'on_hold' | 'dropped' | 'planning';
 
-export interface IChapterIndex {
+export interface IUnitIndex {
   title: string;
   url: string;
-  number: number;
+  unitNumber: number;
+  unitType: string;
 }
 
-export interface INovel extends Document {
+export interface IBook extends Document {
   userId?: mongoose.Types.ObjectId;
   addedByUserId?: mongoose.Types.ObjectId;
+  mediaType: string;
   authorId?: mongoose.Types.ObjectId;
   authorIds: mongoose.Types.ObjectId[];
   title: string;
@@ -36,21 +38,11 @@ export interface INovel extends Document {
   sourceUrl: string;
   rawSourceUrl: string;
   rawOriginalLanguage: string;
-  rawChaptersTotal: number;
-  rawChaptersList: IChapterIndex[];
-  status: NovelStatus;
-  chaptersTotal: number;
-  chaptersRead: number;
-  rating: number;
-  review: string;
-  personalNotes: string;
-  rawLegacyEntry: string;
-  characterNotes: string;
-  relationshipNotes: string;
-  personalTags: string[];
-  personalTagKeys: string[];
-  completedAt?: Date;
-  chaptersList: IChapterIndex[];
+  rawUnitsTotal: number;
+  rawUnitsList: IUnitIndex[];
+  status: BookStatus;
+  translatedUnitsTotal: number;
+  translatedUnitsList: IUnitIndex[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,9 +74,10 @@ function cleanStringList(values: string[]): string[] {
   return cleaned;
 }
 
-const NovelSchema = new Schema<INovel>({
+const BookSchema = new Schema<IBook>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
   addedByUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+  mediaType: { type: String, default: 'novel' },
   authorId: { type: Schema.Types.ObjectId, ref: 'Author', index: true },
   authorIds: [{ type: Schema.Types.ObjectId, ref: 'Author', index: true }],
   title: { type: String, required: true, index: true },
@@ -110,39 +103,27 @@ const NovelSchema = new Schema<INovel>({
   sourceUrl: { type: String, default: '' },
   rawSourceUrl: { type: String, default: '' },
   rawOriginalLanguage: { type: String, default: '' },
-  rawChaptersTotal: { type: Number, default: 0 },
-  rawChaptersList: [
+  rawUnitsTotal: { type: Number, default: 0 },
+  rawUnitsList: [
     {
       title: { type: String, required: true },
       url: { type: String, required: true },
-      number: { type: Number, required: true },
+      unitNumber: { type: Number, required: true },
+      unitType: { type: String, default: 'chapter' },
     }
   ],
-  status: { type: String, enum: ['reading', 'completed', 'on_hold', 'dropped', 'planning'], default: 'reading' },
-  chaptersTotal: { type: Number, default: 0 },
-  chaptersRead: { type: Number, default: 0 },
-  rating: { type: Number, default: 0 },
-  review: { type: String, default: '' },
-  personalNotes: { type: String, default: '' },
-  rawLegacyEntry: { type: String, default: '' },
-  characterNotes: { type: String, default: '' },
-  relationshipNotes: { type: String, default: '' },
-  personalTags: { type: [String], default: [], index: true },
-  personalTagKeys: { type: [String], default: [], index: true },
-  completedAt: { type: Date },
-  chaptersList: [
+  translatedUnitsTotal: { type: Number, default: 0 },
+  translatedUnitsList: [
     {
       title: { type: String, required: true },
       url: { type: String, required: true },
-      number: { type: Number, required: true },
+      unitNumber: { type: Number, required: true },
+      unitType: { type: String, default: 'chapter' },
     }
   ],
 }, { timestamps: true });
 
-NovelSchema.pre('validate', function normalizeFilterFields(next) {
-  if (!this.addedByUserId && this.userId) {
-    this.addedByUserId = this.userId;
-  }
+BookSchema.pre('validate', function normalizeFilterFields(next) {
   if ((!this.authorIds || this.authorIds.length === 0) && this.authorId) {
     this.authorIds = [this.authorId];
   }
@@ -151,9 +132,7 @@ NovelSchema.pre('validate', function normalizeFilterFields(next) {
   }
   this.alternativeNames = cleanStringList(this.alternativeNames);
   this.genres = cleanStringList(this.genres);
-  this.personalTags = cleanStringList(this.personalTags);
   this.genreKeys = this.genres.map(normalizeFilterKey).filter(Boolean);
-  this.personalTagKeys = this.personalTags.map(normalizeFilterKey).filter(Boolean);
   this.originalSource = this.originalSource?.trim() || '';
   this.originalSourceKey = normalizeFilterKey(this.originalSource);
   this.publicationStatus = this.publicationStatus?.trim() || '';
@@ -163,15 +142,10 @@ NovelSchema.pre('validate', function normalizeFilterFields(next) {
   next();
 });
 
-NovelSchema.index({ authorId: 1, updatedAt: -1 });
-NovelSchema.index({ authorIds: 1, updatedAt: -1 });
-NovelSchema.index({ genreIds: 1, updatedAt: -1 });
-NovelSchema.index({ publicationStatusId: 1, updatedAt: -1 });
-NovelSchema.index({ addedByUserId: 1, updatedAt: -1 });
-NovelSchema.index({ userId: 1, status: 1, updatedAt: -1 });
-NovelSchema.index({ userId: 1, genreKeys: 1, updatedAt: -1 });
-NovelSchema.index({ userId: 1, personalTagKeys: 1, updatedAt: -1 });
-NovelSchema.index({ userId: 1, originalSourceKey: 1, updatedAt: -1 });
-NovelSchema.index({ userId: 1, publicationStatusKey: 1, updatedAt: -1 });
+BookSchema.index({ authorId: 1, updatedAt: -1 });
+BookSchema.index({ authorIds: 1, updatedAt: -1 });
+BookSchema.index({ genreIds: 1, updatedAt: -1 });
+BookSchema.index({ publicationStatusId: 1, updatedAt: -1 });
+BookSchema.index({ addedByUserId: 1, updatedAt: -1 });
 
-export const Novel = mongoose.model<INovel>('Novel', NovelSchema);
+export const Book = mongoose.model<IBook>('Book', BookSchema);

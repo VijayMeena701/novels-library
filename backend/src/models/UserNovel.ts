@@ -1,11 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { NovelStatus, normalizeFilterKey } from './Novel.js';
+import { BookStatus, normalizeFilterKey } from './Novel.js';
 
-export interface IUserNovel extends Document {
+export interface IUserBook extends Document {
   userId: mongoose.Types.ObjectId;
-  novelId: mongoose.Types.ObjectId;
-  status: NovelStatus;
-  chaptersRead: number;
+  bookId: mongoose.Types.ObjectId;
+  status: BookStatus;
+  unitsRead: number;
   rating: number;
   review: string;
   personalNotes: string;
@@ -15,6 +15,8 @@ export interface IUserNovel extends Document {
   personalTags: string[];
   personalTagKeys: string[];
   completedAt?: Date;
+  lastVisitedUnitNumber?: number;
+  lastVisitedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,11 +39,11 @@ function cleanStringList(values: string[]): string[] {
   return cleaned;
 }
 
-const UserNovelSchema = new Schema<IUserNovel>({
+const UserBookSchema = new Schema<IUserBook>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  novelId: { type: Schema.Types.ObjectId, ref: 'Novel', required: true, index: true },
+  bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
   status: { type: String, enum: ['reading', 'completed', 'on_hold', 'dropped', 'planning'], default: 'planning', index: true },
-  chaptersRead: { type: Number, default: 0 },
+  unitsRead: { type: Number, default: 0 },
   rating: { type: Number, default: 0 },
   review: { type: String, default: '' },
   personalNotes: { type: String, default: '' },
@@ -51,16 +53,18 @@ const UserNovelSchema = new Schema<IUserNovel>({
   personalTags: { type: [String], default: [], index: true },
   personalTagKeys: { type: [String], default: [], index: true },
   completedAt: { type: Date },
+  lastVisitedUnitNumber: { type: Number },
+  lastVisitedAt: { type: Date },
 }, { timestamps: true });
 
-UserNovelSchema.pre('validate', function normalizeUserNovelFields(next) {
+UserBookSchema.pre('validate', function normalizeUserBookFields(next) {
   this.personalTags = cleanStringList(this.personalTags);
   this.personalTagKeys = this.personalTags.map(normalizeFilterKey).filter(Boolean);
   next();
 });
 
-UserNovelSchema.index({ userId: 1, novelId: 1 }, { unique: true });
-UserNovelSchema.index({ userId: 1, status: 1, updatedAt: -1 });
-UserNovelSchema.index({ userId: 1, personalTagKeys: 1, updatedAt: -1 });
+UserBookSchema.index({ userId: 1, bookId: 1 }, { unique: true });
+UserBookSchema.index({ userId: 1, status: 1, updatedAt: -1 });
+UserBookSchema.index({ userId: 1, personalTagKeys: 1, updatedAt: -1 });
 
-export const UserNovel = mongoose.model<IUserNovel>('UserNovel', UserNovelSchema);
+export const UserBook = mongoose.model<IUserBook>('UserBook', UserBookSchema);

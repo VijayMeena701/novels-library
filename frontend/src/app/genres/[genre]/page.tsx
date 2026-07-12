@@ -1,19 +1,19 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { api, Novel } from '../../../utils/api';
-import { NovelCard } from '../../../components/NovelCard';
+import { api, Book } from '../../../utils/api';
+import { BookCard } from '../../../components/BookCard';
 
 export default function GenrePage({ params }: { params: Promise<{ genre: string }> }) {
   const { genre: rawGenre } = use(params);
   const genre = decodeURIComponent(rawGenre);
-  const [novels, setNovels] = useState<Novel[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getPublicCatalogNovels({ genre })
-      .then(setNovels)
-      .catch((err) => console.error('Failed to load genre novels:', err))
+    api.getPublicCatalogBooks({ genre })
+      .then(setBooks)
+      .catch((err) => console.error('Failed to load genre books:', err))
       .finally(() => setLoading(false));
   }, [genre]);
 
@@ -22,19 +22,19 @@ export default function GenrePage({ params }: { params: Promise<{ genre: string 
       <div className="page-header">
         <div>
           <h1 className="page-title">{genre}</h1>
-          <p className="page-subtitle">Novels tagged with this genre.</p>
+          <p className="page-subtitle">Books tagged with this genre.</p>
         </div>
       </div>
 
       {loading ? (
         <div className="spinner"></div>
-      ) : novels.length === 0 ? (
+      ) : books.length === 0 ? (
         <div className="glass-card empty-state">
-          No novels found for this genre.
+          No books found for this genre.
         </div>
       ) : (
-        <div className="novel-grid">
-          {novels.map((novel) => <NovelCard key={novel._id} novel={novel} mode="catalog" />)}
+        <div className="book-grid">
+          {books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
         </div>
       )}
     </div>

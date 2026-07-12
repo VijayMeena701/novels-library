@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, X, User, Settings, LogOut } from "lucide-react";
+import { Menu, X, User, Settings, LogOut, Bell } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { CAPABILITY } from "../utils/permissions";
+import { api } from "../utils/api";
 
 const publicLinks = [
 	{ href: "/", label: "Home", match: (pathname: string) => pathname === "/" },
-	{ href: "/novels", label: "Novels", match: (pathname: string) => pathname.startsWith("/novels") },
+	{ href: "/books", label: "Books", match: (pathname: string) => pathname.startsWith("/books") },
 	{ href: "/authors", label: "Authors", match: (pathname: string) => pathname.startsWith("/authors") },
+	{ href: "/requests", label: "Requests", match: (pathname: string) => pathname.startsWith("/requests") },
 ];
 
 const adminLinks = [{ href: "/scraper", label: "Scrapers", match: (pathname: string) => pathname === "/scraper" }];
@@ -23,7 +25,27 @@ export default function Header() {
 	const { user, logout, hasCapability } = useAuth();
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+	const [unreadCount, setUnreadCount] = useState(0);
 	const userMenuRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!user) return;
+		let cancelled = false;
+		async function loadUnreadCount() {
+			try {
+				const data = await api.getNotifications(true);
+				if (!cancelled) setUnreadCount(data.unreadCount);
+			} catch {
+				// ignore
+			}
+		}
+		void loadUnreadCount();
+		const interval = setInterval(loadUnreadCount, 60000);
+		return () => {
+			cancelled = true;
+			clearInterval(interval);
+		};
+	}, [user]);
 
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
@@ -61,7 +83,7 @@ export default function Header() {
 					<span className="inline-flex size-[34px] items-center justify-center rounded-md bg-gradient-to-br from-primary to-[#263a5c] font-black text-white shadow-[0_9px_20px_rgba(64,95,143,0.22)]">
 						N
 					</span>
-					<span className="whitespace-nowrap text-base font-black text-foreground">Novels Library</span>
+					<span className="whitespace-nowrap text-base font-black text-foreground">Books Library</span>
 				</Link>
 
 				<div className="hidden items-center gap-1 md:flex">
@@ -78,18 +100,27 @@ export default function Header() {
 					{user && <div className="mx-1.5 h-5 w-px bg-border" />}
 
 					{user ? (
-						<div className="relative" ref={userMenuRef}>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="inline-flex items-center gap-2"
-								aria-expanded={isUserMenuOpen}
-								aria-label="User menu"
-								onClick={() => setIsUserMenuOpen((open) => !open)}
-							>
-								<User className="size-4" />
-								<span className="max-w-[120px] truncate">{user.username}</span>
-							</Button>
+						<>
+							<Link href="/notifications" className="relative inline-flex items-center justify-center rounded-md px-2 py-2 text-copy transition hover:bg-primary-soft hover:text-foreground">
+								<Bell className="size-5" />
+								{unreadCount > 0 && (
+									<span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+										{unreadCount > 99 ? '99+' : unreadCount}
+									</span>
+								)}
+							</Link>
+							<div className="relative" ref={userMenuRef}>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="inline-flex items-center gap-2"
+									aria-expanded={isUserMenuOpen}
+									aria-label="User menu"
+									onClick={() => setIsUserMenuOpen((open) => !open)}
+								>
+									<User className="size-4" />
+									<span className="max-w-[120px] truncate">{user.username}</span>
+								</Button>
 
 							{isUserMenuOpen && (
 								<div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-card p-1 shadow-card">
@@ -129,7 +160,8 @@ export default function Header() {
 								</div>
 							)}
 						</div>
-					) : (
+					</>
+				) : (
 						<Button asChild size="sm">
 							<Link href="/login">Login</Link>
 						</Button>

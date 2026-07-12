@@ -13,10 +13,10 @@ export interface ScrapedMetadata {
   publicationStatus: string;
   description: string;
   coverUrl: string;
-  chapters: { title: string; url: string; number: number }[];
+  units: { title: string; url: string; number: number }[];
 }
 
-export interface ScrapedChapter {
+export interface ScrapedUnit {
   title: string;
   content: string;
 }
@@ -30,8 +30,8 @@ export class ManualInterventionRequiredError extends Error {
   }
 }
 
-type ChapterIndex = ScrapedMetadata['chapters'][number];
-type ChapterCandidate = Omit<ChapterIndex, 'number'> & {
+type UnitIndex = ScrapedMetadata['units'][number];
+type UnitCandidate = Omit<UnitIndex, 'number'> & {
   number: number | null;
   sourceOrder: number;
 };
@@ -966,7 +966,7 @@ function collectChapterLinks(
   $: cheerio.CheerioAPI,
   pageUrl: string,
   sourceUrl: string,
-  chaptersByUrl: Map<string, ChapterCandidate>,
+  chaptersByUrl: Map<string, UnitCandidate>,
   orderState: { next: number }
 ) {
   const { anchors, isScopedToChapterList } = getChapterAnchors($);
@@ -1007,7 +1007,7 @@ function collectChapterLinks(
   });
 }
 
-function orderChapterCandidates(candidates: ChapterCandidate[]): ChapterCandidate[] {
+function orderUnitCandidates(candidates: UnitCandidate[]): UnitCandidate[] {
   const sourceOrdered = candidates.slice().sort((a, b) => a.sourceOrder - b.sourceOrder);
   const numbered = sourceOrdered.filter((chapter) => chapter.number !== null);
 
@@ -1033,7 +1033,7 @@ function orderChapterCandidates(candidates: ChapterCandidate[]): ChapterCandidat
   return sourceOrdered;
 }
 
-function finalizeChapters(chaptersByUrl: Map<string, ChapterCandidate>): ChapterIndex[] {
+function finalizeChapters(chaptersByUrl: Map<string, UnitCandidate>): UnitIndex[] {
   const candidates = Array.from(chaptersByUrl.values());
   const hasMissingNumbers = candidates.some((chapter) => chapter.number === null);
 
@@ -1047,9 +1047,9 @@ function finalizeChapters(chaptersByUrl: Map<string, ChapterCandidate>): Chapter
       .sort((a, b) => a.number - b.number);
   }
 
-  const ordered = orderChapterCandidates(candidates);
+  const ordered = orderUnitCandidates(candidates);
   const usedNumbers = new Set<number>();
-  const finalized: ChapterIndex[] = [];
+  const finalized: UnitIndex[] = [];
 
   for (let index = 0; index < ordered.length; index++) {
     const chapter = ordered[index];
@@ -1534,7 +1534,7 @@ export class ScraperService {
     }
 
     // 5. Extract Chapters, including paginated chapter lists
-    const chaptersByUrl = new Map<string, ChapterCandidate>();
+    const chaptersByUrl = new Map<string, UnitCandidate>();
     const chapterOrderState = { next: 0 };
     const visitedListPages = new Set<string>();
     const normalizedSourceUrl = normalizeUrl(url);
@@ -1595,7 +1595,7 @@ export class ScraperService {
       }
     }
 
-    const chapters = finalizeChapters(chaptersByUrl);
+    const units = finalizeChapters(chaptersByUrl);
 
     return {
       title,
@@ -1608,23 +1608,23 @@ export class ScraperService {
       publicationStatus,
       description,
       coverUrl,
-      chapters,
+      units,
     };
   }
 
   /**
    * Scrapes a single chapter's content
    */
-  static async scrapeChapter(url: string): Promise<ScrapedChapter> {
+  static async scrapeUnit(url: string): Promise<ScrapedUnit> {
     const data = await fetchHtml(url);
-    return this.scrapeChapterFromHtml(data, url);
+    return this.scrapeUnitFromHtml(data, url);
   }
 
-  static async scrapeChapterFromHtml(html: string, url: string): Promise<ScrapedChapter> {
-    return this.parseChapterHtml(html, url);
+  static async scrapeUnitFromHtml(html: string, url: string): Promise<ScrapedUnit> {
+    return this.parseUnitHtml(html, url);
   }
 
-  private static parseChapterHtml(data: string, _url: string): ScrapedChapter {
+  private static parseUnitHtml(data: string, _url: string): ScrapedUnit {
     const $ = cheerio.load(data);
     const title = extractChapterTitleFromHtml($, data);
     const contentHtml = extractChapterContentHtml($, title);

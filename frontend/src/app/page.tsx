@@ -5,70 +5,72 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BookOpen, BookText, Headphones, Library, Search, Sparkles, TrendingUp, ArrowRight } from 'lucide-react';
-import { api, type Novel } from '../utils/api';
-import { NovelCard } from '../components/NovelCard';
+import { api, type Book, type HomeResponse } from '../utils/api';
+import { BookCard } from '../components/BookCard';
 import { useAuth } from '../context/AuthContext';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 
-function byNewest(a: Novel, b: Novel) {
+function byNewest(a: Book, b: Book) {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 }
 
-function byChapterCount(a: Novel, b: Novel) {
-  const aTotal = a.chaptersTotal || a.chaptersList?.length || 0;
-  const bTotal = b.chaptersTotal || b.chaptersList?.length || 0;
+function byUnitCount(a: Book, b: Book) {
+  const aTotal = a.translatedUnitsTotal || a.translatedUnitsList?.length || 0;
+  const bTotal = b.translatedUnitsTotal || b.translatedUnitsList?.length || 0;
   return bTotal - aTotal;
 }
 
-function byRating(a: Novel, b: Novel) {
+function byRating(a: Book, b: Book) {
   return (b.rating || 0) - (a.rating || 0);
 }
 
-function getAuthor(novel: Novel): string {
-  return novel.authorPenName || novel.author || novel.authorRealName || 'Unknown Author';
+function getAuthor(book: Book): string {
+  return book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
 }
 
-function getChapterCount(novel: Novel): number {
-  return novel.chaptersTotal || novel.chaptersList?.length || 0;
+function getUnitCount(book: Book): number {
+  return book.translatedUnitsTotal || book.translatedUnitsList?.length || 0;
 }
 
-function stableNovelOrder(novel: Novel): number {
-  return novel._id.split("").reduce((hash, character) => ((hash << 5) - hash + character.charCodeAt(0)) | 0, 0);
+function stableBookOrder(book: Book): number {
+  return book._id.split("").reduce((hash, character) => ((hash << 5) - hash + character.charCodeAt(0)) | 0, 0);
 }
 
 const FEATURES = [
   {
     icon: BookOpen,
     title: 'Track Progress',
-    description: 'Keep tabs on every novel you are reading, rereading, or planning to finish.',
+    description: 'Keep tabs on every book you are reading, rereading, or planning to finish.',
   },
   {
     icon: BookText,
     title: 'Clean Reader',
-    description: 'A distraction-free chapter reader with custom fonts and themes.',
+    description: 'A distraction-free unit reader with custom fonts and themes.',
   },
   {
     icon: Headphones,
     title: 'Text-to-Speech',
-    description: 'Listen to chapters with built-in TTS, pronunciation rules, and skip lists.',
+    description: 'Listen to units with built-in TTS, pronunciation rules, and skip lists.',
   },
   {
     icon: Library,
     title: 'Auto Archive',
-    description: 'Background jobs scrape and archive chapters so they are available offline.',
+    description: 'Background jobs scrape and archive units so they are available offline.',
   },
 ];
 
 export default function PublicHomePage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [novels, setNovels] = useState<Novel[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
-  const [libraryNovels, setLibraryNovels] = useState<Novel[]>([]);
+  const [libraryBooks, setLibraryBooks] = useState<Book[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
+  const [home, setHome] = useState<HomeResponse | null>(null);
+  const [homeLoading, setHomeLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -76,8 +78,8 @@ export default function PublicHomePage() {
 
     async function loadCatalog() {
       try {
-        const data = await api.getPublicCatalogNovelsPaginated({ pageSize: 100 });
-        if (!cancelled) setNovels(Array.isArray(data) ? data : data.novels || []);
+        const data = await api.getPublicCatalogBooksPaginated({ pageSize: 100 });
+        if (!cancelled) setBooks(Array.isArray(data) ? data : data.books || []);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -96,8 +98,8 @@ export default function PublicHomePage() {
     async function loadLibrary() {
       setLibraryLoading(true);
       try {
-        const data = await api.getNovels();
-        if (!cancelled) setLibraryNovels(data || []);
+        const data = await api.getBooks();
+        if (!cancelled) setLibraryBooks(data || []);
       } finally {
         if (!cancelled) setLibraryLoading(false);
       }
@@ -109,18 +111,37 @@ export default function PublicHomePage() {
     };
   }, [user]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHome() {
+      setHomeLoading(true);
+      try {
+        const data = await api.getHome();
+        if (!cancelled) setHome(data);
+      } finally {
+        if (!cancelled) setHomeLoading(false);
+      }
+    }
+
+    void loadHome();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const sections = useMemo(() => {
-    const newest = [...novels].sort(byNewest);
-    const ranked = [...novels].sort(byRating);
-    const longReads = [...novels].sort(byChapterCount);
-    const completed = novels.filter((novel) => {
-      const publicationStatusKey = (novel.publicationStatus || '').toLowerCase().replace(/\s+/g, '_');
-      return publicationStatusKey === 'completed' || (novel.publicationStatus || '').toLowerCase() === 'completed';
+    const newest = [...books].sort(byNewest);
+    const ranked = [...books].sort(byRating);
+    const longReads = [...books].sort(byUnitCount);
+    const completed = books.filter((book) => {
+      const publicationStatusKey = (book.publicationStatus || '').toLowerCase().replace(/\s+/g, '_');
+      return publicationStatusKey === 'completed' || (book.publicationStatus || '').toLowerCase() === 'completed';
     });
     const recent = newest.slice(0, 12);
-    const random = [...novels].sort((a, b) => stableNovelOrder(a) - stableNovelOrder(b));
-    const genres = Array.from(new Set(novels.flatMap((novel) => novel.genres || []).filter(Boolean)));
-    const totalChapters = novels.reduce((sum, novel) => sum + getChapterCount(novel), 0);
+    const random = [...books].sort((a, b) => stableBookOrder(a) - stableBookOrder(b));
+    const genres = Array.from(new Set(books.flatMap((book) => book.genres || []).filter(Boolean)));
+    const totalUnits = books.reduce((sum, book) => sum + getUnitCount(book), 0);
 
     return {
       newest: newest.slice(0, 6),
@@ -130,32 +151,32 @@ export default function PublicHomePage() {
       recent,
       random: random.slice(0, 5),
       genres: genres.slice(0, 12),
-      totalChapters,
+      totalUnits,
     };
-  }, [novels]);
+  }, [books]);
 
-  const spotlightNovel = useMemo(() => {
+  const spotlightBook = useMemo(() => {
     return sections.ranked[0] || sections.newest[0];
   }, [sections.ranked, sections.newest]);
 
   const userSections = useMemo(() => {
-    const byUpdated = [...libraryNovels].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    const byRating = [...libraryNovels].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    const byUpdated = [...libraryBooks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const byRating = [...libraryBooks].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     return {
-      continueReading: byUpdated.filter((n) => n.status === 'reading' && n.chaptersRead > 0 && n.chaptersRead < (n.chaptersTotal || n.chaptersList?.length || 0)).slice(0, 6),
+      continueReading: home?.continueReading.length ? home.continueReading : byUpdated.filter((n) => n.status === 'reading' && n.unitsRead > 0 && n.unitsRead < (n.translatedUnitsTotal || n.translatedUnitsList?.length || 0)).slice(0, 6),
       planning: byUpdated.filter((n) => n.status === 'planning').slice(0, 6),
       completed: byUpdated.filter((n) => n.status === 'completed').slice(0, 6),
       topRated: byRating.filter((n) => (n.rating || 0) > 0).slice(0, 6),
     };
-  }, [libraryNovels]);
+  }, [libraryBooks, home]);
 
-  const showLongReads = novels.length > 4;
+  const showLongReads = books.length > 4;
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     const query = search.trim();
     if (query) {
-      router.push(`/novels?search=${encodeURIComponent(query)}`);
+      router.push(`/books?search=${encodeURIComponent(query)}`);
     }
   };
 
@@ -170,19 +191,19 @@ export default function PublicHomePage() {
     );
   }
 
-  if (!novels.length) {
+  if (!books.length) {
     return (
       <div className="container py-12">
         <Card className="mx-auto max-w-2xl p-8 text-center">
-          <h1 className="font-serif text-3xl font-medium text-foreground">Novels Library</h1>
+          <h1 className="font-serif text-3xl font-medium text-foreground">Books Library</h1>
           <p className="mt-2 text-base text-muted-copy">The catalog is empty right now.</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg">
-              <Link href="/novels">Browse Catalog</Link>
+              <Link href="/books">Browse Catalog</Link>
             </Button>
             {user?.role === 'admin' && (
               <Button asChild size="lg" variant="secondary">
-                <Link href="/profile">Add a Novel</Link>
+                <Link href="/profile">Add a Book</Link>
               </Button>
             )}
           </div>
@@ -197,17 +218,17 @@ export default function PublicHomePage() {
       <main className="flex flex-col gap-6">
         <Card className="relative overflow-hidden p-6 lg:p-8">
           <div className="relative z-10 flex max-w-3xl flex-col gap-5 text-center sm:text-left">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-copy">Personal Web Novel Library</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-copy">Personal Web Book Library</span>
             <h1 className="font-serif text-3xl font-medium leading-tight text-foreground lg:text-4xl">
-              Read, track, and archive web novels in one place.
+              Read, track, and archive web books in one place.
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-copy">
-              Discover translated and raw web novels, keep your reading progress, and let the background crawler archive chapters automatically.
+              Discover translated and raw web books, keep your reading progress, and let the background crawler archive units automatically.
             </p>
             <form className="flex w-full max-w-xl flex-col gap-2 sm:flex-row" onSubmit={handleSearch}>
               <Input
                 type="text"
-                placeholder="Search novels, authors, or genres..."
+                placeholder="Search books, authors, or genres..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -218,7 +239,7 @@ export default function PublicHomePage() {
             </form>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/novels">Browse Catalog</Link>
+                <Link href="/books">Browse Catalog</Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
                 <Link href={user ? '/profile' : '/login'}>{user ? 'Open Library' : 'Login to Track'}</Link>
@@ -226,12 +247,12 @@ export default function PublicHomePage() {
             </div>
             <div className="flex flex-wrap gap-3 pt-2">
               <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
-                <strong className="block text-lg font-semibold leading-none text-foreground">{novels.length}</strong>
-                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Novels</span>
+                <strong className="block text-lg font-semibold leading-none text-foreground">{home?.stats.totalBooks ?? books.length}</strong>
+                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Books</span>
               </div>
               <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
-                <strong className="block text-lg font-semibold leading-none text-foreground">{sections.totalChapters}</strong>
-                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Chapters</span>
+                <strong className="block text-lg font-semibold leading-none text-foreground">{home?.stats.totalUnits ?? sections.totalUnits}</strong>
+                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Units</span>
               </div>
               <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
                 <strong className="block text-lg font-semibold leading-none text-foreground">{sections.completed.length}</strong>
@@ -255,9 +276,14 @@ export default function PublicHomePage() {
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-xl font-medium text-foreground">Your Library</h2>
-              <Link href="/profile" className="text-sm font-semibold text-primary hover:underline">
-                Open Library <ArrowRight className="inline size-4" />
-              </Link>
+              <div className="flex items-center gap-4">
+                <Link href="/history" className="text-sm font-semibold text-primary hover:underline">
+                  History
+                </Link>
+                <Link href="/profile" className="text-sm font-semibold text-primary hover:underline">
+                  Open Library <ArrowRight className="inline size-4" />
+                </Link>
+              </div>
             </div>
             <Card className="p-5">
               <div className="flex flex-col gap-6">
@@ -265,8 +291,8 @@ export default function PublicHomePage() {
                   <div className="flex flex-col gap-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Continue Reading</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                      {userSections.continueReading.map((novel) => (
-                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      {userSections.continueReading.map((book) => (
+                        <BookCard key={book._id} book={book} mode="profile" href={`/books/${book._id}`} />
                       ))}
                     </div>
                   </div>
@@ -275,8 +301,8 @@ export default function PublicHomePage() {
                   <div className="flex flex-col gap-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Plan to Read</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                      {userSections.planning.map((novel) => (
-                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      {userSections.planning.map((book) => (
+                        <BookCard key={book._id} book={book} mode="profile" href={`/books/${book._id}`} />
                       ))}
                     </div>
                   </div>
@@ -285,8 +311,8 @@ export default function PublicHomePage() {
                   <div className="flex flex-col gap-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Completed</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                      {userSections.completed.map((novel) => (
-                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      {userSections.completed.map((book) => (
+                        <BookCard key={book._id} book={book} mode="profile" href={`/books/${book._id}`} />
                       ))}
                     </div>
                   </div>
@@ -295,21 +321,21 @@ export default function PublicHomePage() {
                   <div className="flex flex-col gap-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">Top Rated</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                      {userSections.topRated.map((novel) => (
-                        <NovelCard key={novel._id} novel={novel} mode="profile" href={`/profile/novels/${novel._id}`} />
+                      {userSections.topRated.map((book) => (
+                        <BookCard key={book._id} book={book} mode="profile" href={`/books/${book._id}`} />
                       ))}
                     </div>
                   </div>
                 )}
-                {libraryNovels.length === 0 && (
-                  <p className="text-sm text-muted-copy">Your library is empty. Browse the catalog to add novels.</p>
+                {libraryBooks.length === 0 && (
+                  <p className="text-sm text-muted-copy">Your library is empty. Browse the catalog to add books.</p>
                 )}
               </div>
             </Card>
           </section>
         )}
 
-        {spotlightNovel && (
+        {spotlightBook && (
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-xl font-medium text-foreground">Featured Pick</h2>
@@ -317,10 +343,10 @@ export default function PublicHomePage() {
             <Card className="overflow-hidden p-0">
               <div className="grid md:grid-cols-[180px_1fr]">
                 <div className="relative min-h-[240px] bg-gradient-to-br from-surface to-surface-muted">
-                  <Link href={`/novels/${spotlightNovel._id}`} className="absolute inset-0">
+                  <Link href={`/books/${spotlightBook._id}`} className="absolute inset-0">
                     <Image
-                      src={spotlightNovel.coverUrl || '/placeholder.svg'}
-                      alt={spotlightNovel.title}
+                      src={spotlightBook.coverUrl || '/placeholder.svg'}
+                      alt={spotlightBook.title}
                       width={180}
                       height={240}
                       unoptimized
@@ -333,21 +359,21 @@ export default function PublicHomePage() {
                     <Sparkles className="size-3.5" /> Featured Pick
                   </span>
                   <h3 className="font-serif text-2xl font-medium text-foreground">
-                    <Link href={`/novels/${spotlightNovel._id}`}>{spotlightNovel.title}</Link>
+                    <Link href={`/books/${spotlightBook._id}`}>{spotlightBook.title}</Link>
                   </h3>
-                  <p className="text-sm text-muted-copy">by {getAuthor(spotlightNovel)}</p>
+                  <p className="text-sm text-muted-copy">by {getAuthor(spotlightBook)}</p>
                   <p className="line-clamp-3 text-sm leading-relaxed text-copy">
-                    {spotlightNovel.description || 'No summary available yet.'}
+                    {spotlightBook.description || 'No summary available yet.'}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {spotlightNovel.publicationStatus && <Badge variant="outline">{spotlightNovel.publicationStatus}</Badge>}
-                    {(spotlightNovel.genres || []).slice(0, 3).map((genre) => (
+                    {spotlightBook.publicationStatus && <Badge variant="outline">{spotlightBook.publicationStatus}</Badge>}
+                    {(spotlightBook.genres || []).slice(0, 3).map((genre) => (
                       <Badge key={genre} variant="outline">{genre}</Badge>
                     ))}
                   </div>
                   <div className="mt-auto">
                     <Button asChild variant="secondary">
-                      <Link href={`/novels/${spotlightNovel._id}`}>View Novel</Link>
+                      <Link href={`/books/${spotlightBook._id}`}>View Book</Link>
                     </Button>
                   </div>
                 </div>
@@ -360,13 +386,13 @@ export default function PublicHomePage() {
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-xl font-medium text-foreground">New Arrivals</h2>
-              <Link href="/novels" className="text-sm font-semibold text-primary hover:underline">
+              <Link href="/books" className="text-sm font-semibold text-primary hover:underline">
                 View all <ArrowRight className="inline size-4" />
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {sections.newest.map((novel) => (
-                <NovelCard key={novel._id} novel={novel} mode="catalog" />
+              {sections.newest.map((book) => (
+                <BookCard key={book._id} book={book} mode="catalog" />
               ))}
             </div>
           </section>
@@ -376,13 +402,45 @@ export default function PublicHomePage() {
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-xl font-medium text-foreground">Long Reads</h2>
-              <Link href="/novels?sort=chaptersTotal" className="text-sm font-semibold text-primary hover:underline">
+              <Link href="/books?sort=translatedUnitsTotal" className="text-sm font-semibold text-primary hover:underline">
                 View all <ArrowRight className="inline size-4" />
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {sections.longReads.map((novel) => (
-                <NovelCard key={novel._id} novel={novel} mode="catalog" />
+              {sections.longReads.map((book) => (
+                <BookCard key={book._id} book={book} mode="catalog" />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {home?.topVoted && home.topVoted.length > 0 && (
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-serif text-xl font-medium text-foreground">Top Voted</h2>
+              <Link href="/books?sort=votes" className="text-sm font-semibold text-primary hover:underline">
+                View all <ArrowRight className="inline size-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {home.topVoted.map((book) => (
+                <BookCard key={book._id} book={book} mode="catalog" />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {home?.mostVisited && home.mostVisited.length > 0 && (
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-serif text-xl font-medium text-foreground">Most Visited</h2>
+              <Link href="/books?sort=visits" className="text-sm font-semibold text-primary hover:underline">
+                View all <ArrowRight className="inline size-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {home.mostVisited.map((book) => (
+                <BookCard key={book._id} book={book} mode="catalog" />
               ))}
             </div>
           </section>
@@ -394,15 +452,15 @@ export default function PublicHomePage() {
               <h2 className="font-serif text-xl font-medium text-foreground">Recent Updates</h2>
             </div>
             <Card className="divide-y divide-border overflow-hidden">
-              {sections.recent.map((novel) => (
-                <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-surface-muted">
+              {sections.recent.map((book) => (
+                <Link key={book._id} href={`/books/${book._id}`} className="group flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-surface-muted">
                   <div className="min-w-0">
-                    <strong className="block truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
-                    <span className="text-xs text-muted-copy">{getAuthor(novel)}</span>
+                    <strong className="block truncate text-sm font-semibold text-foreground group-hover:text-primary">{book.title}</strong>
+                    <span className="text-xs text-muted-copy">{getAuthor(book)}</span>
                   </div>
                   <div className="flex shrink-0 items-center gap-4 text-xs text-muted-copy">
-                    <span className="hidden sm:inline">{new Date(novel.updatedAt).toLocaleDateString()}</span>
-                    <span>{getChapterCount(novel)} chapters</span>
+                    <span className="hidden sm:inline">{new Date(book.updatedAt).toLocaleDateString()}</span>
+                    <span>{getUnitCount(book)} units</span>
                   </div>
                 </Link>
               ))}
@@ -419,14 +477,14 @@ export default function PublicHomePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-0">
-            {sections.ranked.map((novel, index) => (
-              <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex items-center gap-3 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
+            {sections.ranked.map((book, index) => (
+              <Link key={book._id} href={`/books/${book._id}`} className="group flex items-center gap-3 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
                 <span className="flex h-6 w-6 items-center justify-center rounded-md bg-surface text-xs font-bold text-muted-copy">{index + 1}</span>
                 <div className="min-w-0 flex-1">
-                  <strong className="block truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
-                  <small className="text-xs text-muted-copy">{getAuthor(novel)}</small>
+                  <strong className="block truncate text-sm font-semibold text-foreground group-hover:text-primary">{book.title}</strong>
+                  <small className="text-xs text-muted-copy">{getAuthor(book)}</small>
                 </div>
-                <small className="text-xs font-semibold text-muted-copy">{(novel.rating || 0).toFixed(1)}</small>
+                <small className="text-xs font-semibold text-muted-copy">{(book.rating || 0).toFixed(1)}</small>
               </Link>
             ))}
           </CardContent>
@@ -453,10 +511,10 @@ export default function PublicHomePage() {
               <CardTitle className="font-serif text-base font-medium">Completed</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-0">
-              {sections.completed.map((novel) => (
-                <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex flex-col gap-0.5 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
-                  <strong className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
-                  <small className="text-xs text-muted-copy">{getAuthor(novel)}</small>
+              {sections.completed.map((book) => (
+                <Link key={book._id} href={`/books/${book._id}`} className="group flex flex-col gap-0.5 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
+                  <strong className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{book.title}</strong>
+                  <small className="text-xs text-muted-copy">{getAuthor(book)}</small>
                 </Link>
               ))}
             </CardContent>
@@ -469,10 +527,10 @@ export default function PublicHomePage() {
               <CardTitle className="font-serif text-base font-medium">Random</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-0">
-              {sections.random.map((novel) => (
-                <Link key={novel._id} href={`/novels/${novel._id}`} className="group flex flex-col gap-0.5 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
-                  <strong className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{novel.title}</strong>
-                  <small className="text-xs text-muted-copy">{getAuthor(novel)}</small>
+              {sections.random.map((book) => (
+                <Link key={book._id} href={`/books/${book._id}`} className="group flex flex-col gap-0.5 border-b border-border py-2.5 transition last:border-b-0 hover:pl-1">
+                  <strong className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{book.title}</strong>
+                  <small className="text-xs text-muted-copy">{getAuthor(book)}</small>
                 </Link>
               ))}
             </CardContent>

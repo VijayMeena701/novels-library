@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
 	api,
-	type Novel,
-	type ChapterContent,
+	type Book,
+	type BookContent,
 	type JobType,
 	type PronunciationRule,
 	type ReaderSettings,
@@ -35,15 +35,15 @@ const HIGHLIGHT_MODES: ReaderHighlightMode[] = ["off", "paragraph", "word"];
 const AUTOSCROLL_BEHAVIORS: ReaderAutoScrollBehavior[] = ["smooth", "instant"];
 const DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR = "#f5d67a";
 const DEFAULT_WORD_HIGHLIGHT_COLOR = "#f59e0b";
-const TTS_SESSION_FLAG = "novels_reader_user_started_tts";
+const TTS_SESSION_FLAG = "books_reader_user_started_tts";
 
 interface SpeechChunk {
 	text: string;
 	startOffset: number;
 }
 
-interface CatalogChapter {
-	number: number;
+interface CatalogUnit {
+	unitNumber: number;
 	title: string;
 	archived: boolean;
 	sourceUrl?: string;
@@ -94,20 +94,20 @@ function normalizeTitle(value: string): string {
 	return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-function isGenericChapterTitle(value: string, novelTitle: string, chapterNumber: number): boolean {
+function isGenericUnitTitle(value: string, bookTitle: string, unitNumber: number): boolean {
 	const normalized = normalizeTitle(value);
-	return !normalized || normalized === normalizeTitle(novelTitle) || normalized === `chapter ${chapterNumber}` || normalized === `ch ${chapterNumber}`;
+	return !normalized || normalized === normalizeTitle(bookTitle) || normalized === `unit ${unitNumber}` || normalized === `ch ${unitNumber}`;
 }
 
-function resolveChapterTitle(novelTitle: string, chapterNumber: number, archivedTitle?: string, indexedTitle?: string): string {
+function resolveUnitTitle(bookTitle: string, unitNumber: number, archivedTitle?: string, indexedTitle?: string): string {
 	const archived = archivedTitle?.trim() || "";
 	const indexed = indexedTitle?.trim() || "";
 
-	if (indexed && isGenericChapterTitle(archived, novelTitle, chapterNumber)) {
+	if (indexed && isGenericUnitTitle(archived, bookTitle, unitNumber)) {
 		return indexed;
 	}
 
-	return archived || indexed || `Chapter ${chapterNumber}`;
+	return archived || indexed || `Unit ${unitNumber}`;
 }
 
 function splitSpeechTextWithOffsets(text: string, maxLength = 1800): SpeechChunk[] {
@@ -175,8 +175,8 @@ function buildWholeWordPattern(pattern: string): string {
 }
 
 /**
- * Rewrites text to speak using the user's pronunciation rules for this novel (or their
- * "all novels" global rules). Rules with an empty replacement mute/skip the matched text.
+ * Rewrites text to speak using the user's pronunciation rules for this book (or their
+ * "all books" global rules). Rules with an empty replacement mute/skip the matched text.
  */
 function applyPronunciationRules(text: string, rules: PronunciationRule[]): string {
 	if (!rules.length) return text;
@@ -213,30 +213,30 @@ function getErrorMessage(error: unknown, fallback: string): string {
 	return fallback;
 }
 
-export default function ReaderView({ params }: { params: Promise<{ id: string; chapterNumber: string }> | { id: string; chapterNumber: string } }) {
+export default function ReaderView({ params }: { params: Promise<{ id: string; unitNumber: string }> | { id: string; unitNumber: string } }) {
 	const resolvedParams = params instanceof Promise ? use(params) : params;
-	const { id: novelId, chapterNumber: chNumStr } = resolvedParams;
+	const { id: bookId, unitNumber: chNumStr } = resolvedParams;
 
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { user, loading: authLoading, hasCapability } = useAuth();
 
-	const chapterNumber = parseInt(chNumStr, 10);
+	const unitNumber = parseInt(chNumStr, 10);
 	const shouldResumeTtsFromRoute = searchParams.get("tts") === "1";
 	const readingSource: ReaderSource = searchParams.get("source") === "raw" ? "raw" : "translated";
 	const isRawReader = readingSource === "raw";
 
-	const [novel, setNovel] = useState<Novel | null>(null);
-	const [chapter, setChapter] = useState<ChapterContent | null>(null);
-	const [chapters, setChapters] = useState<Omit<ChapterContent, "content">[]>([]);
+	const [book, setBook] = useState<Book | null>(null);
+	const [unit, setUnit] = useState<BookContent | null>(null);
+	const [units, setUnits] = useState<Omit<BookContent, "content">[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
-	const [translatingRawChapter, setTranslatingRawChapter] = useState(false);
+	const [translatingRawUnit, setTranslatingRawUnit] = useState(false);
 	const [adminActionMessage, setAdminActionMessage] = useState("");
-	const [adminScrapingChapter, setAdminScrapingChapter] = useState(false);
-	const [chapterHtmlPageUrl, setChapterHtmlPageUrl] = useState("");
-	const [chapterHtmlContent, setChapterHtmlContent] = useState("");
-	const [importingChapterHtml, setImportingChapterHtml] = useState(false);
+	const [adminScrapingUnit, setAdminScrapingUnit] = useState(false);
+	const [unitHtmlPageUrl, setUnitHtmlPageUrl] = useState("");
+	const [unitHtmlContent, setUnitHtmlContent] = useState("");
+	const [importingUnitHtml, setImportingUnitHtml] = useState(false);
 
 	const [theme, setTheme] = useState<ReaderTheme>("sepia");
 	const [fontSize, setFontSize] = useState<number>(18);
@@ -290,7 +290,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const pronunciationRulesRef = useRef<PronunciationRule[]>([]);
 	const speechRestartTimerRef = useRef<number | null>(null);
 	const shouldContinueSpeechRef = useRef(false);
-	const startedAutoSpeechForChapterRef = useRef<number | null>(null);
+	const startedAutoSpeechForUnitRef = useRef<number | null>(null);
 	const readerContentRef = useRef<HTMLDivElement | null>(null);
 	const pendingReaderSettingsRef = useRef<Partial<ReaderSettings>>({});
 	const settingsSaveTimerRef = useRef<number | null>(null);
@@ -422,7 +422,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	}, [pronunciationRules]);
 
 	useEffect(() => {
-		if (authLoading || !user || !novelId) {
+		if (authLoading || !user || !bookId) {
 			pronunciationRulesRef.current = [];
 			return;
 		}
@@ -433,7 +433,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			setPronunciationRulesLoading(true);
 			setPronunciationRulesError("");
 			try {
-				const rules = await api.getPronunciationRules(novelId);
+				const rules = await api.getPronunciationRules(bookId);
 				if (!cancelled) {
 					pronunciationRulesRef.current = rules;
 					setPronunciationRules(rules);
@@ -450,18 +450,18 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		return () => {
 			cancelled = true;
 		};
-	}, [authLoading, user, novelId]);
+	}, [authLoading, user, bookId]);
 
 	const handleCreatePronunciationRule = useCallback(
 		async (payload: Parameters<typeof api.createPronunciationRule>[1]) => {
-			const rule = await api.createPronunciationRule(novelId, payload);
+			const rule = await api.createPronunciationRule(bookId, payload);
 			setPronunciationRules((prev) => {
 				const next = [...prev, rule];
 				pronunciationRulesRef.current = next;
 				return next;
 			});
 		},
-		[novelId],
+		[bookId],
 	);
 
 	const handleUpdatePronunciationRule = useCallback(async (ruleId: string, payload: Parameters<typeof api.updatePronunciationRule>[1]) => {
@@ -734,7 +734,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			}
 			if (typeof window !== "undefined" && "speechSynthesis" in window) {
 				// CRITICAL PREVENT autoplay block: Keep the speech engine talking (not cancelled)
-				// when unmounting and transitioning to the next chapter so session remains active.
+				// when unmounting and transitioning to the next unit so session remains active.
 				if (!options?.preserveContinuation) {
 					activeUtteranceRef.current = null;
 					window.speechSynthesis.cancel();
@@ -766,51 +766,51 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		if (typeof window !== "undefined") {
 			window.scrollTo({ top: 0, behavior: "auto" });
 		}
-	}, [chapterNumber, stopSpeech]);
+	}, [unitNumber, stopSpeech]);
 
 	useEffect(() => {
 		let cancelled = false;
 
-		async function loadChapter() {
-			if (!novelId || Number.isNaN(chapterNumber)) return;
+		async function loadUnit() {
+			if (!bookId || Number.isNaN(unitNumber)) return;
 			setLoading(true);
 			setError("");
-			setChapter(null);
+			setUnit(null);
 			setAdminActionMessage("");
 
 			try {
-				const [novelData, chaptersData] = isRawReader
-					? await Promise.all([api.getPublicNovel(novelId), api.getPublicRawChapters(novelId)])
-					: await Promise.all([api.getPublicNovel(novelId), api.getPublicChapters(novelId)]);
+				const [bookData, unitsData] = isRawReader
+					? await Promise.all([api.getPublicBook(bookId), api.getPublicRawUnits(bookId)])
+					: await Promise.all([api.getPublicBook(bookId), api.getPublicUnits(bookId)]);
 				if (cancelled) return;
-				setNovel(novelData);
-				setChapters(chaptersData);
+				setBook(bookData);
+				setUnits(unitsData);
 
 				try {
-					const chapterData = isRawReader
-						? await api.getPublicRawChapter(novelId, chapterNumber)
-						: await api.getPublicChapter(novelId, chapterNumber);
+					const unitData = isRawReader
+						? await api.getPublicRawUnit(bookId, unitNumber)
+						: await api.getPublicUnit(bookId, unitNumber);
 					if (cancelled) return;
-					setChapter(chapterData);
+					setUnit(unitData);
 
 					if (user && !isRawReader) {
-						void api.recordChapterVisit(novelId, chapterData.chapterNumber).catch((visitErr) => {
-							console.error("Failed to record chapter revisit:", visitErr);
+						void api.recordBookVisit(bookId, unitData.unitNumber).catch((visitErr) => {
+							console.error("Failed to record unit revisit:", visitErr);
 						});
 
-						if (chapterData.chapterNumber > novelData.chaptersRead) {
-							void api.updateNovel(novelId, { chaptersRead: chapterData.chapterNumber }).catch((updateErr) => {
+						if (unitData.unitNumber > bookData.unitsRead) {
+							void api.updateBook(bookId, { unitsRead: unitData.unitNumber }).catch((updateErr) => {
 								console.error("Failed to update reading progress:", updateErr);
 							});
 						}
 					}
-				} catch (chapterErr: unknown) {
+				} catch (unitErr: unknown) {
 					if (cancelled) return;
-					setError(getErrorMessage(chapterErr, "This chapter has not been archived yet."));
+					setError(getErrorMessage(unitErr, "This unit has not been archived yet."));
 				}
 			} catch (err: unknown) {
 				if (cancelled) return;
-				console.error("Failed to load chapter content:", err);
+				console.error("Failed to load unit content:", err);
 				setError(getErrorMessage(err, "Could not load this reader page."));
 			} finally {
 				if (!cancelled) {
@@ -819,182 +819,182 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			}
 		}
 
-		void loadChapter();
+		void loadUnit();
 
 		return () => {
 			cancelled = true;
 		};
-	}, [isRawReader, user, novelId, chapterNumber]);
+	}, [isRawReader, user, bookId, unitNumber]);
 
 	// Instantly clear blocks on navigation or new contents to prevent stale tracking
 	useEffect(() => {
 		speechBlocksRef.current = [];
 		activeSpeechElementRef.current = null;
 		activeWordHighlightRef.current = null;
-	}, [chapter?.content, chapterNumber]);
+	}, [unit?.content, unitNumber]);
 
-	const catalogItems = useMemo<CatalogChapter[]>(() => {
-		if (!novel) return [];
+	const catalogItems = useMemo<CatalogUnit[]>(() => {
+		if (!book) return [];
 
-		const archivedByNumber = new Map(chapters.map((item) => [item.chapterNumber, item]));
+		const archivedByNumber = new Map(units.map((item) => [item.unitNumber, item]));
 		const seen = new Set<number>();
-		const items: CatalogChapter[] = [];
+		const items: CatalogUnit[] = [];
 
-		const indexedChapters = isRawReader ? novel.rawChaptersList || [] : novel.chaptersList || [];
+		const indexedUnits = isRawReader ? book.rawUnitsList || [] : book.translatedUnitsList || [];
 
-		for (const indexed of indexedChapters) {
-			if (!indexed.number || seen.has(indexed.number)) continue;
-			const archived = archivedByNumber.get(indexed.number);
+		for (const indexed of indexedUnits) {
+			if (!indexed.unitNumber || seen.has(indexed.unitNumber)) continue;
+			const archived = archivedByNumber.get(indexed.unitNumber);
 			items.push({
-				number: indexed.number,
-				title: resolveChapterTitle(novel.title, indexed.number, archived?.title, indexed.title),
+				unitNumber: indexed.unitNumber,
+				title: resolveUnitTitle(book.title, indexed.unitNumber, archived?.title, indexed.title),
 				archived: Boolean(archived),
 				sourceUrl: archived?.sourceUrl || indexed.url,
 				scrapedAt: archived?.scrapedAt,
 			});
-			seen.add(indexed.number);
+			seen.add(indexed.unitNumber);
 		}
 
-		for (const archived of chapters) {
-			if (seen.has(archived.chapterNumber)) continue;
+		for (const archived of units) {
+			if (seen.has(archived.unitNumber)) continue;
 			items.push({
-				number: archived.chapterNumber,
-				title: resolveChapterTitle(novel.title, archived.chapterNumber, archived.title),
+				unitNumber: archived.unitNumber,
+				title: resolveUnitTitle(book.title, archived.unitNumber, archived.title),
 				archived: true,
 				sourceUrl: archived.sourceUrl,
 				scrapedAt: archived.scrapedAt,
 			});
-			seen.add(archived.chapterNumber);
+			seen.add(archived.unitNumber);
 		}
 
-		return items.sort((a, b) => a.number - b.number);
-	}, [isRawReader, novel, chapters]);
+		return items.sort((a, b) => a.unitNumber - b.unitNumber);
+	}, [isRawReader, book, units]);
 
 	const filteredCatalogItems = useMemo(() => {
 		const query = catalogSearch.trim().toLowerCase();
 		if (!query) return catalogItems;
 
-		return catalogItems.filter((item) => item.title.toLowerCase().includes(query) || item.number.toString().includes(query));
+		return catalogItems.filter((item) => item.title.toLowerCase().includes(query) || item.unitNumber.toString().includes(query));
 	}, [catalogItems, catalogSearch]);
 
-	const currentCatalogIndex = useMemo(() => catalogItems.findIndex((item) => item.number === chapterNumber), [catalogItems, chapterNumber]);
+	const currentCatalogIndex = useMemo(() => catalogItems.findIndex((item) => item.unitNumber === unitNumber), [catalogItems, unitNumber]);
 	const currentCatalogItem = currentCatalogIndex >= 0 ? catalogItems[currentCatalogIndex] : undefined;
 	const readerSourceKind: SourceKind = isRawReader ? "raw" : "translated";
-	const archiveJobType: JobType = isRawReader ? "scrape_raw_chapters" : "scrape_chapters";
-	const currentSourceUrl = currentCatalogItem?.sourceUrl || chapter?.sourceUrl || "";
-	const missingChapterTitle = currentCatalogItem?.title || `${isRawReader ? "Raw chapter" : "Chapter"} ${chapterNumber}`;
+	const archiveJobType: JobType = isRawReader ? "scrape_raw_units" : "scrape_units";
+	const currentSourceUrl = currentCatalogItem?.sourceUrl || unit?.sourceUrl || "";
+	const missingUnitTitle = currentCatalogItem?.title || `${isRawReader ? "Raw unit" : "Unit"} ${unitNumber}`;
 
-	const previousChapterNumber = currentCatalogIndex > 0 ? catalogItems[currentCatalogIndex - 1].number : chapterNumber - 1;
-	const nextChapterNumber =
-		currentCatalogIndex >= 0 && currentCatalogIndex < catalogItems.length - 1 ? catalogItems[currentCatalogIndex + 1].number : chapterNumber + 1;
-	const hasPreviousChapter = currentCatalogIndex >= 0 ? currentCatalogIndex > 0 : chapterNumber > 1;
-	const hasNextChapter =
+	const previousUnitNumber = currentCatalogIndex > 0 ? catalogItems[currentCatalogIndex - 1].unitNumber : unitNumber - 1;
+	const nextUnitNumber =
+		currentCatalogIndex >= 0 && currentCatalogIndex < catalogItems.length - 1 ? catalogItems[currentCatalogIndex + 1].unitNumber : unitNumber + 1;
+	const hasPreviousUnit = currentCatalogIndex >= 0 ? currentCatalogIndex > 0 : unitNumber > 1;
+	const hasNextUnit =
 		currentCatalogIndex >= 0
 			? currentCatalogIndex < catalogItems.length - 1
 			: Boolean(
-					novel &&
+					book &&
 					!(
-						(isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal) > 0 &&
-						chapterNumber >= (isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal)
+						(isRawReader ? book.rawUnitsTotal : book.translatedUnitsTotal) > 0 &&
+						unitNumber >= (isRawReader ? book.rawUnitsTotal : book.translatedUnitsTotal)
 					),
 				);
 
 	const indexedCurrentTitle = useMemo(() => {
-		const indexedChapters = isRawReader ? novel?.rawChaptersList : novel?.chaptersList;
-		return indexedChapters?.find((item) => item.number === chapterNumber)?.title;
-	}, [isRawReader, novel, chapterNumber]);
+		const indexedUnits = isRawReader ? book?.rawUnitsList : book?.translatedUnitsList;
+		return indexedUnits?.find((item) => item.unitNumber === unitNumber)?.title;
+	}, [isRawReader, book, unitNumber]);
 
-	const displayChapterTitle = useMemo(() => {
-		if (!novel || !chapter) return `Chapter ${chapterNumber}`;
-		return resolveChapterTitle(novel.title, chapter.chapterNumber, chapter.title, indexedCurrentTitle);
-	}, [chapter, chapterNumber, indexedCurrentTitle, novel]);
+	const displayUnitTitle = useMemo(() => {
+		if (!book || !unit) return `Unit ${unitNumber}`;
+		return resolveUnitTitle(book.title, unit.unitNumber, unit.title, indexedCurrentTitle);
+	}, [unit, unitNumber, indexedCurrentTitle, book]);
 
-	const navigateToChapter = useCallback(
+	const navigateToUnit = useCallback(
 		(nextChNum: number, options?: { resumeTts?: boolean }) => {
 			const query = new URLSearchParams();
 			if (readingSource === "raw") query.set("source", "raw");
 			if (options?.resumeTts) query.set("tts", "1");
 			const queryString = query.toString();
-			router.push(`/novels/${novelId}/reader/${nextChNum}${queryString ? `?${queryString}` : ""}`);
+			router.push(`/books/${bookId}/reader/${nextChNum}${queryString ? `?${queryString}` : ""}`);
 		},
-		[novelId, readingSource, router],
+		[bookId, readingSource, router],
 	);
 
 	const switchReaderSource = useCallback(
 		(source: ReaderSource) => {
 			const query = new URLSearchParams();
 			if (source === "raw") query.set("source", "raw");
-			router.push(`/novels/${novelId}/reader/${chapterNumber}${query.toString() ? `?${query.toString()}` : ""}`);
+			router.push(`/books/${bookId}/reader/${unitNumber}${query.toString() ? `?${query.toString()}` : ""}`);
 		},
-		[chapterNumber, novelId, router],
+		[unitNumber, bookId, router],
 	);
 
 	const handleGenerateTranslation = useCallback(async () => {
-		if (!novelId || !chapter) return;
-		setTranslatingRawChapter(true);
+		if (!bookId || !unit) return;
+		setTranslatingRawUnit(true);
 		setError("");
 
 		try {
-			await api.translateRawChapter(novelId, chapter.chapterNumber, { targetLanguage: "English" });
-			router.push(`/novels/${novelId}/reader/${chapter.chapterNumber}`);
+			await api.translateRawUnit(bookId, unit.unitNumber, { targetLanguage: "English" });
+			router.push(`/books/${bookId}/reader/${unit.unitNumber}`);
 		} catch (err: unknown) {
-			setError(getErrorMessage(err, "Could not generate translated chapter."));
+			setError(getErrorMessage(err, "Could not generate translated unit."));
 		} finally {
-			setTranslatingRawChapter(false);
+			setTranslatingRawUnit(false);
 		}
-	}, [chapter, novelId, router]);
+	}, [unit, bookId, router]);
 
-	const reloadCurrentChapter = useCallback(async () => {
-		const [chapterData, chaptersData] = isRawReader
-			? await Promise.all([api.getPublicRawChapter(novelId, chapterNumber), api.getPublicRawChapters(novelId)])
-			: await Promise.all([api.getPublicChapter(novelId, chapterNumber), api.getPublicChapters(novelId)]);
+	const reloadCurrentUnit = useCallback(async () => {
+		const [unitData, unitsData] = isRawReader
+			? await Promise.all([api.getPublicRawUnit(bookId, unitNumber), api.getPublicRawUnits(bookId)])
+			: await Promise.all([api.getPublicUnit(bookId, unitNumber), api.getPublicUnits(bookId)]);
 
-		setChapter(chapterData);
-		setChapters(chaptersData);
+		setUnit(unitData);
+		setUnits(unitsData);
 		setError("");
-	}, [chapterNumber, isRawReader, novelId]);
+	}, [unitNumber, isRawReader, bookId]);
 
-	const handleScrapeCurrentChapterNow = useCallback(async () => {
-		if (!novel) return;
+	const handleScrapeCurrentUnitNow = useCallback(async () => {
+		if (!book) return;
 
-		setAdminScrapingChapter(true);
+		setAdminScrapingUnit(true);
 		setAdminActionMessage("");
 		try {
-			const result = await api.runScrapeNow(novelId, archiveJobType, { chapterNumber });
-			setNovel(result.novel);
-			await reloadCurrentChapter();
-			setAdminActionMessage(result.message || "Chapter archived.");
+			const result = await api.runScrapeNow(bookId, archiveJobType, { unitNumber });
+			setBook(result.book);
+			await reloadCurrentUnit();
+			setAdminActionMessage(result.message || "Unit archived.");
 		} catch (err: unknown) {
-			setAdminActionMessage(getErrorMessage(err, "Could not archive this chapter."));
+			setAdminActionMessage(getErrorMessage(err, "Could not archive this unit."));
 		} finally {
-			setAdminScrapingChapter(false);
+			setAdminScrapingUnit(false);
 		}
-	}, [archiveJobType, chapterNumber, novel, novelId, reloadCurrentChapter]);
+	}, [archiveJobType, unitNumber, book, bookId, reloadCurrentUnit]);
 
-	const handleImportCurrentChapterHtml = useCallback(
+	const handleImportCurrentUnitHtml = useCallback(
 		async (event: React.FormEvent) => {
 			event.preventDefault();
-			if (!novel) return;
+			if (!book) return;
 
-			setImportingChapterHtml(true);
+			setImportingUnitHtml(true);
 			setAdminActionMessage("");
 			try {
-				const result = await api.importChapterHtml(novelId, {
+				const result = await api.importUnitHtml(bookId, {
 					sourceKind: readerSourceKind,
-					chapterNumber,
-					pageUrl: chapterHtmlPageUrl || currentSourceUrl,
-					html: chapterHtmlContent,
+					unitNumber,
+					pageUrl: unitHtmlPageUrl || currentSourceUrl,
+					html: unitHtmlContent,
 				});
-				await reloadCurrentChapter();
-				setAdminActionMessage(result.message || "Chapter HTML imported.");
-				setChapterHtmlContent("");
+				await reloadCurrentUnit();
+				setAdminActionMessage(result.message || "Unit HTML imported.");
+				setUnitHtmlContent("");
 			} catch (err: unknown) {
-				setAdminActionMessage(getErrorMessage(err, "Could not import chapter HTML."));
+				setAdminActionMessage(getErrorMessage(err, "Could not import unit HTML."));
 			} finally {
-				setImportingChapterHtml(false);
+				setImportingUnitHtml(false);
 			}
 		},
-		[chapterHtmlContent, chapterHtmlPageUrl, chapterNumber, currentSourceUrl, novel, novelId, readerSourceKind, reloadCurrentChapter],
+		[unitHtmlContent, unitHtmlPageUrl, unitNumber, currentSourceUrl, book, bookId, readerSourceKind, reloadCurrentUnit],
 	);
 
 	const speakQueuedChunk = useCallback(
@@ -1010,13 +1010,13 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				activeQueueItemRef.current = null;
 				clearSpeakingHighlights();
 
-				if (shouldContinueSpeechRef.current && hasNextChapter) {
+				if (shouldContinueSpeechRef.current && hasNextUnit) {
 					// CRITICAL keep-alive queue continuation:
 					// Before letting the speech queue completely clear and navigating (which marks speech session as idle),
 					// play a transient, natural keep-alive voice indicator. This keeps the global SpeechSynthesis engine
 					// actively talking, meaning when the next page mounts programmatically, the engine can be hijacked
 					// and updated without losing the user gesture authorization boundary or triggering "not-allowed".
-					const transitionalPrompt = new SpeechSynthesisUtterance("Loading next chapter.");
+					const transitionalPrompt = new SpeechSynthesisUtterance("Loading next unit.");
 					transitionalPrompt.rate = speechConfigRef.current.rate;
 					transitionalPrompt.pitch = speechConfigRef.current.pitch;
 					const selectedVoice = availableVoices.find((voice) => voice.voiceURI === speechConfigRef.current.voiceURI);
@@ -1025,7 +1025,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					}
 					window.speechSynthesis.speak(transitionalPrompt);
 
-					navigateToChapter(nextChapterNumber, { resumeTts: true });
+					navigateToUnit(nextUnitNumber, { resumeTts: true });
 				} else {
 					speechQueueRef.current = [];
 					speechIndexRef.current = 0;
@@ -1106,12 +1106,12 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			availableVoices,
 			clearSpeakingHighlights,
 			clearSpeakingWord,
-			hasNextChapter,
+			hasNextUnit,
 			highlightMode,
 			highlightSpeechBlock,
 			highlightSpeechWord,
-			navigateToChapter,
-			nextChapterNumber,
+			navigateToUnit,
+			nextUnitNumber,
 		],
 	);
 
@@ -1120,7 +1120,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	}, [speakQueuedChunk]);
 
 	const startSpeechFromBlock = useCallback(
-		(startBlockIndex: number, options?: { continueAcrossChapters?: boolean; fromUserGesture?: boolean }): boolean => {
+		(startBlockIndex: number, options?: { continueAcrossUnits?: boolean; fromUserGesture?: boolean }): boolean => {
 			if (!speechSupported || typeof window === "undefined" || !("speechSynthesis" in window)) {
 				setSpeechError("Text to speech is not available in this browser.");
 				return false;
@@ -1142,7 +1142,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				return false;
 			}
 
-			shouldContinueSpeechRef.current = Boolean(options?.continueAcrossChapters);
+			shouldContinueSpeechRef.current = Boolean(options?.continueAcrossUnits);
 			activeUtteranceRef.current = null;
 			window.speechSynthesis.cancel();
 			speechQueueRef.current = queue;
@@ -1167,7 +1167,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		if (ttsStatusRef.current !== "playing") return;
 
 		const startBlockIndex = activeSpeechBlockIndexRef.current ?? 0;
-		const continueAcrossChapters = shouldContinueSpeechRef.current;
+		const continueAcrossUnits = shouldContinueSpeechRef.current;
 
 		if (speechRestartTimerRef.current !== null) {
 			window.clearTimeout(speechRestartTimerRef.current);
@@ -1176,7 +1176,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		speechRestartTimerRef.current = window.setTimeout(() => {
 			speechRestartTimerRef.current = null;
 			if (ttsStatusRef.current !== "playing") return;
-			void startSpeechFromBlock(startBlockIndex, { continueAcrossChapters });
+			void startSpeechFromBlock(startBlockIndex, { continueAcrossUnits });
 		}, 180);
 	}, [speechSupported, startSpeechFromBlock]);
 
@@ -1194,7 +1194,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			return;
 		}
 
-		void startSpeechFromBlock(0, { continueAcrossChapters: autoOpenNext, fromUserGesture: true });
+		void startSpeechFromBlock(0, { continueAcrossUnits: autoOpenNext, fromUserGesture: true });
 	}, [autoOpenNext, speechSupported, startSpeechFromBlock, ttsStatus]);
 
 	const handlePauseSpeech = useCallback(() => {
@@ -1213,9 +1213,9 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			loading ||
 			!readerSettingsReady ||
 			!speechSupported ||
-			!chapter ||
+			!unit ||
 			!shouldAutoStartSpeech ||
-			startedAutoSpeechForChapterRef.current === chapterNumber
+			startedAutoSpeechForUnitRef.current === unitNumber
 		) {
 			return;
 		}
@@ -1229,14 +1229,14 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		const timer = window.setTimeout(() => {
 			// Force rebuilding fresh blocks synchronously before initializing speech tracking
 			speechBlocksRef.current = buildSpeechBlocks();
-			const didStart = startSpeechFromBlock(0, { continueAcrossChapters: true });
+			const didStart = startSpeechFromBlock(0, { continueAcrossUnits: true });
 			if (didStart) {
-				startedAutoSpeechForChapterRef.current = chapterNumber;
+				startedAutoSpeechForUnitRef.current = unitNumber;
 			}
 		}, 250); // Small margin to let dangerouslySetInnerHTML finish committing and parsing in the document layout
 
 		return () => window.clearTimeout(timer);
-	}, [authLoading, chapter, chapterNumber, loading, readerSettingsReady, shouldResumeTtsFromRoute, speechSupported, startSpeechFromBlock, buildSpeechBlocks]);
+	}, [authLoading, unit, unitNumber, loading, readerSettingsReady, shouldResumeTtsFromRoute, speechSupported, startSpeechFromBlock, buildSpeechBlocks]);
 
 	const handleThemeChange = (newTheme: ReaderTheme) => {
 		setTheme(newTheme);
@@ -1358,7 +1358,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 		if (blockIndex < 0) return;
 
-		void startSpeechFromBlock(blockIndex, { continueAcrossChapters: autoOpenNext, fromUserGesture: true });
+		void startSpeechFromBlock(blockIndex, { continueAcrossUnits: autoOpenNext, fromUserGesture: true });
 	};
 
 	if (loading) {
@@ -1366,22 +1366,22 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-primary)" }}>
 				<div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
 					<div className="spinner" style={{ width: "40px", height: "40px" }}></div>
-					<span style={{ color: "var(--text-secondary)" }}>Retrieving archived chapter...</span>
+					<span style={{ color: "var(--text-secondary)" }}>Retrieving archived unit...</span>
 				</div>
 			</div>
 		);
 	}
 
-	if (error || !chapter || !novel) {
+	if (error || !unit || !book) {
 		return (
 			<div className="container">
 				<div className="glass-card empty-state">
-					<h2 style={{ color: "var(--danger)", marginBottom: "1rem" }}>{missingChapterTitle}</h2>
+					<h2 style={{ color: "var(--danger)", marginBottom: "1rem" }}>{missingUnitTitle}</h2>
 					<p style={{ maxWidth: "520px", color: "var(--text-secondary)", margin: "0 auto 2rem" }}>
-						{error || "This chapter has not been archived yet."}
+						{error || "This unit has not been archived yet."}
 					</p>
 					<div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-						<Link href={`/novels/${novelId}`} className="btn btn-secondary">
+						<Link href={`/books/${bookId}`} className="btn btn-secondary">
 							Back to Book Index
 						</Link>
 						{currentSourceUrl && (
@@ -1391,7 +1391,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 						)}
 					</div>
 
-					{hasCapability(CAPABILITY.JOBS_SCRAPE) && novel && (
+					{hasCapability(CAPABILITY.JOBS_SCRAPE) && book && (
 						<div
 							className="glass-card"
 							style={{
@@ -1403,17 +1403,17 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 						>
 							<h3 style={{ fontSize: "1.15rem", marginBottom: "0.5rem" }}>Admin Recovery</h3>
 							<p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1rem" }}>
-								Archive this {isRawReader ? "raw" : "translated"} chapter now, or paste the saved HTML for this source page.
+								Archive this {isRawReader ? "raw" : "translated"} unit now, or paste the saved HTML for this source page.
 							</p>
 
 							<div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
 								<button
 									type="button"
 									className="btn btn-primary"
-									onClick={handleScrapeCurrentChapterNow}
-									disabled={adminScrapingChapter || !currentCatalogItem?.sourceUrl}
+									onClick={handleScrapeCurrentUnitNow}
+									disabled={adminScrapingUnit || !currentCatalogItem?.sourceUrl}
 								>
-									{adminScrapingChapter ? "Scraping..." : "Scrape This Chapter Now"}
+									{adminScrapingUnit ? "Scraping..." : "Scrape This Unit Now"}
 								</button>
 								{currentSourceUrl && (
 									<a href={currentSourceUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">
@@ -1422,26 +1422,26 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 								)}
 							</div>
 
-							<form key={`${readerSourceKind}-${chapterNumber}`} onSubmit={handleImportCurrentChapterHtml} style={{ display: "grid", gap: "1rem" }}>
+							<form key={`${readerSourceKind}-${unitNumber}`} onSubmit={handleImportCurrentUnitHtml} style={{ display: "grid", gap: "1rem" }}>
 								<div className="form-group" style={{ marginBottom: 0 }}>
-									<label className="form-label">Chapter Page URL</label>
+									<label className="form-label">Unit Page URL</label>
 									<input
 										type="url"
 										className="form-input"
-										value={chapterHtmlPageUrl || currentSourceUrl}
-										onChange={(event) => setChapterHtmlPageUrl(event.target.value)}
-										placeholder="https://example.com/chapter"
+										value={unitHtmlPageUrl || currentSourceUrl}
+										onChange={(event) => setUnitHtmlPageUrl(event.target.value)}
+										placeholder="https://example.com/unit"
 										required
 									/>
 								</div>
 
 								<div className="form-group" style={{ marginBottom: 0 }}>
-									<label className="form-label">Saved Chapter HTML</label>
+									<label className="form-label">Saved Unit HTML</label>
 									<textarea
 										className="form-textarea"
 										rows={10}
-										value={chapterHtmlContent}
-										onChange={(event) => setChapterHtmlContent(event.target.value)}
+										value={unitHtmlContent}
+										onChange={(event) => setUnitHtmlContent(event.target.value)}
 										placeholder="<html>..."
 										required
 									/>
@@ -1449,10 +1449,10 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
 									<span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-										{readerSourceKind === "raw" ? "Raw chapter" : "Translated chapter"} {chapterNumber}
+										{readerSourceKind === "raw" ? "Raw unit" : "Translated unit"} {unitNumber}
 									</span>
-									<button type="submit" className="btn btn-primary" disabled={importingChapterHtml}>
-										{importingChapterHtml ? "Importing..." : "Import HTML"}
+									<button type="submit" className="btn btn-primary" disabled={importingUnitHtml}>
+										{importingUnitHtml ? "Importing..." : "Import HTML"}
 									</button>
 								</div>
 							</form>
@@ -1501,8 +1501,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 						<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
 							Catalogue
 						</button>
-						<Link href={`/novels/${novelId}`} className="reader-back-link">
-							← {novel.title.length > 24 ? `${novel.title.substring(0, 24)}...` : novel.title}
+						<Link href={`/books/${bookId}`} className="reader-back-link">
+							← {book.title.length > 24 ? `${book.title.substring(0, 24)}...` : book.title}
 						</Link>
 						<div className="reader-toolbar-actions">
 							<button className="reader-tool-button" onClick={handlePlaySpeech}>
@@ -1528,7 +1528,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 								<div>
 									<h2>Catalogue</h2>
 									<p>
-										{isRawReader ? "Raw" : "Translated"} · {catalogItems.length} chapters indexed, {chapters.length} archived.
+										{isRawReader ? "Raw" : "Translated"} · {catalogItems.length} units indexed, {units.length} archived.
 									</p>
 								</div>
 								<button className="reader-tool-button" onClick={() => setIsCatalogOpen(false)}>
@@ -1540,20 +1540,20 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 								className="reader-catalog-search"
 								value={catalogSearch}
 								onChange={(event) => setCatalogSearch(event.target.value)}
-								placeholder="Search chapter number or title"
+								placeholder="Search unit number or title"
 							/>
 
 							<div className="reader-catalog-list">
 								{filteredCatalogItems.map((item) => (
 									<button
-										key={item.number}
-										className={`reader-catalog-item ${item.number === chapterNumber ? "active" : ""}`}
+										key={item.unitNumber}
+										className={`reader-catalog-item ${item.unitNumber === unitNumber ? "active" : ""}`}
 										onClick={() => {
 											setIsCatalogOpen(false);
-											navigateToChapter(item.number);
+											navigateToUnit(item.unitNumber);
 										}}
 									>
-										<span>Chapter {item.number}</span>
+										<span>Unit {item.unitNumber}</span>
 										<strong>{item.title}</strong>
 										<small>{item.archived ? "Archived" : "Indexed only"}</small>
 									</button>
@@ -1565,27 +1565,27 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 				<main className="reader-page max-[860px]:px-3 max-[860px]:py-5">
 					<article className="reader-article" style={{ maxWidth: widthStyle }}>
-						<header className="reader-chapter-header">
-							<h1>{displayChapterTitle}</h1>
-							<div className="reader-chapter-meta max-[860px]:flex-col max-[860px]:items-start">
-								<span>{novel.title}</span>
+						<header className="reader-unit-header">
+							<h1>{displayUnitTitle}</h1>
+							<div className="reader-unit-meta max-[860px]:flex-col max-[860px]:items-start">
+								<span>{book.title}</span>
 								<span>
-									{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}{" "}
-									{(isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal)
-										? `of ${isRawReader ? novel.rawChaptersTotal : novel.chaptersTotal}`
+									{isRawReader ? "Raw" : "Translated"} unit {unit.unitNumber}{" "}
+									{(isRawReader ? book.rawUnitsTotal : book.translatedUnitsTotal)
+										? `of ${isRawReader ? book.rawUnitsTotal : book.translatedUnitsTotal}`
 										: ""}
 								</span>
-								{chapter.sourceUrl && (
-									<a href={chapter.sourceUrl} target="_blank" rel="noreferrer">
+								{unit.sourceUrl && (
+									<a href={unit.sourceUrl} target="_blank" rel="noreferrer">
 										Original Source
 									</a>
 								)}
 							</div>
-							{isRawReader && hasCapability(CAPABILITY.CHAPTERS_TRANSLATE) && (
+							{isRawReader && hasCapability(CAPABILITY.UNITS_TRANSLATE) && (
 								<div className="mx-auto mt-4 flex w-fit max-w-[min(92vw,640px)] flex-wrap items-center justify-center gap-3 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-[0.45rem] text-[0.78rem] font-bold text-[var(--reader-muted)]">
 									<span>Raw source view</span>
-									<button className="reader-tool-button" onClick={handleGenerateTranslation} disabled={translatingRawChapter}>
-										{translatingRawChapter ? "Generating..." : "Generate English Translation"}
+									<button className="reader-tool-button" onClick={handleGenerateTranslation} disabled={translatingRawUnit}>
+										{translatingRawUnit ? "Generating..." : "Generate English Translation"}
 									</button>
 								</div>
 							)}
@@ -1596,25 +1596,25 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 							className="reader-content"
 							style={readerContentStyle}
 							onClick={handleReaderContentClick}
-							dangerouslySetInnerHTML={{ __html: chapter.content }}
+							dangerouslySetInnerHTML={{ __html: unit.content }}
 						/>
 
 						<footer className="reader-footer">
 							<button
 								className="btn btn-secondary"
 								style={{ color: "var(--reader-text)", borderColor: "var(--reader-border)", backgroundColor: "transparent" }}
-								disabled={!hasPreviousChapter}
-								onClick={() => navigateToChapter(previousChapterNumber)}
+								disabled={!hasPreviousUnit}
+								onClick={() => navigateToUnit(previousUnitNumber)}
 							>
-								← Previous Chapter
+								← Previous Unit
 							</button>
 
 							<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
 								Open Catalogue
 							</button>
 
-							<button className="btn btn-primary" disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
-								Next Chapter →
+							<button className="btn btn-primary" disabled={!hasNextUnit} onClick={() => navigateToUnit(nextUnitNumber)}>
+								Next Unit →
 							</button>
 						</footer>
 					</article>
@@ -1627,10 +1627,10 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					onPlay={handlePlaySpeech}
 					onPause={handlePauseSpeech}
 					onStop={() => stopSpeech()}
-					onPrevChapter={() => navigateToChapter(previousChapterNumber)}
-					onNextChapter={() => navigateToChapter(nextChapterNumber)}
-					hasPrevChapter={hasPreviousChapter}
-					hasNextChapter={hasNextChapter}
+					onPrevUnit={() => navigateToUnit(previousUnitNumber)}
+					onNextUnit={() => navigateToUnit(nextUnitNumber)}
+					hasPrevUnit={hasPreviousUnit}
+					hasNextUnit={hasNextUnit}
 					voices={availableVoices}
 					voiceURI={selectedVoiceURI}
 					onVoiceChange={handleVoiceChange}
@@ -1648,16 +1648,16 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					onOpenChange={setIsReaderPanelOpen}
 					activeTab={readerPanelTab}
 					onTabChange={setReaderPanelTab}
-					onPreviousChapter={() => navigateToChapter(previousChapterNumber)}
-					onNextChapter={() => navigateToChapter(nextChapterNumber)}
+					onPreviousUnit={() => navigateToUnit(previousUnitNumber)}
+					onNextUnit={() => navigateToUnit(nextUnitNumber)}
 					onOpenCatalog={() => setIsCatalogOpen(true)}
-					hasPreviousChapter={hasPreviousChapter}
-					hasNextChapter={hasNextChapter}
-					previousChapterNumber={previousChapterNumber}
-					nextChapterNumber={nextChapterNumber}
+					hasPreviousUnit={hasPreviousUnit}
+					hasNextUnit={hasNextUnit}
+					previousUnitNumber={previousUnitNumber}
+					nextUnitNumber={nextUnitNumber}
 					catalogItemsLength={catalogItems.length}
-					novelId={novelId}
-					novelTitle={novel.title}
+					bookId={bookId}
+					bookTitle={book.title}
 					theme={theme}
 					onThemeChange={handleThemeChange}
 					fontSize={fontSize}
@@ -1695,8 +1695,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					isRawReader={isRawReader}
 					readerSourceKind={readerSourceKind}
 					switchReaderSource={switchReaderSource}
-					hasRawChapters={novel.rawChaptersTotal > 0}
-					sourceUrl={chapter.sourceUrl}
+					hasRawUnits={book.rawUnitsTotal > 0}
+					sourceUrl={unit.sourceUrl}
 					onScrollToTop={() => window.scrollTo({ top: 0, behavior: "smooth" })}
 					isLoggedIn={!!user}
 				/>
@@ -1704,7 +1704,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				<PronunciationRulesModal
 					open={isPronunciationModalOpen}
 					onClose={() => setIsPronunciationModalOpen(false)}
-					novelTitle={novel.title || ""}
+					bookTitle={book.title || ""}
 					rules={pronunciationRules}
 					loading={pronunciationRulesLoading}
 					error={pronunciationRulesError}

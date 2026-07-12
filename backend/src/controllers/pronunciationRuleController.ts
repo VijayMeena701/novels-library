@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { Novel } from "../models/Novel.js";
+import { Book } from "../models/Novel.js";
 import { PronunciationRule } from "../models/PronunciationRule.js";
 
 interface PronunciationRulePatch {
@@ -26,15 +26,15 @@ function cleanBoolean(value: unknown, fallback: boolean): boolean {
 	return typeof value === "boolean" ? value : fallback;
 }
 
-// List rules relevant to a novel: the user's global rules plus any rules scoped to this novel.
+// List rules relevant to a book: the user's global rules plus any rules scoped to this book.
 export async function listPronunciationRulesHandler(request: FastifyRequest, reply: FastifyReply) {
 	const userId = (request.user as any).id;
-	const { id: novelId } = request.params as any;
+	const { id: bookId } = request.params as any;
 
 	try {
 		const rules = await PronunciationRule.find({
 			userId,
-			$or: [{ isGlobal: true }, { novelId }],
+			$or: [{ isGlobal: true }, { bookId }],
 		}).sort({ isGlobal: 1, createdAt: 1 });
 
 		return reply.send(rules);
@@ -46,7 +46,7 @@ export async function listPronunciationRulesHandler(request: FastifyRequest, rep
 
 export async function createPronunciationRuleHandler(request: FastifyRequest, reply: FastifyReply) {
 	const userId = (request.user as any).id;
-	const { id: novelId } = request.params as any;
+	const { id: bookId } = request.params as any;
 	const body = (request.body || {}) as PronunciationRulePatch;
 
 	const pattern = cleanPattern(body.pattern);
@@ -55,15 +55,15 @@ export async function createPronunciationRuleHandler(request: FastifyRequest, re
 	}
 
 	try {
-		const novel = await Novel.findById(novelId).select("_id");
-		if (!novel) {
-			return reply.status(404).send({ error: "Novel not found." });
+		const book = await Book.findById(bookId).select("_id");
+		if (!book) {
+			return reply.status(404).send({ error: "Book not found." });
 		}
 
 		const isGlobal = cleanBoolean(body.isGlobal, false);
 		const rule = await PronunciationRule.create({
 			userId,
-			novelId: isGlobal ? null : novelId,
+			bookId: isGlobal ? null : bookId,
 			isGlobal,
 			pattern,
 			replacement: cleanReplacement(body.replacement),
@@ -114,10 +114,10 @@ export async function updatePronunciationRuleHandler(request: FastifyRequest, re
 			const isGlobal = cleanBoolean(body.isGlobal, rule.isGlobal);
 			rule.isGlobal = isGlobal;
 			if (isGlobal) {
-				rule.novelId = null;
-			} else if (!rule.novelId) {
-				// Downgrading from global to novel-specific requires a novel to attach to.
-				return reply.status(400).send({ error: "Cannot make this rule novel-specific without a novel context." });
+				rule.bookId = null;
+			} else if (!rule.bookId) {
+				// Downgrading from global to book-specific requires a book to attach to.
+				return reply.status(400).send({ error: "Cannot make this rule book-specific without a book context." });
 			}
 		}
 

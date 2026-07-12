@@ -6,8 +6,8 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import Header from '../components/Header';
 
 export const metadata: Metadata = {
-  title: 'Novels Library',
-  description: 'Track, read, and archive web novels. A personal library with a clean reader, TTS, and automatic chapter archiving.',
+  title: 'Books Library',
+  description: 'Track, read, and archive web books. A personal library with a clean reader, TTS, and automatic unit archiving.',
 };
 
 export const viewport: Viewport = {

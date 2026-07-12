@@ -20,7 +20,7 @@ export default function AuthorsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Authors</h1>
-          <p className="page-subtitle">Browse novels by pen name, real name, and aliases.</p>
+          <p className="page-subtitle">Browse books by pen name, real name, and aliases.</p>
         </div>
       </div>
 
@@ -28,10 +28,10 @@ export default function AuthorsPage() {
         <div className="spinner"></div>
       ) : authors.length === 0 ? (
         <div className="glass-card empty-state">
-          No authors have been linked yet. Scrape metadata or edit a novel author to create author records.
+          No authors have been linked yet. Scrape metadata or edit a book author to create author records.
         </div>
       ) : (
-        <div className="novel-grid">
+        <div className="book-grid">
           {authors.map((author) => (
             <Link key={author._id} href={`/authors/${author._id}`} style={{ textDecoration: 'none' }}>
               <div className="glass-card" style={{ padding: '1.25rem', minHeight: '150px', height: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -41,7 +41,7 @@ export default function AuthorsPage() {
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{author.alternativeNames.slice(0, 3).join(', ')}</p>
                 )}
                 <span style={{ marginTop: 'auto', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  {author.novelCount || 0} linked novel{author.novelCount === 1 ? '' : 's'}
+                  {author.bookCount || 0} linked book{author.bookCount === 1 ? '' : 's'}
                 </span>
               </div>
             </Link>

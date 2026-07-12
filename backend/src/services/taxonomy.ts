@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Genre, IGenre } from '../models/Genre.js';
 import { PublicationStatus, IPublicationStatus } from '../models/PublicationStatus.js';
-import { Novel, normalizeFilterKey } from '../models/Novel.js';
+import { Book, normalizeFilterKey } from '../models/Novel.js';
 
 function cleanString(value: unknown): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
@@ -122,31 +122,31 @@ export async function resolvePublicationStatus(input: { publicationStatusId?: un
   };
 }
 
-export async function backfillNovelTaxonomy(limit = 500) {
-  const novels = await Novel.find({
+export async function backfillBookTaxonomy(limit = 500) {
+  const books = await Book.find({
     $or: [
       { genreIds: { $size: 0 }, genres: { $exists: true, $ne: [] } },
       { publicationStatusId: { $exists: false }, publicationStatus: { $exists: true, $ne: '' } },
     ],
   }).limit(limit);
 
-  for (const novel of novels) {
-    if ((!novel.genreIds || novel.genreIds.length === 0) && novel.genres?.length) {
-      const resolvedGenres = await resolveGenres({ genres: novel.genres });
-      novel.genreIds = resolvedGenres.genreIds;
-      novel.genres = resolvedGenres.genres;
-      novel.genreKeys = resolvedGenres.genreKeys;
+  for (const book of books) {
+    if ((!book.genreIds || book.genreIds.length === 0) && book.genres?.length) {
+      const resolvedGenres = await resolveGenres({ genres: book.genres });
+      book.genreIds = resolvedGenres.genreIds;
+      book.genres = resolvedGenres.genres;
+      book.genreKeys = resolvedGenres.genreKeys;
     }
 
-    if (!novel.publicationStatusId && novel.publicationStatus) {
-      const resolvedStatus = await resolvePublicationStatus({ publicationStatus: novel.publicationStatus });
+    if (!book.publicationStatusId && book.publicationStatus) {
+      const resolvedStatus = await resolvePublicationStatus({ publicationStatus: book.publicationStatus });
       if (resolvedStatus.publicationStatusId) {
-        novel.publicationStatusId = resolvedStatus.publicationStatusId;
-        novel.publicationStatus = resolvedStatus.publicationStatus || novel.publicationStatus;
-        novel.publicationStatusKey = resolvedStatus.publicationStatusKey || novel.publicationStatusKey;
+        book.publicationStatusId = resolvedStatus.publicationStatusId;
+        book.publicationStatus = resolvedStatus.publicationStatus || book.publicationStatus;
+        book.publicationStatusKey = resolvedStatus.publicationStatusKey || book.publicationStatusKey;
       }
     }
 
-    await novel.save();
+    await book.save();
   }
 }

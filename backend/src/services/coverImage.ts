@@ -97,7 +97,7 @@ export async function getCoverImageSize(relativePath: string) {
   return fileStat.size;
 }
 
-export async function syncNovelCoverImage(novel: any, coverUrl: string) {
+export async function syncBookCoverImage(book: any, coverUrl: string) {
   const sourceUrl = coverUrl?.trim();
   if (!sourceUrl || !isHttpUrl(sourceUrl)) {
     throw new Error('Cover URL must be a valid HTTP/HTTPS URL.');
@@ -140,9 +140,9 @@ export async function syncNovelCoverImage(novel: any, coverUrl: string) {
     throw new Error(`Cover image is too large (${buffer.length} bytes).`);
   }
 
-  const previousPath = novel.coverImagePath;
+  const previousPath = book.coverImagePath;
   const token = randomUUID().replace(/-/g, '');
-  const fileName = `${novel._id.toString()}-${token}.${extension}`;
+  const fileName = `${book._id.toString()}-${token}.${extension}`;
   const relativePath = path.join('covers', fileName);
 
   await mkdir(COVER_DIR, { recursive: true });
@@ -152,10 +152,10 @@ export async function syncNovelCoverImage(novel: any, coverUrl: string) {
     await deleteCoverImageFile(previousPath);
   }
 
-  novel.coverUrl = sourceUrl;
-  novel.coverImagePath = relativePath;
-  novel.coverImageMimeType = mimeType;
-  novel.coverImageSize = buffer.length;
-  novel.coverImageToken = token;
-  novel.coverImageSyncedAt = new Date();
+  book.coverUrl = sourceUrl;
+  book.coverImagePath = relativePath;
+  book.coverImageMimeType = mimeType;
+  book.coverImageSize = buffer.length;
+  book.coverImageToken = token;
+  book.coverImageSyncedAt = new Date();
 }

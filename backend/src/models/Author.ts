@@ -37,7 +37,7 @@ const AuthorSchema = new Schema<IAuthor>({
   penName: { type: String, default: '' },
   realName: { type: String, default: '' },
   alternativeNames: { type: [String], default: [] },
-  nameKeys: { type: [String], default: [], index: true },
+  nameKeys: { type: [String], default: [] },
   originalLanguage: { type: String, default: '' },
   officialUrls: { type: [String], default: [] },
   notes: { type: String, default: '' },

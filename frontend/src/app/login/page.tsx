@@ -72,7 +72,7 @@ function LoginContent() {
             {isRegister ? 'Create Account' : 'Welcome Back'}
           </h2>
           <p className="text-sm text-copy">
-            {isRegister ? 'Sign up to track and archive your novels' : 'Sign in to access your novel library'}
+            {isRegister ? 'Sign up to track and archive your books' : 'Sign in to access your book library'}
           </p>
         </div>
 
@@ -102,7 +102,7 @@ function LoginContent() {
                   <label className="mb-2 block text-xs font-bold text-copy">Username</label>
                   <Input
                     type="text" 
-                    placeholder="e.g. novel_reader"
+                    placeholder="e.g. book_reader"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required

@@ -20,6 +20,7 @@
 # production
 /build
 /dist
+/data_export
 
 # misc
 /.scraper-profile

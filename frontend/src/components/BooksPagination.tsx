@@ -3,7 +3,7 @@
 import { Button } from "./ui/button";
 import { Select } from "./ui/input";
 
-interface NovelsPaginationProps {
+interface BooksPaginationProps {
 	page: number;
 	pageSize: number;
 	total: number;
@@ -12,7 +12,7 @@ interface NovelsPaginationProps {
 	onPageSizeChange: (pageSize: number) => void;
 }
 
-export function NovelsPagination({ page, pageSize, total, totalPages, onPageChange, onPageSizeChange }: NovelsPaginationProps) {
+export function BooksPagination({ page, pageSize, total, totalPages, onPageChange, onPageSizeChange }: BooksPaginationProps) {
 	const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
 	const end = Math.min(page * pageSize, total);
 

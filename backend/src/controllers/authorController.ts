@@ -1,12 +1,12 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
 import { Author } from '../models/Author.js';
-import { Novel } from '../models/Novel.js';
+import { Book } from '../models/Novel.js';
 import { findOrCreateAuthor } from '../services/authors.js';
 import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
-async function backfillMissingNovelAuthors() {
-  const novels = await Novel.find({
+async function backfillMissingBookAuthors() {
+  const books = await Book.find({
     $and: [
       {
         $or: [
@@ -25,29 +25,29 @@ async function backfillMissingNovelAuthors() {
     ],
   }).limit(500);
 
-  for (const novel of novels) {
+  for (const book of books) {
     const author = await findOrCreateAuthor({
-      author: novel.author,
-      penName: novel.authorPenName || novel.author,
-      realName: novel.authorRealName,
+      author: book.author,
+      penName: book.authorPenName || book.author,
+      realName: book.authorRealName,
       alternativeNames: [],
-      originalLanguage: novel.rawOriginalLanguage,
-      officialUrl: novel.sourceUrl,
+      originalLanguage: book.rawOriginalLanguage,
+      officialUrl: book.sourceUrl,
     });
     if (author) {
-      novel.authorId = author._id;
-      novel.authorIds = Array.from(new Set([...(novel.authorIds || []), author._id].map((id) => id.toString())))
+      book.authorId = author._id;
+      book.authorIds = Array.from(new Set([...(book.authorIds || []), author._id].map((id) => id.toString())))
         .map((id) => new mongoose.Types.ObjectId(id));
-      await novel.save();
+      await book.save();
     }
   }
 }
 
 export async function listAuthorsHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
-    await backfillMissingNovelAuthors();
+    await backfillMissingBookAuthors();
     const authors = await Author.find().sort({ displayName: 1 });
-    const counts = await Novel.aggregate([
+    const counts = await Book.aggregate([
       {
         $project: {
           authorRefs: {
@@ -65,13 +65,13 @@ export async function listAuthorsHandler(request: FastifyRequest, reply: Fastify
         },
       },
       { $unwind: '$authorRefs' },
-      { $group: { _id: '$authorRefs', novelCount: { $sum: 1 } } },
+      { $group: { _id: '$authorRefs', bookCount: { $sum: 1 } } },
     ]);
-    const countByAuthorId = new Map(counts.map((item) => [item._id.toString(), item.novelCount]));
+    const countByAuthorId = new Map(counts.map((item) => [item._id.toString(), item.bookCount]));
 
     return reply.send(authors.map((author) => ({
       ...author.toObject(),
-      novelCount: countByAuthorId.get(author._id.toString()) || 0,
+      bookCount: countByAuthorId.get(author._id.toString()) || 0,
     })));
   } catch (err: any) {
     request.log.error(err);
@@ -92,7 +92,7 @@ export async function getAuthorHandler(request: FastifyRequest, reply: FastifyRe
       return reply.status(404).send({ error: 'Author not found.' });
     }
 
-    const novels = await Novel.find({
+    const books = await Book.find({
       $or: [
         { authorIds: author._id },
         { authorId: author._id },
@@ -100,7 +100,7 @@ export async function getAuthorHandler(request: FastifyRequest, reply: FastifyRe
     }).sort({ updatedAt: -1 });
     return reply.send({
       author,
-      novels,
+      books,
     });
   } catch (err: any) {
     request.log.error(err);

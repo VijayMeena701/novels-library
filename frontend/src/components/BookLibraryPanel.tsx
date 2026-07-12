@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, getNovelCoverUrl, Novel, ReadingSession, ChapterContent, ChapterVisit, NovelStatus } from '../../../../utils/api';
-import { useAuth } from '../../../../context/AuthContext';
-import { useToast } from '../../../../context/ToastContext';
+import { api, getBookCoverUrl, Book, ReadingSession, BookContent, BookVisit, BookStatus } from '../utils/api';
+import { useToast } from '../context/ToastContext';
 
 function splitListInput(value: string): string[] {
   return value
@@ -26,30 +25,35 @@ function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function isGenericChapterTitle(value: string, novelTitle: string, chapterNumber: number): boolean {
+function isGenericUnitTitle(value: string, bookTitle: string, unitNumber: number): boolean {
   const normalized = normalizeTitle(value);
   return !normalized ||
-    normalized === normalizeTitle(novelTitle) ||
-    normalized === `chapter ${chapterNumber}` ||
-    normalized === `ch ${chapterNumber}`;
+    normalized === normalizeTitle(bookTitle) ||
+    normalized === `unit ${unitNumber}` ||
+    normalized === `ch ${unitNumber}`;
 }
 
-export default function NovelDetails({ params }: { params: Promise<{ id: string }> }) {
-  const { id: novelId } = use(params);
+export interface BookLibraryPanelProps {
+  bookId: string;
+  book: Book;
+  units: Omit<BookContent, 'content'>[];
+  onUpdate?: (book: Book) => void;
+}
+
+export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onUpdate }: BookLibraryPanelProps) {
   const router = useRouter();
-  const { user } = useAuth();
   const { showToast } = useToast();
 
   // Page state
-  const [novel, setNovel] = useState<Novel | null>(null);
-  const [chapters, setChapters] = useState<Omit<ChapterContent, 'content'>[]>([]);
-  const [chapterVisits, setChapterVisits] = useState<ChapterVisit[]>([]);
+  const [book, setBook] = useState<Book>(bookProp);
+  const [units, setUnits] = useState<Omit<BookContent, 'content'>[]>(unitsProp);
+  const [unitVisits, setBookVisits] = useState<BookVisit[]>([]);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Edit form state
   const [isEditing, setIsEditing] = useState(false);
-  const [editStatus, setEditStatus] = useState<NovelStatus>('reading');
+  const [editStatus, setEditStatus] = useState<BookStatus>('reading');
   const [editChRead, setEditChRead] = useState(0);
   const [editCompletedAt, setEditCompletedAt] = useState('');
   const [editRating, setEditRating] = useState(0);
@@ -66,37 +70,44 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
   const [sessionNotes, setSessionNotes] = useState('');
   const [sessionChRead, setSessionChRead] = useState(0);
 
-  // Load all novel-related data
+  // Sync props into local state
   useEffect(() => {
-    if (!user || !novelId) return;
+    setBook(bookProp);
+    setUnits(unitsProp);
+  }, [bookProp, unitsProp]);
+
+  // Initialize edit form when book changes
+  useEffect(() => {
+    if (!book) return;
+    setEditStatus(book.status);
+    setEditChRead(book.unitsRead);
+    setEditCompletedAt(formatDateTimeLocal(book.completedAt));
+    setEditRating(book.rating);
+    setEditReview(book.review);
+    setEditNotes(book.personalNotes);
+    setEditRawLegacyEntry(book.rawLegacyEntry || '');
+    setEditCharacterNotes(book.characterNotes || '');
+    setEditRelationshipNotes(book.relationshipNotes || '');
+    setEditPersonalTags((book.personalTags || []).join(', '));
+  }, [book]);
+
+  // Load visits and sessions
+  useEffect(() => {
+    if (!bookId) return;
     let cancelled = false;
 
     async function loadData() {
       try {
-        const [novelData, chaptersData, chapterVisitsData, sessionsData] = await Promise.all([
-          api.getNovel(novelId),
-          api.getChapters(novelId),
-          api.getChapterVisits(novelId),
-          api.getSessions(novelId),
+        const [unitVisitsData, sessionsData] = await Promise.all([
+          api.getBookVisits(bookId),
+          api.getSessions(bookId),
         ]);
         if (cancelled) return;
 
-        setNovel(novelData);
-        setChapters(chaptersData);
-        setChapterVisits(chapterVisitsData);
+        setBookVisits(unitVisitsData);
         setSessions(sessionsData);
-        setEditStatus(novelData.status);
-        setEditChRead(novelData.chaptersRead);
-        setEditCompletedAt(formatDateTimeLocal(novelData.completedAt));
-        setEditRating(novelData.rating);
-        setEditReview(novelData.review);
-        setEditNotes(novelData.personalNotes);
-        setEditRawLegacyEntry(novelData.rawLegacyEntry || '');
-        setEditCharacterNotes(novelData.characterNotes || '');
-        setEditRelationshipNotes(novelData.relationshipNotes || '');
-        setEditPersonalTags((novelData.personalTags || []).join(', '));
       } catch (err) {
-        if (!cancelled) console.error('Error fetching novel details:', err);
+        if (!cancelled) console.error('Error fetching book details:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -106,16 +117,16 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
     return () => {
       cancelled = true;
     };
-  }, [user, novelId]);
+  }, [bookId]);
 
   // Handle Edit Submit
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const updated = await api.updateNovel(novelId, {
+      const updated = await api.updateBook(bookId, {
         status: editStatus,
-        chaptersRead: editChRead,
+        unitsRead: editChRead,
         completedAt: editCompletedAt ? new Date(editCompletedAt).toISOString() : null,
         rating: editRating,
         review: editReview,
@@ -125,44 +136,45 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
         relationshipNotes: editRelationshipNotes,
         personalTags: splitListInput(editPersonalTags),
       });
-      setNovel(updated);
+      setBook(updated);
+      onUpdate?.(updated);
       setIsEditing(false);
     } catch (err) {
-      console.error('Failed to update novel:', err);
-      showToast({ message: 'Error updating novel details.', variant: 'error' });
+      console.error('Failed to update book:', err);
+      showToast({ message: 'Error updating book details.', variant: 'error' });
     } finally {
       setSaving(false);
     }
   };
 
-  // Delete Novel Cascade
-  const handleDeleteNovel = async () => {
-    if (!confirm('Remove this novel from your profile library? The shared catalog and archived chapters will stay in the system.')) {
+  // Delete Book Cascade
+  const handleDeleteBook = async () => {
+    if (!confirm('Remove this book from your profile library? The shared catalog and archived units will stay in the system.')) {
       return;
     }
 
     try {
-      await api.deleteNovel(novelId);
+      await api.deleteBook(bookId);
       router.push('/');
     } catch (err) {
       console.error('Delete failed:', err);
-      showToast({ message: 'Failed to delete novel.', variant: 'error' });    }
+      showToast({ message: 'Failed to delete book.', variant: 'error' });    }
   };
 
   // Re-read Log Actions
   const handleStartSession = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.startSession(novelId, {
+      await api.startSession(bookId, {
         notes: sessionNotes || 'Started new session.',
-        chaptersRead: sessionChRead
+        unitsRead: sessionChRead
       });
       setIsSessionModalOpen(false);
       setSessionNotes('');
       setSessionChRead(0);
       
       // Update local sessions state
-      const sessionsData = await api.getSessions(novelId);
+      const sessionsData = await api.getSessions(bookId);
       setSessions(sessionsData);
     } catch (err) {
       console.error('Failed to start reading session:', err);
@@ -170,10 +182,10 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
   };
 
   const handleUpdateSessionProgress = async (session: ReadingSession, increment: boolean) => {
-    const nextCh = increment ? session.chaptersRead + 1 : Math.max(0, session.chaptersRead - 1);
+    const nextCh = increment ? session.unitsRead + 1 : Math.max(0, session.unitsRead - 1);
     try {
-      await api.updateSession(novelId, session._id, { chaptersRead: nextCh });
-      const sessionsData = await api.getSessions(novelId);
+      await api.updateSession(bookId, session._id, { unitsRead: nextCh });
+      const sessionsData = await api.getSessions(bookId);
       setSessions(sessionsData);
     } catch (err) {
       console.error('Failed to update session progress:', err);
@@ -182,8 +194,8 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
 
   const handleCompleteSession = async (session: ReadingSession) => {
     try {
-      await api.updateSession(novelId, session._id, { completed: true });
-      const sessionsData = await api.getSessions(novelId);
+      await api.updateSession(bookId, session._id, { completed: true });
+      const sessionsData = await api.getSessions(bookId);
       setSessions(sessionsData);
     } catch (err) {
       console.error('Failed to complete session:', err);
@@ -195,61 +207,61 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
-          <span style={{ color: 'var(--text-secondary)' }}>Loading novel details...</span>
+          <span style={{ color: 'var(--text-secondary)' }}>Loading book details...</span>
         </div>
       </div>
     );
   }
 
-  if (!novel) {
+  if (!book) {
     return (
       <div className="container">
         <div className="glass-card empty-state">
-        <h2>Novel Not Found</h2>
-        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>The requested novel entry could not be found or is unauthorized.</p>
+        <h2>Book Not Found</h2>
+        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>The requested book entry could not be found or is unauthorized.</p>
         <Link href="/profile" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>Back to Library</Link>
         </div>
       </div>
     );
   }
 
-  const displayAuthor = novel.authorPenName || novel.author || novel.authorRealName || 'Unknown Author';
-  const coverSrc = getNovelCoverUrl(novel);
+  const displayAuthor = book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
+  const coverSrc = getBookCoverUrl(book);
   const hasSourceMetadata = Boolean(
-    novel.authorRealName ||
-    (novel.alternativeNames || []).length > 0 ||
-    (novel.genres || []).length > 0 ||
-    novel.originalSource ||
-    novel.publicationStatus
+    book.authorRealName ||
+    (book.alternativeNames || []).length > 0 ||
+    (book.genres || []).length > 0 ||
+    book.originalSource ||
+    book.publicationStatus
   );
-  const chapterIndexByNumber = new Map((novel.chaptersList || []).map((chapter) => [chapter.number, chapter]));
-  const getChapterDisplayTitle = (chapter: Omit<ChapterContent, 'content'>) => {
-    const indexedTitle = chapterIndexByNumber.get(chapter.chapterNumber)?.title?.trim() || '';
-    const archivedTitle = chapter.title?.trim() || '';
+  const unitIndexByNumber = new Map((book.translatedUnitsList || []).map((unit) => [unit.unitNumber, unit]));
+  const getUnitDisplayTitle = (unit: Omit<BookContent, 'content'>) => {
+    const indexedTitle = unitIndexByNumber.get(unit.unitNumber)?.title?.trim() || '';
+    const archivedTitle = unit.title?.trim() || '';
 
-    if (indexedTitle && isGenericChapterTitle(archivedTitle, novel.title, chapter.chapterNumber)) {
+    if (indexedTitle && isGenericUnitTitle(archivedTitle, book.title, unit.unitNumber)) {
       return indexedTitle;
     }
 
-    return archivedTitle || indexedTitle || `Chapter ${chapter.chapterNumber}`;
+    return archivedTitle || indexedTitle || `Unit ${unit.unitNumber}`;
   };
-  const getVisitDisplayTitle = (visit: ChapterVisit) => {
-    const indexedTitle = chapterIndexByNumber.get(visit.chapterNumber)?.title?.trim() || '';
-    const visitTitle = visit.chapterTitle?.trim() || '';
+  const getVisitDisplayTitle = (visit: BookVisit) => {
+    const indexedTitle = unitIndexByNumber.get(visit.unitNumber)?.title?.trim() || '';
+    const visitTitle = visit.unitTitle?.trim() || '';
 
-    if (indexedTitle && isGenericChapterTitle(visitTitle, novel.title, visit.chapterNumber)) {
+    if (indexedTitle && isGenericUnitTitle(visitTitle, book.title, visit.unitNumber)) {
       return indexedTitle;
     }
 
-    return visitTitle || indexedTitle || `Chapter ${visit.chapterNumber}`;
+    return visitTitle || indexedTitle || `Unit ${visit.unitNumber}`;
   };
-  const chapterVisitsBySession = chapterVisits.reduce<Record<string, ChapterVisit[]>>((groups, visit) => {
+  const unitVisitsBySession = unitVisits.reduce<Record<string, BookVisit[]>>((groups, visit) => {
     if (!visit.sessionId) return groups;
     groups[visit.sessionId] = groups[visit.sessionId] || [];
     groups[visit.sessionId].push(visit);
     return groups;
   }, {});
-  const standaloneChapterVisits = chapterVisits.filter((visit) => !visit.sessionId);
+  const standaloneBookVisits = unitVisits.filter((visit) => !visit.sessionId);
 
   return (
     <div className="container page-stack">
@@ -263,7 +275,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
           <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)}>
             {isEditing ? 'Cancel Edit' : 'Edit My Details'}
           </button>
-          <button className="btn btn-danger" onClick={handleDeleteNovel}>
+          <button className="btn btn-danger" onClick={handleDeleteBook}>
             Remove from Library
           </button>
         </div>
@@ -279,44 +291,44 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
             <div className="detail-cover">
               {coverSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={coverSrc} alt={novel.title} />
+                <img src={coverSrc} alt={book.title} />
               ) : (
-                <span style={{ fontSize: '2rem', opacity: 0.15, fontWeight: 'bold' }}>{novel.title.substring(0, 2).toUpperCase()}</span>
+                <span style={{ fontSize: '2rem', opacity: 0.15, fontWeight: 'bold' }}>{book.title.substring(0, 2).toUpperCase()}</span>
               )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
-              <h2 style={{ fontSize: '1.5rem' }} className="text-gradient">{novel.title}</h2>
+              <h2 style={{ fontSize: '1.5rem' }} className="text-gradient">{book.title}</h2>
               <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>By {displayAuthor}</p>
               
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                <span className={`badge badge-${novel.status.replace('_', '-')}`}>
-                  {novel.status.replace('_', ' ')}
+                <span className={`badge badge-${book.status.replace('_', '-')}`}>
+                  {book.status.replace('_', ' ')}
                 </span>
-                {novel.rating > 0 && (
+                {book.rating > 0 && (
                   <span style={{ fontSize: '0.85rem', color: 'var(--warning)', fontWeight: 'bold' }}>
-                    ★ {novel.rating}/5
+                    ★ {book.rating}/5
                   </span>
                 )}
               </div>
 
-              {novel.completedAt && (
+              {book.completedAt && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Completed: {new Date(novel.completedAt).toLocaleString()}
+                  Completed: {new Date(book.completedAt).toLocaleString()}
                 </p>
               )}
 
-              {(novel.personalTags || []).length > 0 && (
+              {(book.personalTags || []).length > 0 && (
                 <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                  {novel.personalTags.map((tag) => (
+                  {book.personalTags.map((tag) => (
                     <span key={tag} className="badge" style={{ fontSize: '0.68rem' }}>{tag}</span>
                   ))}
                 </div>
               )}
               
-              {novel.sourceUrl && (
+              {book.sourceUrl && (
                 <a 
-                  href={novel.sourceUrl} 
+                  href={book.sourceUrl} 
                   target="_blank" 
                   rel="noreferrer" 
                   style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'underline', marginTop: '0.25rem', wordBreak: 'break-all' }}
@@ -335,7 +347,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Reading Status</label>
-                    <select className="form-select" value={editStatus} onChange={(e) => setEditStatus(e.target.value as NovelStatus)}>
+                    <select className="form-select" value={editStatus} onChange={(e) => setEditStatus(e.target.value as BookStatus)}>
                       <option value="reading">📖 Reading</option>
                       <option value="completed">✅ Completed</option>
                       <option value="on_hold">⏳ On Hold</option>
@@ -344,7 +356,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                     </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Chapters Read</label>
+                    <label className="form-label">Units Read</label>
                     <input type="number" className="form-input" min="0" value={editChRead} onChange={(e) => setEditChRead(parseInt(e.target.value) || 0)} />
                   </div>
                 </div>
@@ -423,40 +435,40 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                 <div className="glass-card" style={{ padding: '2rem' }}>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Source Metadata</h3>
                   <div style={{ display: 'grid', gap: '0.85rem', fontSize: '0.9rem' }}>
-                    {novel.authorRealName && (
+                    {book.authorRealName && (
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Author Real Name</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{novel.authorRealName}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{book.authorRealName}</span>
                       </div>
                     )}
-                    {(novel.alternativeNames || []).length > 0 && (
+                    {(book.alternativeNames || []).length > 0 && (
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Alternative Names</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{novel.alternativeNames.join(', ')}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{book.alternativeNames.join(', ')}</span>
                       </div>
                     )}
-                    {(novel.genres || []).length > 0 && (
+                    {(book.genres || []).length > 0 && (
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.35rem' }}>Genres</span>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                          {novel.genres.map((genre) => (
+                          {book.genres.map((genre) => (
                             <span key={genre} className="badge" style={{ fontSize: '0.72rem' }}>{genre}</span>
                           ))}
                         </div>
                       </div>
                     )}
-                    {(novel.originalSource || novel.publicationStatus) && (
+                    {(book.originalSource || book.publicationStatus) && (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        {novel.originalSource && (
+                        {book.originalSource && (
                           <div>
-                            <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Novel Source</span>
-                            <span style={{ color: 'var(--text-secondary)' }}>{novel.originalSource}</span>
+                            <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Book Source</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>{book.originalSource}</span>
                           </div>
                         )}
-                        {novel.publicationStatus && (
+                        {book.publicationStatus && (
                           <div>
                             <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Publication Status</span>
-                            <span style={{ color: 'var(--text-secondary)' }}>{novel.publicationStatus}</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>{book.publicationStatus}</span>
                           </div>
                         )}
                       </div>
@@ -469,7 +481,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
               <div className="glass-card" style={{ padding: '2rem' }}>
                 <h3 style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>Synopsis</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                  {novel.description || 'No description scraped yet.'}
+                  {book.description || 'No description scraped yet.'}
                 </p>
               </div>
 
@@ -478,40 +490,40 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                 <div>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>My Review</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', fontStyle: 'italic' }}>
-                    {novel.review ? `"${novel.review}"` : 'No review notes written yet.'}
+                    {book.review ? `"${book.review}"` : 'No review notes written yet.'}
                   </p>
                 </div>
                 
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Personal Reading Notes</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', whiteSpace: 'pre-line' }}>
-                    {novel.personalNotes || 'No custom reading notes stored.'}
+                    {book.personalNotes || 'No custom reading notes stored.'}
                   </p>
                 </div>
 
-                {novel.rawLegacyEntry && (
+                {book.rawLegacyEntry && (
                   <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Original Legacy Entry</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>
-                      {novel.rawLegacyEntry}
+                      {book.rawLegacyEntry}
                     </p>
                   </div>
                 )}
 
-                {novel.characterNotes && (
+                {book.characterNotes && (
                   <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Character Notes</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>
-                      {novel.characterNotes}
+                      {book.characterNotes}
                     </p>
                   </div>
                 )}
 
-                {novel.relationshipNotes && (
+                {book.relationshipNotes && (
                   <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Relationship Notes</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>
-                      {novel.relationshipNotes}
+                      {book.relationshipNotes}
                     </p>
                   </div>
                 )}
@@ -528,7 +540,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
 
                 {sessions.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem 0' }}>
-                    No re-read logs exist for this novel yet.
+                    No re-read logs exist for this book yet.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -556,18 +568,18 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                           <strong>Notes:</strong> {sess.notes}
                         </p>
 
-                        {(chapterVisitsBySession[sess._id] || []).length > 0 && (
+                        {(unitVisitsBySession[sess._id] || []).length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                              Chapter Opens
+                              Unit Opens
                             </span>
-                            {(chapterVisitsBySession[sess._id] || []).slice(0, 5).map((visit) => (
+                            {(unitVisitsBySession[sess._id] || []).slice(0, 5).map((visit) => (
                               <Link
                                 key={visit._id}
-                                href={`/novels/${novelId}/reader/${visit.chapterNumber}`}
+                                href={`/books/${bookId}/reader/${visit.unitNumber}`}
                                 style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontSize: '0.8rem' }}
                               >
-                                Ch. {visit.chapterNumber}: {getVisitDisplayTitle(visit)}
+                                Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
                                 <span style={{ color: 'var(--text-muted)' }}> · {new Date(visit.openedAt).toLocaleString()}</span>
                               </Link>
                             ))}
@@ -576,7 +588,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
 
                         <div className="flex-between" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Chapters Read: <strong>{sess.chaptersRead}</strong>
+                            Units Read: <strong>{sess.unitsRead}</strong>
                           </span>
                           
                           {!sess.completed && (
@@ -592,16 +604,16 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
                   </div>
                 )}
 
-                {standaloneChapterVisits.length > 0 && (
+                {standaloneBookVisits.length > 0 && (
                   <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <h4 style={{ fontSize: '0.95rem' }}>Recent Standalone Revisits</h4>
-                    {standaloneChapterVisits.slice(0, 8).map((visit) => (
+                    {standaloneBookVisits.slice(0, 8).map((visit) => (
                       <Link
                         key={visit._id}
-                        href={`/novels/${novelId}/reader/${visit.chapterNumber}`}
+                        href={`/books/${bookId}/reader/${visit.unitNumber}`}
                         style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontSize: '0.82rem' }}
                       >
-                        Ch. {visit.chapterNumber}: {getVisitDisplayTitle(visit)}
+                        Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
                         <span style={{ color: 'var(--text-muted)' }}> · {new Date(visit.openedAt).toLocaleString()}</span>
                       </Link>
                     ))}
@@ -615,36 +627,36 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
 
         {/* RIGHT COLUMN: Personal reading table of contents */}
         <div className="detail-column">
-          {/* Table of Contents / Scraped Chapters List */}
+          {/* Table of Contents / Scraped Units List */}
           <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>Table of Contents</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Archived: <strong>{chapters.length}</strong> / <strong>{novel.chaptersTotal || '?'}</strong> chapters.
+                Archived: <strong>{units.length}</strong> / <strong>{book.translatedUnitsTotal || '?'}</strong> units.
               </p>
             </div>
 
-            {chapters.length === 0 ? (
+            {units.length === 0 ? (
               <div className="empty-state" style={{ padding: '2rem 1rem', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                  No chapters have been archived locally yet.
+                  No units have been archived locally yet.
                 </p>
-                <Link href={`/novels/${novelId}`} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                <Link href={`/books/${bookId}`} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
                   View Catalog Page
                 </Link>
               </div>
             ) : (
-              <div className="chapter-list">
-                {chapters.map((ch) => {
-                  const isRead = ch.chapterNumber <= novel.chaptersRead;
-                  const chapterTitle = getChapterDisplayTitle(ch);
+              <div className="unit-list">
+                {units.map((ch) => {
+                  const isRead = ch.unitNumber <= book.unitsRead;
+                  const unitTitle = getUnitDisplayTitle(ch);
                   return (
-                    <Link key={ch._id} href={`/novels/${novelId}/reader/${ch.chapterNumber}`} style={{ textDecoration: 'none' }}>
-                      <div className={`chapter-row ${isRead ? 'chapter-row-read' : ''}`}>
-                        <span className="chapter-title">
-                          {chapterTitle}
+                    <Link key={ch._id} href={`/books/${bookId}/reader/${ch.unitNumber}`} style={{ textDecoration: 'none' }}>
+                      <div className={`unit-row ${isRead ? 'unit-row-read' : ''}`}>
+                        <span className="unit-title">
+                          {unitTitle}
                         </span>
-                        <div className="chapter-meta">
+                        <div className="unit-meta">
                           <span>
                             {new Date(ch.scrapedAt).toLocaleDateString()}
                           </span>
@@ -678,7 +690,7 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
 
             <form onSubmit={handleStartSession} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Starting Chapter Progress</label>
+                <label className="form-label">Starting Unit Progress</label>
                 <input 
                   type="number" 
                   className="form-input" 

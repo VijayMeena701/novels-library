@@ -3,37 +3,38 @@
 import Image from "next/image";
 import Link from "next/link";
 import { use, useEffect, useMemo, useState, type FormEvent } from "react";
-import { api, getNovelCoverUrl, type BackgroundJob, type ChapterContent, type JobType, type Novel, type SourceKind, type User } from "../../../utils/api";
+import { api, getBookCoverUrl, type BackgroundJob, type BookContent, type BookReview, type JobType, type Book, type SourceKind, type User } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 import { useToast } from "../../../context/ToastContext";
 import { CAPABILITY } from "../../../utils/permissions";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
+import { BookLibraryPanel } from "../../../components/BookLibraryPanel";
 
 // ==========================================
 // UTILS & HELPER FUNCTIONS
 // ==========================================
 
-function getAuthor(novel: Novel): string {
-	return novel.authorPenName || novel.author || novel.authorRealName || "Unknown Author";
+function getAuthor(book: Book): string {
+	return book.authorPenName || book.author || book.authorRealName || "Unknown Author";
 }
 
 function normalizeTitle(value: string): string {
 	return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-function isGenericChapterTitle(value: string, novelTitle: string, chapterNumber: number): boolean {
+function isGenericUnitTitle(value: string, bookTitle: string, unitNumber: number): boolean {
 	const normalized = normalizeTitle(value);
-	return !normalized || normalized === normalizeTitle(novelTitle) || normalized === `chapter ${chapterNumber}` || normalized === `ch ${chapterNumber}`;
+	return !normalized || normalized === normalizeTitle(bookTitle) || normalized === `unit ${unitNumber}` || normalized === `ch ${unitNumber}`;
 }
 
 function formatJobTypeLabel(type: JobType): string {
 	const labels: Record<JobType, string> = {
 		scrape_metadata: "Translated index",
-		scrape_chapters: "Translated archive",
+		scrape_units: "Translated archive",
 		scrape_raw_metadata: "Raw index",
-		scrape_raw_chapters: "Raw archive",
+		scrape_raw_units: "Raw archive",
 	};
 	return labels[type];
 }
@@ -67,7 +68,7 @@ function getJobBadgeVariant(status: BackgroundJob["status"]): "processing" | "co
 }
 
 type CatalogItem = {
-	number: number;
+	unitNumber: number;
 	title: string;
 	archived: boolean;
 	sourceUrl?: string;
@@ -99,77 +100,98 @@ type CommonAdminAction =
 
 // --- Hero section for cover art, primary tracking features, and title stats ---
 interface HeroProps {
-	novel: Novel;
-	chaptersCount: number;
+	book: Book;
+	unitsCount: number;
 	rawCatalogCount: number;
 	coverSrc: string;
 	user: User | null;
 	adding: boolean;
 	addMessage: string;
-	firstReadableChapter: number;
-	firstReadableRawChapter: number;
+	firstReadableUnit: number;
+	firstReadableRawUnit: number;
 	onAddToLibrary: () => void;
+	voting: boolean;
+	voted: boolean;
+	onVote: () => void;
 }
 
-function NovelHero({
-	novel,
-	chaptersCount,
+function BookHero({
+	book,
+	unitsCount,
 	rawCatalogCount,
 	coverSrc,
 	user,
 	adding,
 	addMessage,
-	firstReadableChapter,
-	firstReadableRawChapter,
+	firstReadableUnit,
+	firstReadableRawUnit,
 	onAddToLibrary,
+	voting,
+	voted,
+	onVote,
 }: HeroProps) {
-	const chaptersTotal = novel.chaptersTotal || chaptersCount || 1;
-	const archivePercentage = Math.min(100, Math.round((chaptersCount / chaptersTotal) * 100));
+	const translatedUnitsTotal = book.translatedUnitsTotal || unitsCount || 1;
+	const archivePercentage = Math.min(100, Math.round((unitsCount / translatedUnitsTotal) * 100));
 
 	return (
 		<Card className="p-[1.1rem] flex flex-col md:flex-row gap-6 bg-[#fffdf8] border-[#dfd6c8] shadow-md">
 			<div className="w-[190px] h-[260px] flex-shrink-0 border border-[#dfd6c8] rounded-lg bg-[#f8f5ee] flex items-center justify-center overflow-hidden mx-auto md:mx-0">
 				{coverSrc ? (
-					<Image src={coverSrc} alt={novel.title} width={190} height={260} unoptimized className="w-full h-full object-cover" />
+					<Image src={coverSrc} alt={book.title} width={190} height={260} unoptimized className="w-full h-full object-cover" />
 				) : (
-					<span className="text-3xl font-extrabold text-[#405f8f] opacity-50">{novel.title.slice(0, 2).toUpperCase()}</span>
+					<span className="text-3xl font-extrabold text-[#405f8f] opacity-50">{book.title.slice(0, 2).toUpperCase()}</span>
 				)}
 			</div>
 
 			<div className="flex-1 min-width-0 flex flex-col gap-4 text-[#24211d]">
 				<div>
-					<h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight text-[#24211d]">{novel.title}</h1>
-					{(novel.alternativeNames || []).length > 0 && (
-						<p className="text-sm text-[#5f584f] mt-1 italic">{novel.alternativeNames.slice(0, 3).join(" · ")}</p>
+					<h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight text-[#24211d]">{book.title}</h1>
+					{(book.alternativeNames || []).length > 0 && (
+						<p className="text-sm text-[#5f584f] mt-1 italic">{book.alternativeNames.slice(0, 3).join(" · ")}</p>
 					)}
 					<p className="text-[#5f584f] mt-1.5 text-sm md:text-base">
 						By{" "}
-						{novel.authorId ? (
-							<Link href={`/authors/${novel.authorId}`} className="text-[#405f8f] hover:underline font-semibold">
-								{getAuthor(novel)}
+						{book.authorId ? (
+							<Link href={`/authors/${book.authorId}`} className="text-[#405f8f] hover:underline font-semibold">
+								{getAuthor(book)}
 							</Link>
 						) : (
-							<span className="font-semibold">{getAuthor(novel)}</span>
+							<span className="font-semibold">{getAuthor(book)}</span>
 						)}
 					</p>
 				</div>
 
-				<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+				<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5">
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
 						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Status</span>
-						<strong className="text-[#24211d] font-extrabold text-sm">{novel.publicationStatus || "Unknown"}</strong>
+						<strong className="text-[#24211d] font-extrabold text-sm">{book.publicationStatus || "Unknown"}</strong>
 					</div>
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
-						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Chapters</span>
-						<strong className="text-[#24211d] font-extrabold text-sm">{novel.chaptersTotal || chaptersCount || "?"}</strong>
+						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Units</span>
+						<strong className="text-[#24211d] font-extrabold text-sm">{book.translatedUnitsTotal || unitsCount || "?"}</strong>
 					</div>
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
 						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Archived</span>
-						<strong className="text-[#24211d] font-extrabold text-sm">{chaptersCount}</strong>
+						<strong className="text-[#24211d] font-extrabold text-sm">{unitsCount}</strong>
 					</div>
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
 						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Raw</span>
-						<strong className="text-[#24211d] font-extrabold text-sm">{novel.rawChaptersTotal || 0}</strong>
+						<strong className="text-[#24211d] font-extrabold text-sm">{book.rawUnitsTotal || 0}</strong>
+					</div>
+					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
+						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Rating</span>
+						<strong className="text-[#24211d] font-extrabold text-sm">
+							{book.ratingAverage ? book.ratingAverage.toFixed(1) : "—"}
+							{book.ratingCount ? <span className="text-[#877d70] font-semibold text-xs ml-1">({book.ratingCount})</span> : null}
+						</strong>
+					</div>
+					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
+						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Reviews</span>
+						<strong className="text-[#24211d] font-extrabold text-sm">{book.reviewCount || 0}</strong>
+					</div>
+					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
+						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Votes</span>
+						<strong className="text-[#24211d] font-extrabold text-sm">{book.totalVotes || 0}</strong>
 					</div>
 				</div>
 
@@ -177,7 +199,7 @@ function NovelHero({
 					<div className="flex justify-between text-xs font-bold mb-1.5">
 						<span className="text-[#5f584f]">Archive Progress</span>
 						<span className="text-[#405f8f]">
-							{chaptersCount} / {novel.chaptersTotal || chaptersCount || "?"} chapters ({archivePercentage}%)
+							{unitsCount} / {book.translatedUnitsTotal || unitsCount || "?"} units ({archivePercentage}%)
 						</span>
 					</div>
 					<div className="w-full h-1.5 bg-[#e8dfd1] rounded-full overflow-hidden">
@@ -207,25 +229,41 @@ function NovelHero({
 							<Link href="/login">Login to Track</Link>
 						</Button>
 					)}
-					{chaptersCount > 0 ? (
-						<Button asChild className="h-9 font-semibold text-xs bg-[#405f8f] hover:bg-[#304a72] text-white">
-							<Link href={`/novels/${novel._id}/reader/${firstReadableChapter}`}>Start Reading</Link>
+					{user && (
+						<Button
+							variant={voted ? "default" : "secondary"}
+							onClick={onVote}
+							disabled={voting}
+							className="h-9 font-semibold text-xs"
+						>
+							{voting ? (
+								<div className="w-4 h-4 border-2 border-slate-300 border-t-[#405f8f] rounded-full animate-spin" />
+							) : voted ? (
+								`Unvote (${book.totalVotes || 0})`
+							) : (
+								`Vote (${book.totalVotes || 0})`
+							)}
 						</Button>
-					) : novel.sourceUrl ? (
+					)}
+					{unitsCount > 0 ? (
 						<Button asChild className="h-9 font-semibold text-xs bg-[#405f8f] hover:bg-[#304a72] text-white">
-							<a href={novel.sourceUrl} target="_blank" rel="noreferrer">
+							<Link href={`/books/${book._id}/reader/${firstReadableUnit}`}>Start Reading</Link>
+						</Button>
+					) : book.sourceUrl ? (
+						<Button asChild className="h-9 font-semibold text-xs bg-[#405f8f] hover:bg-[#304a72] text-white">
+							<a href={book.sourceUrl} target="_blank" rel="noreferrer">
 								Open Source
 							</a>
 						</Button>
 					) : null}
 					{rawCatalogCount > 0 && (
 						<Button asChild variant="secondary" className="h-9 font-semibold text-xs">
-							<Link href={`/novels/${novel._id}/reader/${firstReadableRawChapter}?source=raw`}>Open Raw</Link>
+							<Link href={`/books/${book._id}/reader/${firstReadableRawUnit}?source=raw`}>Open Raw</Link>
 						</Button>
 					)}
-					{novel.rawSourceUrl && rawCatalogCount === 0 && (
+					{book.rawSourceUrl && rawCatalogCount === 0 && (
 						<Button asChild variant="secondary" className="h-9 font-semibold text-xs">
-							<a href={novel.rawSourceUrl} target="_blank" rel="noreferrer">
+							<a href={book.rawSourceUrl} target="_blank" rel="noreferrer">
 								Open Raw Source
 							</a>
 						</Button>
@@ -234,7 +272,7 @@ function NovelHero({
 				{addMessage && <p className="text-xs text-[#5f584f] italic mt-1">{addMessage}</p>}
 
 				<div className="flex flex-wrap gap-1.5 mt-1">
-					{(novel.genres || []).map((genre) => (
+					{(book.genres || []).map((genre) => (
 						<Link key={genre} href={`/genres/${encodeURIComponent(genre)}`} className="no-underline">
 							<Badge className="bg-[#fffdf8] border-[#dfd6c8] text-[#5d6474] hover:bg-[#f8f5ee] font-bold text-[10px] uppercase tracking-wider py-1">
 								{genre}
@@ -249,7 +287,7 @@ function NovelHero({
 
 // --- Admin Controls Console Block ---
 interface AdminConsoleProps {
-	novel: Novel;
+	book: Book;
 	jobs: BackgroundJob[];
 	activeJobTypes: Set<JobType>;
 	processingJobCount: number;
@@ -261,7 +299,7 @@ interface AdminConsoleProps {
 }
 
 function AdminConsole({
-	novel,
+	book,
 	jobs,
 	activeJobTypes,
 	processingJobCount,
@@ -278,9 +316,9 @@ function AdminConsole({
 			<div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 				<div>
 					<span className="block text-[10px] font-black tracking-wider text-[#877d70] uppercase mb-1">Catalog administration</span>
-					<h2 className="text-xl font-bold uppercase text-[#24211d]">{novel.title}</h2>
+					<h2 className="text-xl font-bold uppercase text-[#24211d]">{book.title}</h2>
 					<p className="text-sm text-[#5f584f] mt-1">
-						Manage this shared novel record, queue indexing jobs, import chapter index HTML, and update catalog metadata.
+						Manage this shared book record, queue indexing jobs, import unit index HTML, and update catalog metadata.
 					</p>
 				</div>
 				<Button asChild variant="secondary" size="sm" className="h-8 text-xs font-semibold">
@@ -311,11 +349,11 @@ function AdminConsole({
 
 				<div className="p-4 border border-[#dfd6c8] rounded-md bg-[#f8f5ee] flex flex-col justify-between">
 					<div className="flex justify-between items-center mb-1">
-						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Indexed chapters</span>
+						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Indexed units</span>
 						<span className="text-xs font-bold text-[#405f8f]">{translatedArchivePercent}%</span>
 					</div>
 					<strong className="text-lg font-extrabold text-[#24211d]">
-						{novel.chaptersList?.length || 0} / {novel.chaptersTotal || "?"}
+						{book.translatedUnitsList?.length || 0} / {book.translatedUnitsTotal || "?"}
 					</strong>
 					<div className="w-full h-1.5 bg-[#e8dfd1] rounded-full overflow-hidden mt-2">
 						<div className="h-full bg-[#405f8f] rounded-full transition-all duration-300" style={{ width: `${translatedArchivePercent}%` }}></div>
@@ -458,7 +496,7 @@ function AdminConsole({
 						))}
 					</div>
 				) : (
-					<p className="text-xs text-[#877d70] italic">No recent admin activity for this novel yet.</p>
+					<p className="text-xs text-[#877d70] italic">No recent admin activity for this book yet.</p>
 				)}
 			</section>
 		</Card>
@@ -467,30 +505,30 @@ function AdminConsole({
 
 // --- Table of Contents Listing Card ---
 interface TOCProps {
-	novel: Novel;
-	chapters: Omit<ChapterContent, "content">[];
+	book: Book;
+	units: Omit<BookContent, "content">[];
 	sortedItems: CatalogItem[];
-	chapterSearch: string;
-	chapterSort: "asc" | "desc";
+	unitSearch: string;
+	unitSort: "asc" | "desc";
 	onSearchChange: (val: string) => void;
 	onSortToggle: () => void;
 }
 
-function TableOfContents({ novel, chapters, sortedItems, chapterSearch, chapterSort, onSearchChange, onSortToggle }: TOCProps) {
+function TableOfContents({ book, units, sortedItems, unitSearch, unitSort, onSearchChange, onSortToggle }: TOCProps) {
 	return (
 		<Card className="p-[1.1rem] bg-white border-[#dfd6c8] flex flex-col gap-4">
 			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#dfd6c8] pb-3">
 				<div>
 					<h2 className="text-base font-bold text-[#24211d]">Table of Contents</h2>
 					<p className="text-xs text-[#5f584f] mt-0.5">
-						Archived translated: {chapters.length} / {novel.chaptersTotal || sortedItems.length || "?"} chapters.
+						Archived translated: {units.length} / {book.translatedUnitsTotal || sortedItems.length || "?"} units.
 					</p>
 				</div>
 				<div className="flex gap-2 items-center">
 					<input
 						type="text"
-						placeholder="Search chapters..."
-						value={chapterSearch}
+						placeholder="Search units..."
+						value={unitSearch}
 						onChange={(e) => onSearchChange(e.target.value)}
 						className="w-40 h-8 bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-2.5 text-xs outline-none transition-all duration-150 focus:bg-white focus:border-[#405f8f] focus:ring-4 focus:ring-[#405f8f]/10"
 					/>
@@ -500,20 +538,20 @@ function TableOfContents({ novel, chapters, sortedItems, chapterSearch, chapterS
 						onClick={onSortToggle}
 						className="h-8 text-xs font-semibold px-2.5 border-[#dfd6c8] hover:bg-slate-50"
 					>
-						{chapterSort === "asc" ? "oldest" : "newest"}
+						{unitSort === "asc" ? "oldest" : "newest"}
 					</Button>
 				</div>
 			</div>
 
 			{sortedItems.length === 0 ? (
 				<p className="text-sm text-[#5f584f] mt-2">
-					{chapters.length === 0 ? (
+					{units.length === 0 ? (
 						<span>
-							No translated chapters have been indexed yet.
-							{novel.sourceUrl && (
+							No translated units have been indexed yet.
+							{book.sourceUrl && (
 								<>
 									{" "}
-									<a href={novel.sourceUrl} target="_blank" rel="noreferrer" className="text-[#405f8f] hover:underline font-bold">
+									<a href={book.sourceUrl} target="_blank" rel="noreferrer" className="text-[#405f8f] hover:underline font-bold">
 										Open source page
 									</a>
 									.
@@ -521,31 +559,31 @@ function TableOfContents({ novel, chapters, sortedItems, chapterSearch, chapterS
 							)}
 						</span>
 					) : (
-						"No chapters match your search."
+						"No units match your search."
 					)}
 				</p>
 			) : (
 				<>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[520px] overflow-y-auto pr-1">
-						{sortedItems.slice(0, 120).map((chapterItem) => (
+						{sortedItems.slice(0, 120).map((unitItem) => (
 							<Link
-								key={chapterItem.number}
-								href={`/novels/${novel._id}/reader/${chapterItem.number}`}
+								key={unitItem.unitNumber}
+								href={`/books/${book._id}/reader/${unitItem.unitNumber}`}
 								className={`grid gap-1 p-3 border border-[#dfd6c8] rounded-md transition-all duration-150 ${
-									chapterItem.archived
+									unitItem.archived
 										? "bg-[#f8f5ee] hover:bg-white hover:border-[#b9aa95]"
 										: "bg-[#ece5d8]/40 hover:bg-[#f8f5ee] opacity-75 hover:opacity-100"
 								}`}
 							>
-								<span className="text-[10px] font-black text-[#877d70] uppercase">Chapter {chapterItem.number}</span>
-								<strong className="text-xs font-bold text-[#24211d] truncate">{chapterItem.title}</strong>
-								{!chapterItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
+								<span className="text-[10px] font-black text-[#877d70] uppercase">Unit {unitItem.unitNumber}</span>
+								<strong className="text-xs font-bold text-[#24211d] truncate">{unitItem.title}</strong>
+								{!unitItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
 							</Link>
 						))}
 					</div>
 					{sortedItems.length > 120 && (
 						<p className="text-xs text-[#877d70] text-center mt-3 border-t border-slate-100 pt-3">
-							Showing first 120 chapters. Use the search box above to locate specific numbers.
+							Showing first 120 units. Use the search box above to locate specific numbers.
 						</p>
 					)}
 				</>
@@ -556,23 +594,23 @@ function TableOfContents({ novel, chapters, sortedItems, chapterSearch, chapterS
 
 // --- Raw Table of Contents ---
 interface RawTOCProps {
-	novel: Novel;
-	rawChapters: Omit<ChapterContent, "content">[];
+	book: Book;
+	rawUnits: Omit<BookContent, "content">[];
 	sortedRawItems: CatalogItem[];
-	chapterSearch: string;
-	chapterSort: "asc" | "desc";
-	firstReadableRawChapter: number;
+	unitSearch: string;
+	unitSort: "asc" | "desc";
+	firstReadableRawUnit: number;
 	onSearchChange: (val: string) => void;
 	onSortToggle: () => void;
 }
 
 function RawTableOfContents({
-	novel,
-	rawChapters,
+	book,
+	rawUnits,
 	sortedRawItems,
-	chapterSearch,
-	chapterSort,
-	firstReadableRawChapter,
+	unitSearch,
+	unitSort,
+	firstReadableRawUnit,
 	onSearchChange,
 	onSortToggle,
 }: RawTOCProps) {
@@ -582,7 +620,7 @@ function RawTableOfContents({
 				<div>
 					<h2 className="text-base font-bold text-[#24211d]">Raw Table of Contents</h2>
 					<p className="text-xs text-[#5f584f] mt-0.5">
-						Archived raw: {rawChapters.length} / {novel.rawChaptersTotal || sortedRawItems.length} chapters.
+						Archived raw: {rawUnits.length} / {book.rawUnitsTotal || sortedRawItems.length} units.
 					</p>
 				</div>
 				<div className="flex gap-2 items-center flex-wrap">
@@ -591,7 +629,7 @@ function RawTableOfContents({
 							<input
 								type="text"
 								placeholder="Search raw..."
-								value={chapterSearch}
+								value={unitSearch}
 								onChange={(e) => onSearchChange(e.target.value)}
 								className="w-40 h-8 bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-2.5 text-xs outline-none transition-all duration-150 focus:bg-white focus:border-[#405f8f] focus:ring-4 focus:ring-[#405f8f]/10"
 							/>
@@ -601,13 +639,13 @@ function RawTableOfContents({
 								onClick={onSortToggle}
 								className="h-8 text-xs font-semibold px-2.5 border-[#dfd6c8] hover:bg-slate-50"
 							>
-								{chapterSort === "asc" ? "oldest" : "newest"}
+								{unitSort === "asc" ? "oldest" : "newest"}
 							</Button>
 						</>
 					)}
 					{sortedRawItems.length > 0 && (
 						<Button asChild variant="secondary" size="sm" className="h-8 text-xs font-semibold">
-							<Link href={`/novels/${novel._id}/reader/${firstReadableRawChapter}?source=raw`}>Open Raw Reader</Link>
+							<Link href={`/books/${book._id}/reader/${firstReadableRawUnit}?source=raw`}>Open Raw Reader</Link>
 						</Button>
 					)}
 				</div>
@@ -615,30 +653,30 @@ function RawTableOfContents({
 
 			{sortedRawItems.length === 0 ? (
 				<p className="text-sm text-[#5f584f] mt-2">
-					{sortedRawItems.length === 0 ? "No raw chapters have been indexed yet." : "No raw chapters match your search."}
+					{sortedRawItems.length === 0 ? "No raw units have been indexed yet." : "No raw units match your search."}
 				</p>
 			) : (
 				<>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[520px] overflow-y-auto pr-1">
-						{sortedRawItems.slice(0, 120).map((chapterItem) => (
+						{sortedRawItems.slice(0, 120).map((unitItem) => (
 							<Link
-								key={chapterItem.number}
-								href={`/novels/${novel._id}/reader/${chapterItem.number}?source=raw`}
+								key={unitItem.unitNumber}
+								href={`/books/${book._id}/reader/${unitItem.unitNumber}?source=raw`}
 								className={`grid gap-1 p-3 border border-[#dfd6c8] rounded-md transition-all duration-150 ${
-									chapterItem.archived
+									unitItem.archived
 										? "bg-[#f8f5ee] hover:bg-white hover:border-[#b9aa95]"
 										: "bg-[#ece5d8]/40 hover:bg-[#f8f5ee] opacity-75 hover:opacity-100"
 								}`}
 							>
-								<span className="text-[10px] font-black text-[#877d70] uppercase">Raw {chapterItem.number}</span>
-								<strong className="text-xs font-bold text-[#24211d] truncate">{chapterItem.title}</strong>
-								{!chapterItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
+								<span className="text-[10px] font-black text-[#877d70] uppercase">Raw {unitItem.unitNumber}</span>
+								<strong className="text-xs font-bold text-[#24211d] truncate">{unitItem.title}</strong>
+								{!unitItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
 							</Link>
 						))}
 					</div>
 					{sortedRawItems.length > 120 && (
 						<p className="text-xs text-[#877d70] text-center mt-3 border-t border-slate-100 pt-3">
-							Showing first 120 raw chapters. Use the search box to locate specific numbers.
+							Showing first 120 raw units. Use the search box to locate specific numbers.
 						</p>
 					)}
 				</>
@@ -649,12 +687,40 @@ function RawTableOfContents({
 
 // --- Sidebar detailing metadata and other genres ---
 interface SidebarProps {
-	novel: Novel;
-	chaptersCount: number;
+	book: Book;
+	unitsCount: number;
 	sortedItemsCount: number;
 }
 
-function DetailsSidebar({ novel, chaptersCount, sortedItemsCount }: SidebarProps) {
+function DetailsSidebar({ book, unitsCount, sortedItemsCount }: SidebarProps) {
+	const { user } = useAuth();
+	const { showToast } = useToast();
+	const [reportReason, setReportReason] = useState("inappropriate_content");
+	const [reportDescription, setReportDescription] = useState("");
+	const [reporting, setReporting] = useState(false);
+
+	const reportReasons = [
+		{ key: "inappropriate_content", label: "Inappropriate content" },
+		{ key: "spam", label: "Spam" },
+		{ key: "copyright", label: "Copyright" },
+		{ key: "incorrect_metadata", label: "Incorrect metadata" },
+		{ key: "other", label: "Other" },
+	];
+
+	async function handleReport() {
+		if (!user) return;
+		setReporting(true);
+		try {
+			await api.createReport(book._id, reportReason, reportDescription);
+			showToast({ message: "Report submitted.", variant: "success" });
+			setReportDescription("");
+		} catch (err) {
+			showToast({ message: err instanceof Error ? err.message : "Failed to submit report.", variant: "error" });
+		} finally {
+			setReporting(false);
+		}
+	}
+
 	return (
 		<aside className="flex flex-col gap-5">
 			<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-4">
@@ -662,14 +728,14 @@ function DetailsSidebar({ novel, chaptersCount, sortedItemsCount }: SidebarProps
 				<dl className="grid gap-4 text-xs">
 					<div className="grid gap-0.5">
 						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Publication</dt>
-						<dd className="text-xs font-bold text-[#24211d]">{novel.publicationStatus || "Unknown"}</dd>
+						<dd className="text-xs font-bold text-[#24211d]">{book.publicationStatus || "Unknown"}</dd>
 					</div>
 					<div className="grid gap-0.5">
 						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Original source</dt>
 						<dd className="text-xs font-bold text-[#24211d] truncate">
-							{novel.originalSource ? (
-								<a href={novel.originalSource} target="_blank" rel="noreferrer" className="text-[#405f8f] hover:underline">
-									{novel.originalSource}
+							{book.originalSource ? (
+								<a href={book.originalSource} target="_blank" rel="noreferrer" className="text-[#405f8f] hover:underline">
+									{book.originalSource}
 								</a>
 							) : (
 								"Unknown"
@@ -678,18 +744,18 @@ function DetailsSidebar({ novel, chaptersCount, sortedItemsCount }: SidebarProps
 					</div>
 					<div className="grid gap-0.5">
 						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Language</dt>
-						<dd className="text-xs font-bold text-[#24211d]">{novel.rawOriginalLanguage || "Translated"}</dd>
+						<dd className="text-xs font-bold text-[#24211d]">{book.rawOriginalLanguage || "Translated"}</dd>
 					</div>
 					<div className="grid gap-0.5">
-						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Archived chapters</dt>
+						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Archived units</dt>
 						<dd className="text-xs font-bold text-[#24211d]">
-							{chaptersCount} / {novel.chaptersTotal || sortedItemsCount || "?"}
+							{unitsCount} / {book.translatedUnitsTotal || sortedItemsCount || "?"}
 						</dd>
 					</div>
-					{novel.alternativeNames && novel.alternativeNames.length > 0 && (
+					{book.alternativeNames && book.alternativeNames.length > 0 && (
 						<div className="grid gap-0.5">
 							<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Alternative names</dt>
-							<dd className="text-xs font-medium text-[#5f584f] leading-relaxed">{novel.alternativeNames.join(", ")}</dd>
+							<dd className="text-xs font-medium text-[#5f584f] leading-relaxed">{book.alternativeNames.join(", ")}</dd>
 						</div>
 					)}
 				</dl>
@@ -698,10 +764,10 @@ function DetailsSidebar({ novel, chaptersCount, sortedItemsCount }: SidebarProps
 			<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-4">
 				<h2 className="text-sm font-extrabold text-[#24211d] uppercase border-b border-[#dfd6c8] pb-1.5">Genres</h2>
 				<div className="flex flex-wrap gap-1.5">
-					{!novel.genres || novel.genres.length === 0 ? (
+					{!book.genres || book.genres.length === 0 ? (
 						<span className="text-xs text-[#5f584f] italic">No genres indexed.</span>
 					) : (
-						novel.genres.map((genre) => (
+						book.genres.map((genre) => (
 							<Link key={genre} href={`/genres/${encodeURIComponent(genre)}`} className="no-underline">
 								<Badge className="bg-[#fffdf8] border-[#dfd6c8] text-[#5d6474] hover:bg-[#f8f5ee] font-bold text-[10px] uppercase tracking-wider py-1">
 									{genre}
@@ -711,6 +777,45 @@ function DetailsSidebar({ novel, chaptersCount, sortedItemsCount }: SidebarProps
 					)}
 				</div>
 			</Card>
+
+			{user && (
+				<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-3">
+					<h2 className="text-sm font-extrabold text-[#24211d] uppercase border-b border-[#dfd6c8] pb-1.5">Report</h2>
+					<div className="flex flex-col gap-2.5">
+						<select
+							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none focus:border-[#405f8f] focus:ring-2 focus:ring-[#405f8f]/10"
+							value={reportReason}
+							onChange={(e) => setReportReason(e.target.value)}
+						>
+							{reportReasons.map((r) => (
+								<option key={r.key} value={r.key}>
+									{r.label}
+								</option>
+							))}
+						</select>
+						<textarea
+							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none focus:border-[#405f8f] focus:ring-2 focus:ring-[#405f8f]/10"
+							rows={3}
+							placeholder="Optional details..."
+							value={reportDescription}
+							onChange={(e) => setReportDescription(e.target.value)}
+						/>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={handleReport}
+							disabled={reporting}
+							className="h-8 font-semibold text-xs"
+						>
+							{reporting ? (
+								<div className="w-4 h-4 border-2 border-slate-300 border-t-[#405f8f] rounded-full animate-spin" />
+							) : (
+								"Submit Report"
+							)}
+						</Button>
+					</div>
+				</Card>
+			)}
 		</aside>
 	);
 }
@@ -719,18 +824,22 @@ function DetailsSidebar({ novel, chaptersCount, sortedItemsCount }: SidebarProps
 // MAIN DEFAULT EXPORT COMPONENT
 // ==========================================
 
-export default function PublicNovelDetails({ params }: { params: Promise<{ id: string }> }) {
+export default function PublicBookDetails({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = use(params);
 	const { user, hasCapability } = useAuth();
 	const { showToast } = useToast();
 
 	// Page & Core UI Data States
-	const [novel, setNovel] = useState<Novel | null>(null);
-	const [chapters, setChapters] = useState<Omit<ChapterContent, "content">[]>([]);
-	const [rawChapters, setRawChapters] = useState<Omit<ChapterContent, "content">[]>([]);
-	const [authorNovels, setAuthorNovels] = useState<Novel[]>([]);
+	const [book, setBook] = useState<Book | null>(null);
+	const [units, setUnits] = useState<Omit<BookContent, "content">[]>([]);
+	const [rawUnits, setRawUnits] = useState<Omit<BookContent, "content">[]>([]);
+	const [authorBooks, setAuthorBooks] = useState<Book[]>([]);
 	const [jobs, setJobs] = useState<BackgroundJob[]>([]);
+	const [reviews, setReviews] = useState<BookReview[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [isUserBook, setIsUserBook] = useState(false);
+	const [voting, setVoting] = useState(false);
+	const [voted, setVoted] = useState(false);
 
 	// Action & Processing state machines
 	const [jobsLoading, setJobsLoading] = useState(false);
@@ -765,68 +874,86 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 	const [importingIndexHtml, setImportingIndexHtml] = useState(false);
 
 	// Client View Configurations
-	const [activeTab, setActiveTab] = useState<"read" | "admin">("read");
-	const [chapterSearch, setChapterSearch] = useState("");
-	const [chapterSort, setChapterSort] = useState<"asc" | "desc">("asc");
+	const [activeTab, setActiveTab] = useState<"read" | "admin" | "library">("read");
+	const [unitSearch, setUnitSearch] = useState("");
+	const [unitSort, setUnitSort] = useState<"asc" | "desc">("asc");
 
-	const fetchNovelJobs = async () => {
+	const fetchBookJobs = async () => {
 		if (!hasCapability(CAPABILITY.JOBS_LIST)) return;
 		setJobsLoading(true);
 		try {
-			const jobData = await api.getNovelJobs(id);
+			const jobData = await api.getBookJobs(id);
 			setJobs(jobData);
 		} catch (err) {
-			console.error("Failed to load novel jobs:", err);
+			console.error("Failed to load book jobs:", err);
 		} finally {
 			setJobsLoading(false);
 		}
 	};
 
-	const refreshChapterLists = async () => {
-		const [chapterData, rawChapterData] = await Promise.all([api.getPublicChapters(id).catch(() => []), api.getPublicRawChapters(id).catch(() => [])]);
-		setChapters(chapterData);
-		setRawChapters(rawChapterData);
+	const refreshUnitLists = async () => {
+		const [unitData, rawUnitData] = await Promise.all([api.getPublicUnits(id).catch(() => []), api.getPublicRawUnits(id).catch(() => [])]);
+		setUnits(unitData);
+		setRawUnits(rawUnitData);
 	};
 
 	// --- Primary Data Fetch ---
 	useEffect(() => {
-		async function loadNovel() {
+		async function loadBook() {
 			setLoading(true);
 			try {
-				const novelData = await api.getPublicNovel(id);
-				const [chapterData, rawChapterData, authorData] = await Promise.all([
-					api.getPublicChapters(id).catch(() => []),
-					api.getPublicRawChapters(id).catch(() => []),
-					novelData.authorId ? api.getPublicAuthor(novelData.authorId).catch(() => null) : Promise.resolve(null),
+				let bookData: Book;
+				let userBook = false;
+				if (user) {
+					try {
+						bookData = await api.getBook(id);
+						userBook = true;
+					} catch (err: any) {
+						if (err.status === 404) {
+							bookData = await api.getPublicBook(id);
+						} else {
+							throw err;
+						}
+					}
+				} else {
+					bookData = await api.getPublicBook(id);
+				}
+				const [unitData, rawUnitData, authorData, reviewsData] = await Promise.all([
+					api.getPublicUnits(id).catch(() => []),
+					api.getPublicRawUnits(id).catch(() => []),
+					bookData.authorId ? api.getPublicAuthor(bookData.authorId).catch(() => null) : Promise.resolve(null),
+					api.getBookReviews(id).catch(() => ({ reviews: [], pagination: { page: 1, limit: 20, total: 0, pages: 0 } })),
 				]);
-				setNovel(novelData);
-				setChapters(chapterData);
-				setRawChapters(rawChapterData);
-				setAuthorNovels((authorData?.novels || []).filter((item) => item._id !== novelData._id).slice(0, 6));
+				setBook(bookData);
+				setIsUserBook(userBook);
+				setUnits(unitData);
+				setRawUnits(rawUnitData);
+				setAuthorBooks((authorData?.books || []).filter((item) => item._id !== bookData._id).slice(0, 6));
+				setReviews(reviewsData.reviews || []);
 			} catch (err) {
-				console.error("Failed to load public novel:", err);
+				console.error("Failed to load public book:", err);
 			} finally {
 				setLoading(false);
 			}
 		}
-		loadNovel();
-	}, [id]);
+		loadBook();
+	}, [id, user]);
 
 	const openCatalogEditor = () => {
-		if (!novel) return;
-		setEditTitle(novel.title || "");
-		setEditAuthor(novel.author || "");
-		setEditAuthorPenName(novel.authorPenName || "");
-		setEditAuthorRealName(novel.authorRealName || "");
-		setEditAlternativeNames((novel.alternativeNames || []).join(", "));
-		setEditGenres((novel.genres || []).join(", "));
-		setEditOriginalSource(novel.originalSource || "");
-		setEditPublicationStatus(novel.publicationStatus || "");
-		setEditDescription(novel.description || "");
-		setEditCoverUrl(novel.coverUrl || "");
-		setEditSourceUrl(novel.sourceUrl || "");
-		setEditRawSourceUrl(novel.rawSourceUrl || "");
-		setEditRawOriginalLanguage(novel.rawOriginalLanguage || "");
+		if (!book) return;
+		setEditTitle(book.title || "");
+		setEditAuthor(book.author || "");
+		setEditAuthorPenName(book.authorPenName || "");
+		setEditAuthorRealName(book.authorRealName || "");
+		setEditAlternativeNames((book.alternativeNames || []).join(", "));
+		setEditGenres((book.genres || []).join(", "));
+		setEditOriginalSource(book.originalSource || "");
+		setEditPublicationStatus(book.publicationStatus || "");
+		setEditDescription(book.description || "");
+		setEditCoverUrl(book.coverUrl || "");
+		setEditSourceUrl(book.sourceUrl || "");
+		setEditRawSourceUrl(book.rawSourceUrl || "");
+		setEditRawOriginalLanguage(book.rawOriginalLanguage || "");
 		setIsEditCatalogOpen(true);
 	};
 
@@ -834,136 +961,136 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		if (!hasCapability(CAPABILITY.JOBS_LIST)) return;
 		let cancelled = false;
 
-		async function loadNovelJobs() {
+		async function loadBookJobs() {
 			setJobsLoading(true);
 			try {
-				const jobData = await api.getNovelJobs(id);
+				const jobData = await api.getBookJobs(id);
 				if (!cancelled) setJobs(jobData);
 			} catch (err) {
-				if (!cancelled) console.error("Failed to load novel jobs:", err);
+				if (!cancelled) console.error("Failed to load book jobs:", err);
 			} finally {
 				if (!cancelled) setJobsLoading(false);
 			}
 		}
 
-		void loadNovelJobs();
+		void loadBookJobs();
 		return () => {
 			cancelled = true;
 		};
 	}, [id, user?.capabilities, hasCapability]);
 
-	const firstReadableChapter = useMemo(() => chapters[0]?.chapterNumber || 1, [chapters]);
+	const firstReadableUnit = useMemo(() => units[0]?.unitNumber || 1, [units]);
 
 	// Catalog items builders
 	const rawCatalogItems = useMemo(() => {
-		if (!novel) return [];
-		const archivedByNumber = new Map(rawChapters.map((chapter) => [chapter.chapterNumber, chapter]));
+		if (!book) return [];
+		const archivedByNumber = new Map(rawUnits.map((unit) => [unit.unitNumber, unit]));
 		const seen = new Set<number>();
 		const indexedItems: CatalogItem[] = [];
-		for (const chapter of novel.rawChaptersList || []) {
-			if (!Number.isFinite(chapter.number) || seen.has(chapter.number)) continue;
-			seen.add(chapter.number);
-			const archived = archivedByNumber.get(chapter.number);
+		for (const unit of book.rawUnitsList || []) {
+			if (!Number.isFinite(unit.unitNumber) || seen.has(unit.unitNumber)) continue;
+			seen.add(unit.unitNumber);
+			const archived = archivedByNumber.get(unit.unitNumber);
 			const archivedTitle = archived?.title?.trim() || "";
-			const indexedTitle = chapter.title?.trim() || "";
+			const indexedTitle = unit.title?.trim() || "";
 			indexedItems.push({
-				number: chapter.number,
+				unitNumber: unit.unitNumber,
 				title:
-					archivedTitle && !isGenericChapterTitle(archivedTitle, novel.title, chapter.number)
+					archivedTitle && !isGenericUnitTitle(archivedTitle, book.title, unit.unitNumber)
 						? archivedTitle
-						: indexedTitle || archivedTitle || `Raw Chapter ${chapter.number}`,
+						: indexedTitle || archivedTitle || `Raw Unit ${unit.unitNumber}`,
 				archived: Boolean(archived),
-				sourceUrl: archived?.sourceUrl || chapter.url,
+				sourceUrl: archived?.sourceUrl || unit.url,
 				scrapedAt: archived?.scrapedAt,
 			});
 		}
 
 		const archivedOnlyItems = Array.from(archivedByNumber.values())
-			.filter((chapter) => !seen.has(chapter.chapterNumber))
-			.map((chapter) => ({
-				number: chapter.chapterNumber,
-				title: chapter.title || `Raw Chapter ${chapter.chapterNumber}`,
+			.filter((unit) => !seen.has(unit.unitNumber))
+			.map((unit) => ({
+				unitNumber: unit.unitNumber,
+				title: unit.title || `Raw Unit ${unit.unitNumber}`,
 				archived: true,
-				sourceUrl: chapter.sourceUrl,
-				scrapedAt: chapter.scrapedAt,
+				sourceUrl: unit.sourceUrl,
+				scrapedAt: unit.scrapedAt,
 			}));
 
-		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.number - b.number);
-	}, [novel, rawChapters]);
+		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.unitNumber - b.unitNumber);
+	}, [book, rawUnits]);
 
 	const translatedCatalogItems = useMemo(() => {
-		if (!novel) return [];
-		const archivedByNumber = new Map(chapters.map((chapter) => [chapter.chapterNumber, chapter]));
+		if (!book) return [];
+		const archivedByNumber = new Map(units.map((unit) => [unit.unitNumber, unit]));
 		const seen = new Set<number>();
 		const indexedItems: CatalogItem[] = [];
-		for (const chapter of novel.chaptersList || []) {
-			if (!Number.isFinite(chapter.number) || seen.has(chapter.number)) continue;
-			seen.add(chapter.number);
-			const archived = archivedByNumber.get(chapter.number);
+		for (const unit of book.translatedUnitsList || []) {
+			if (!Number.isFinite(unit.unitNumber) || seen.has(unit.unitNumber)) continue;
+			seen.add(unit.unitNumber);
+			const archived = archivedByNumber.get(unit.unitNumber);
 			const archivedTitle = archived?.title?.trim() || "";
-			const indexedTitle = chapter.title?.trim() || "";
+			const indexedTitle = unit.title?.trim() || "";
 			indexedItems.push({
-				number: chapter.number,
+				unitNumber: unit.unitNumber,
 				title:
-					archivedTitle && !isGenericChapterTitle(archivedTitle, novel.title, chapter.number)
+					archivedTitle && !isGenericUnitTitle(archivedTitle, book.title, unit.unitNumber)
 						? archivedTitle
-						: indexedTitle || archivedTitle || `Chapter ${chapter.number}`,
+						: indexedTitle || archivedTitle || `Unit ${unit.unitNumber}`,
 				archived: Boolean(archived),
-				sourceUrl: archived?.sourceUrl || chapter.url,
+				sourceUrl: archived?.sourceUrl || unit.url,
 				scrapedAt: archived?.scrapedAt,
 			});
 		}
 
 		const archivedOnlyItems = Array.from(archivedByNumber.values())
-			.filter((chapter) => !seen.has(chapter.chapterNumber))
-			.map((chapter) => ({
-				number: chapter.chapterNumber,
-				title: chapter.title || `Chapter ${chapter.chapterNumber}`,
+			.filter((unit) => !seen.has(unit.unitNumber))
+			.map((unit) => ({
+				unitNumber: unit.unitNumber,
+				title: unit.title || `Unit ${unit.unitNumber}`,
 				archived: true,
-				sourceUrl: chapter.sourceUrl,
-				scrapedAt: chapter.scrapedAt,
+				sourceUrl: unit.sourceUrl,
+				scrapedAt: unit.scrapedAt,
 			}));
 
-		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.number - b.number);
-	}, [novel, chapters]);
+		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.unitNumber - b.unitNumber);
+	}, [book, units]);
 
-	const firstReadableRawChapter = useMemo(() => rawCatalogItems[0]?.number || rawChapters[0]?.chapterNumber || 1, [rawCatalogItems, rawChapters]);
+	const firstReadableRawUnit = useMemo(() => rawCatalogItems[0]?.unitNumber || rawUnits[0]?.unitNumber || 1, [rawCatalogItems, rawUnits]);
 
 	// Sorting and filtering datasets
 	const sortedTranslatedItems = useMemo(() => {
 		let items = [...translatedCatalogItems];
-		if (chapterSearch.trim()) {
-			const searchLower = chapterSearch.toLowerCase();
-			items = items.filter((item) => item.number.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
+		if (unitSearch.trim()) {
+			const searchLower = unitSearch.toLowerCase();
+			items = items.filter((item) => item.unitNumber.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
 		}
-		if (chapterSort === "desc") {
+		if (unitSort === "desc") {
 			items.reverse();
 		}
 		return items;
-	}, [translatedCatalogItems, chapterSearch, chapterSort]);
+	}, [translatedCatalogItems, unitSearch, unitSort]);
 
 	const sortedRawItems = useMemo(() => {
 		let items = [...rawCatalogItems];
-		if (chapterSearch.trim()) {
-			const searchLower = chapterSearch.toLowerCase();
-			items = items.filter((item) => item.number.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
+		if (unitSearch.trim()) {
+			const searchLower = unitSearch.toLowerCase();
+			items = items.filter((item) => item.unitNumber.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
 		}
-		if (chapterSort === "desc") {
+		if (unitSort === "desc") {
 			items.reverse();
 		}
 		return items;
-	}, [rawCatalogItems, chapterSearch, chapterSort]);
+	}, [rawCatalogItems, unitSearch, unitSort]);
 
-	const coverSrc = novel ? getNovelCoverUrl(novel) : "";
-	const canManageCatalog = hasCapability(CAPABILITY.NOVELS_MANAGE) || hasCapability(CAPABILITY.NOVELS_CREATE) || hasCapability(CAPABILITY.NOVELS_UPDATE);
+	const coverSrc = book ? getBookCoverUrl(book) : "";
+	const canManageCatalog = hasCapability(CAPABILITY.BOOKS_MANAGE) || hasCapability(CAPABILITY.BOOKS_CREATE) || hasCapability(CAPABILITY.BOOKS_UPDATE);
 	const canReadJobs = hasCapability(CAPABILITY.JOBS_LIST);
 	const canScrape = hasCapability(CAPABILITY.JOBS_SCRAPE);
 	const canImport = hasCapability(CAPABILITY.JOBS_IMPORT);
 	const canAdmin = canManageCatalog || canReadJobs || canScrape || canImport;
 	const activeJobTypes = useMemo(() => new Set(jobs.filter((job) => job.status === "pending" || job.status === "processing").map((job) => job.type)), [jobs]);
 	const processingJobCount = jobs.filter((job) => job.status === "pending" || job.status === "processing").length;
-	const translatedChapterTotal = novel?.chaptersTotal || translatedCatalogItems.length || 0;
-	const translatedArchivePercent = translatedChapterTotal ? Math.min(100, Math.round((chapters.length / translatedChapterTotal) * 100)) : 0;
+	const translatedUnitTotal = book?.translatedUnitsTotal || translatedCatalogItems.length || 0;
+	const translatedArchivePercent = translatedUnitTotal ? Math.min(100, Math.round((units.length / translatedUnitTotal) * 100)) : 0;
 
 	const translatedPipelineSections = canScrape || canImport ? [
 		{
@@ -974,7 +1101,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_metadata-queue",
 					label: "Queue translated index",
 					tone: "translated",
-					disabled: !canScrape || !novel?.sourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_metadata"),
+					disabled: !canScrape || !book?.sourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_metadata"),
 					busy: queueing === "scrape_metadata",
 					onClick: () => handleTriggerScrape("scrape_metadata"),
 				},
@@ -982,7 +1109,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_metadata-now",
 					label: "Index translated now",
 					tone: "raw",
-					disabled: !canScrape || !novel?.sourceUrl || Boolean(runningNow),
+					disabled: !canScrape || !book?.sourceUrl || Boolean(runningNow),
 					busy: runningNow === "scrape_metadata",
 					onClick: () => handleRunScrapeNow("scrape_metadata"),
 				},
@@ -993,20 +1120,20 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			title: "Archiving",
 			actions: [
 				{
-					key: "scrape_chapters-queue",
+					key: "scrape_units-queue",
 					label: "Queue translated archive",
 					tone: "translated",
-					disabled: !canScrape || !(novel?.chaptersList || []).length || Boolean(queueing) || activeJobTypes.has("scrape_chapters"),
-					busy: queueing === "scrape_chapters",
-					onClick: () => handleTriggerScrape("scrape_chapters"),
+					disabled: !canScrape || !(book?.translatedUnitsList || []).length || Boolean(queueing) || activeJobTypes.has("scrape_units"),
+					busy: queueing === "scrape_units",
+					onClick: () => handleTriggerScrape("scrape_units"),
 				},
 				{
-					key: "scrape_chapters-now",
+					key: "scrape_units-now",
 					label: "Archive next 5 translated",
 					tone: "success",
 					disabled: !canScrape || translatedCatalogItems.length === 0 || Boolean(runningNow),
-					busy: runningNow === "scrape_chapters",
-					onClick: () => handleRunScrapeNow("scrape_chapters"),
+					busy: runningNow === "scrape_units",
+					onClick: () => handleRunScrapeNow("scrape_units"),
 				},
 			],
 		},
@@ -1018,7 +1145,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "translated-import-html",
 					label: "Import translated index HTML",
 					tone: "translated",
-					disabled: !canImport || !novel?.sourceUrl,
+					disabled: !canImport || !book?.sourceUrl,
 					busy: false,
 					onClick: () => openIndexHtmlImport("translated"),
 				},
@@ -1035,7 +1162,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_raw_metadata-queue",
 					label: "Queue raw index",
 					tone: "raw",
-					disabled: !canScrape || !novel?.rawSourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_raw_metadata"),
+					disabled: !canScrape || !book?.rawSourceUrl || Boolean(queueing) || activeJobTypes.has("scrape_raw_metadata"),
 					busy: queueing === "scrape_raw_metadata",
 					onClick: () => handleTriggerScrape("scrape_raw_metadata"),
 				},
@@ -1043,7 +1170,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "scrape_raw_metadata-now",
 					label: "Index raw now",
 					tone: "raw",
-					disabled: !canScrape || !novel?.rawSourceUrl || Boolean(runningNow),
+					disabled: !canScrape || !book?.rawSourceUrl || Boolean(runningNow),
 					busy: runningNow === "scrape_raw_metadata",
 					onClick: () => handleRunScrapeNow("scrape_raw_metadata"),
 				},
@@ -1054,20 +1181,20 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			title: "Archiving",
 			actions: [
 				{
-					key: "scrape_raw_chapters-queue",
+					key: "scrape_raw_units-queue",
 					label: "Queue raw archive",
 					tone: "raw",
-					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(queueing) || activeJobTypes.has("scrape_raw_chapters"),
-					busy: queueing === "scrape_raw_chapters",
-					onClick: () => handleTriggerScrape("scrape_raw_chapters"),
+					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(queueing) || activeJobTypes.has("scrape_raw_units"),
+					busy: queueing === "scrape_raw_units",
+					onClick: () => handleTriggerScrape("scrape_raw_units"),
 				},
 				{
-					key: "scrape_raw_chapters-now",
+					key: "scrape_raw_units-now",
 					label: "Archive next 5 raw",
 					tone: "success",
 					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(runningNow),
-					busy: runningNow === "scrape_raw_chapters",
-					onClick: () => handleRunScrapeNow("scrape_raw_chapters"),
+					busy: runningNow === "scrape_raw_units",
+					onClick: () => handleRunScrapeNow("scrape_raw_units"),
 				},
 			],
 		},
@@ -1079,7 +1206,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					key: "raw-import-html",
 					label: "Import raw index HTML",
 					tone: "raw",
-					disabled: !canImport || !novel?.rawSourceUrl,
+					disabled: !canImport || !book?.rawSourceUrl,
 					busy: false,
 					onClick: () => openIndexHtmlImport("raw"),
 				},
@@ -1095,22 +1222,22 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			disabled: !canManageCatalog,
 			onClick: openCatalogEditor,
 		},
-		novel?.sourceUrl
+		book?.sourceUrl
 			? {
 					key: "open-translated-source",
 					label: "Open Source Page",
 					tone: "neutral",
 					disabled: false,
-					href: novel.sourceUrl,
+					href: book.sourceUrl,
 				}
 			: null,
-		novel?.rawSourceUrl
+		book?.rawSourceUrl
 			? {
 					key: "open-raw-source",
 					label: "Open Raw Source",
 					tone: "neutral",
 					disabled: false,
-					href: novel.rawSourceUrl,
+					href: book.rawSourceUrl,
 				}
 			: null,
 		{
@@ -1118,36 +1245,50 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			label: jobsLoading ? "Refreshing jobs..." : "Refresh Log Jobs",
 			tone: "neutral",
 			disabled: !canReadJobs || jobsLoading,
-			onClick: fetchNovelJobs,
+			onClick: fetchBookJobs,
 		},
 	].filter((action): action is CommonAdminAction => action !== null);
 
 	// --- Handlers ---
 	const handleAddToLibrary = async () => {
-		if (!novel || !user) return;
+		if (!book || !user) return;
 		setAdding(true);
 		setAddMessage("");
 		try {
-			const created = await api.addNovelToLibrary(novel._id);
+			const created = await api.addBookToLibrary(book._id);
 			setAddMessage("Added to your profile library.");
 			window.setTimeout(() => {
-				window.location.href = `/profile/novels/${created._id}`;
+				window.location.href = `/books/${created._id}`;
 			}, 700);
 		} catch (err: unknown) {
-			setAddMessage(err instanceof Error ? err.message : "Could not add this novel.");
+			setAddMessage(err instanceof Error ? err.message : "Could not add this book.");
 		} finally {
 			setAdding(false);
 		}
 	};
 
+	const handleVote = async () => {
+		if (!book || !user) return;
+		setVoting(true);
+		try {
+			const result = await api.voteBook(book._id);
+			setBook((prev) => (prev ? { ...prev, totalVotes: result.totalVotes } : prev));
+			setVoted(result.voted);
+		} catch (err) {
+			console.error("Failed to vote for book:", err);
+		} finally {
+			setVoting(false);
+		}
+	};
+
 	const handleTriggerScrape = async (type: JobType) => {
-		if (!novel) return;
+		if (!book) return;
 		setQueueing(type);
 		setAdminMessage("");
 		try {
-			const result = await api.triggerScrape(novel._id, type);
+			const result = await api.triggerScrape(book._id, type);
 			setAdminMessage(result.message || "Scraper job queued.");
-			await fetchNovelJobs();
+			await fetchBookJobs();
 		} catch (err: unknown) {
 			setAdminMessage(err instanceof Error ? err.message : "Could not queue scraper job.");
 		} finally {
@@ -1156,49 +1297,49 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 	};
 
 	const handleRunScrapeNow = async (type: JobType) => {
-		if (!novel) return;
+		if (!book) return;
 		setRunningNow(type);
 		setAdminMessage("");
 		try {
-			const result = await api.runScrapeNow(novel._id, type, { limit: 5 });
-			setNovel(result.novel);
-			await refreshChapterLists();
+			const result = await api.runScrapeNow(book._id, type, { limit: 5 });
+			setBook(result.book);
+			await refreshUnitLists();
 			setAdminMessage(result.message || "Direct scraper run completed.");
-			await fetchNovelJobs();
+			await fetchBookJobs();
 		} catch (err: unknown) {
 			setAdminMessage(err instanceof Error ? err.message : "Direct scraper run failed.");
-			await fetchNovelJobs();
+			await fetchBookJobs();
 		} finally {
 			setRunningNow(null);
 		}
 	};
 
 	const openIndexHtmlImport = (sourceKind: SourceKind) => {
-		if (!novel) return;
+		if (!book) return;
 		setIndexHtmlSourceKind(sourceKind);
-		setIndexHtmlPageUrl(sourceKind === "raw" ? novel.rawSourceUrl || "" : novel.sourceUrl || "");
+		setIndexHtmlPageUrl(sourceKind === "raw" ? book.rawSourceUrl || "" : book.sourceUrl || "");
 		setIndexHtmlContent("");
 		setIsIndexHtmlModalOpen(true);
 	};
 
 	const handleImportIndexHtml = async (event: FormEvent) => {
 		event.preventDefault();
-		if (!novel) return;
+		if (!book) return;
 		setImportingIndexHtml(true);
 		setAdminMessage("");
 		try {
-			const result = await api.importHtmlIndex(novel._id, {
+			const result = await api.importHtmlIndex(book._id, {
 				sourceKind: indexHtmlSourceKind,
 				html: indexHtmlContent,
-				pageUrl: indexHtmlPageUrl || (indexHtmlSourceKind === "raw" ? novel.rawSourceUrl : novel.sourceUrl),
+				pageUrl: indexHtmlPageUrl || (indexHtmlSourceKind === "raw" ? book.rawSourceUrl : book.sourceUrl),
 			});
-			setNovel(result.novel);
-			await refreshChapterLists();
+			setBook(result.book);
+			await refreshUnitLists();
 			setAdminMessage(result.message);
 			setIsIndexHtmlModalOpen(false);
 			setIndexHtmlContent("");
 			setIndexHtmlPageUrl("");
-			await fetchNovelJobs();
+			await fetchBookJobs();
 		} catch (err: unknown) {
 			setAdminMessage(err instanceof Error ? err.message : "Could not import catalogue HTML.");
 		} finally {
@@ -1216,11 +1357,11 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		);
 	}
 
-	if (!novel) {
+	if (!book) {
 		return (
 			<div className="w-full max-w-[1520px] mx-auto px-5 py-8">
 				<Card className="p-12 text-center border-[#dfd6c8] bg-[#fffdf8]">
-					<h1 className="text-xl font-extrabold text-[#24211d]">Novel Not Found</h1>
+					<h1 className="text-xl font-extrabold text-[#24211d]">Book Not Found</h1>
 					<Button asChild variant="secondary" className="mt-4 text-xs font-bold border-[#dfd6c8] hover:bg-slate-50">
 						<Link href="/">Back Home</Link>
 					</Button>
@@ -1231,22 +1372,25 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 
 	return (
 		<div className="w-full max-w-[1520px] mx-auto px-4 md:px-5 py-6 md:py-8 flex flex-col gap-6">
-			{/* Novel Hero block */}
-			<NovelHero
-				novel={novel}
-				chaptersCount={chapters.length}
+			{/* Book Hero block */}
+			<BookHero
+				book={book}
+				unitsCount={units.length}
 				rawCatalogCount={rawCatalogItems.length}
 				coverSrc={coverSrc}
 				user={user}
 				adding={adding}
 				addMessage={addMessage}
-				firstReadableChapter={firstReadableChapter}
-				firstReadableRawChapter={firstReadableRawChapter}
+				firstReadableUnit={firstReadableUnit}
+				firstReadableRawUnit={firstReadableRawUnit}
 				onAddToLibrary={handleAddToLibrary}
+				voting={voting}
+				voted={voted}
+				onVote={handleVote}
 			/>
 
 			{/* Custom Segmented Tabs (replaces old .detail-tabs) */}
-			{canAdmin && (
+			{(canAdmin || isUserBook) && (
 				<div className="flex gap-6 border-b-2 border-[#dfd6c8] mt-2 pb-0.5">
 					<button
 						className={`relative pb-2.5 text-sm font-bold transition-all ${
@@ -1258,23 +1402,37 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					>
 						📖 Reader View
 					</button>
-					<button
-						className={`relative pb-2.5 text-sm font-bold transition-all ${
-							activeTab === "admin"
-								? "text-[#405f8f] after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-[#405f8f] after:rounded-full"
-								: "text-[#877d70] hover:text-[#24211d]"
-						}`}
-						onClick={() => setActiveTab("admin")}
-					>
-						⚡ Scraper & Admin Tools
-					</button>
+					{isUserBook && (
+						<button
+							className={`relative pb-2.5 text-sm font-bold transition-all ${
+								activeTab === "library"
+									? "text-[#405f8f] after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-[#405f8f] after:rounded-full"
+									: "text-[#877d70] hover:text-[#24211d]"
+							}`}
+							onClick={() => setActiveTab("library")}
+						>
+							🗂️ My Library
+						</button>
+					)}
+					{canAdmin && (
+						<button
+							className={`relative pb-2.5 text-sm font-bold transition-all ${
+								activeTab === "admin"
+									? "text-[#405f8f] after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-[#405f8f] after:rounded-full"
+									: "text-[#877d70] hover:text-[#24211d]"
+							}`}
+							onClick={() => setActiveTab("admin")}
+						>
+							⚡ Scraper & Admin Tools
+						</button>
+					)}
 				</div>
 			)}
 
 			{/* Scraper / Admin Board view */}
 			{canAdmin && activeTab === "admin" && (
 				<AdminConsole
-					novel={novel}
+					book={book}
 					jobs={jobs}
 					activeJobTypes={activeJobTypes}
 					processingJobCount={processingJobCount}
@@ -1286,32 +1444,42 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 				/>
 			)}
 
+			{/* Library view for users tracking this book */}
+			{isUserBook && activeTab === "library" && book && (
+				<BookLibraryPanel
+					bookId={id}
+					book={book}
+					units={units}
+					onUpdate={(updated) => setBook(updated)}
+				/>
+			)}
+
 			{/* Reader view standard layout */}
-			{(!canAdmin || activeTab === "read") && (
+			{activeTab === "read" && (
 				<div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
 					<main className="flex flex-col gap-6">
 						{/* Summary Block */}
 						<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-3">
-							<h2 className="text-base font-bold text-[#24211d]">Novel Summary</h2>
+							<h2 className="text-base font-bold text-[#24211d]">Book Summary</h2>
 							<p className="text-sm leading-relaxed whitespace-pre-line text-[#5f584f]">
-								{novel.description || "No summary has been indexed for this novel yet."}
+								{book.description || "No summary has been indexed for this book yet."}
 							</p>
 						</Card>
 
-						{/* Author Novels slider block */}
-						{/* Author Novels slider block */}
-						{authorNovels.length > 0 && (
+						{/* Author Books slider block */}
+						{/* Author Books slider block */}
+						{authorBooks.length > 0 && (
 							<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-3">
-								<h2 className="text-sm font-extrabold uppercase tracking-wider text-[#24211d]">Author&apos;s Other Novels</h2>
+								<h2 className="text-sm font-extrabold uppercase tracking-wider text-[#24211d]">Author&apos;s Other Books</h2>
 								<div className="flex flex-col border border-[#dfd6c8] rounded-md overflow-hidden bg-[#fffdf8]">
-									{authorNovels.map((item) => {
+									{authorBooks.map((item) => {
 										return (
 											<Link
 												key={item._id}
-												href={`/novels/${item._id}`}
+												href={`/books/${item._id}`}
 												className="flex gap-3.5 p-3 border-b border-[#dfd6c8]/60 last:border-b-0 hover:bg-[#f8f5ee]/50 transition-all group"
 											>
-												{/* Novel Thumb Cover */}
+												{/* Book Thumb Cover */}
 												<div className="w-[48px] h-[64px] bg-[#f8f5ee] border border-[#dfd6c8] rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
 													{item.coverUrl ? (
 														<Image
@@ -1337,7 +1505,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 
 													{/* Metadata Sub-row */}
 													<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5f584f]">
-														<span className="font-semibold text-[#b65f3d]">{item.chaptersTotal || 0} chapters</span>
+														<span className="font-semibold text-[#b65f3d]">{item.translatedUnitsTotal || 0} units</span>
 
 														{item.publicationStatus && (
 															<>
@@ -1365,34 +1533,52 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 							</Card>
 						)}
 
+						{/* Reviews card */}
+						{reviews.length > 0 && (
+							<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-3">
+								<h2 className="text-base font-bold text-[#24211d]">Reviews ({reviews.length})</h2>
+								<div className="flex flex-col gap-3">
+									{reviews.slice(0, 5).map((review) => (
+										<div key={review._id} className="border-b border-[#dfd6c8]/60 last:border-b-0 pb-3 last:pb-0">
+											<div className="flex items-center justify-between gap-2">
+												<strong className="text-sm font-bold text-[#24211d]">{review.username}</strong>
+												<span className="text-[10px] text-[#877d70]">{new Date(review.createdAt).toLocaleDateString()}</span>
+											</div>
+											<p className="text-sm text-[#5f584f] mt-1 whitespace-pre-line">{review.review}</p>
+										</div>
+									))}
+								</div>
+							</Card>
+						)}
+
 						{/* Translated TOC card */}
 						<TableOfContents
-							novel={novel}
-							chapters={chapters}
+							book={book}
+							units={units}
 							sortedItems={sortedTranslatedItems}
-							chapterSearch={chapterSearch}
-							chapterSort={chapterSort}
-							onSearchChange={setChapterSearch}
-							onSortToggle={() => setChapterSort((prev) => (prev === "asc" ? "desc" : "asc"))}
+							unitSearch={unitSearch}
+							unitSort={unitSort}
+							onSearchChange={setUnitSearch}
+							onSortToggle={() => setUnitSort((prev) => (prev === "asc" ? "desc" : "asc"))}
 						/>
 
 						{/* Raw TOC card */}
-						{(novel.rawChaptersTotal > 0 || rawCatalogItems.length > 0) && (
+						{(book.rawUnitsTotal > 0 || rawCatalogItems.length > 0) && (
 							<RawTableOfContents
-								novel={novel}
-								rawChapters={rawChapters}
+								book={book}
+								rawUnits={rawUnits}
 								sortedRawItems={sortedRawItems}
-								chapterSearch={chapterSearch}
-								chapterSort={chapterSort}
-								firstReadableRawChapter={firstReadableRawChapter}
-								onSearchChange={setChapterSearch}
-								onSortToggle={() => setChapterSort((prev) => (prev === "asc" ? "desc" : "asc"))}
+								unitSearch={unitSearch}
+								unitSort={unitSort}
+								firstReadableRawUnit={firstReadableRawUnit}
+								onSearchChange={setUnitSearch}
+								onSortToggle={() => setUnitSort((prev) => (prev === "asc" ? "desc" : "asc"))}
 							/>
 						)}
 					</main>
 
 					{/* Metadata layout sidebar */}
-					<DetailsSidebar novel={novel} chaptersCount={chapters.length} sortedItemsCount={translatedCatalogItems.length} />
+					<DetailsSidebar book={book} unitsCount={units.length} sortedItemsCount={translatedCatalogItems.length} />
 				</div>
 			)}
 
@@ -1470,10 +1656,10 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 						<form
 							onSubmit={async (e) => {
 								e.preventDefault();
-								if (!novel) return;
+								if (!book) return;
 								setEditingCatalog(true);
 								try {
-									const updates: Partial<Novel> = {
+									const updates: Partial<Book> = {
 										title: editTitle,
 										author: editAuthor,
 										authorPenName: editAuthorPenName,
@@ -1494,12 +1680,12 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 										rawSourceUrl: editRawSourceUrl,
 										rawOriginalLanguage: editRawOriginalLanguage,
 									};
-									const updated = await api.updateCatalogNovel(novel._id, updates);
-									setNovel(updated);
+									const updated = await api.updateCatalogBook(book._id, updates);
+									setBook(updated);
 									setIsEditCatalogOpen(false);
 								} catch (err: unknown) {
-									console.error("Failed to update catalog novel:", err);
-									showToast({ message: err instanceof Error ? err.message : "Failed to update catalog novel.", variant: "error" });								} finally {
+									console.error("Failed to update catalog book:", err);
+									showToast({ message: err instanceof Error ? err.message : "Failed to update catalog book.", variant: "error" });								} finally {
 									setEditingCatalog(false);
 								}
 							}}

@@ -8,7 +8,7 @@ import type { CreatePronunciationRulePayload, PronunciationRule, UpdatePronuncia
 export interface PronunciationRulesModalProps {
 	open: boolean;
 	onClose: () => void;
-	novelTitle: string;
+	bookTitle: string;
 	rules: PronunciationRule[];
 	loading: boolean;
 	error?: string;
@@ -50,7 +50,7 @@ function ToggleChip({ label, checked, onChange }: { label: string; checked: bool
 }
 
 export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
-	const { open, onClose, novelTitle, rules, loading, error, onCreate, onUpdate, onDelete } = props;
+	const { open, onClose, bookTitle, rules, loading, error, onCreate, onUpdate, onDelete } = props;
 
 	const [form, setForm] = useState<RuleFormState>(EMPTY_FORM);
 	const [editingId, setEditingId] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 
 	if (!open) return null;
 
-	const novelRules = rules.filter((rule) => !rule.isGlobal);
+	const bookRules = rules.filter((rule) => !rule.isGlobal);
 	const globalRules = rules.filter((rule) => rule.isGlobal);
 
 	const startEdit = (rule: PronunciationRule) => {
@@ -145,7 +145,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 					<span className="flex flex-wrap items-center gap-1.5 text-[0.62rem] font-semibold uppercase tracking-wide text-muted-copy">
 						{rule.isGlobal && (
 							<span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-1.5 py-0.5 text-primary">
-								<Globe2 className="size-2.5" /> All novels
+								<Globe2 className="size-2.5" /> All books
 							</span>
 						)}
 						{rule.wholeWord && <span>Whole word</span>}
@@ -202,7 +202,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 					<div>
 						<h2 className="text-sm font-black uppercase tracking-wide text-copy">Pronunciation &amp; TTS Rules</h2>
 						<p className="text-xs text-muted-copy">
-							Customize how the reader speaks words or phrases in <strong className="text-copy">{novelTitle}</strong>. Leave the replacement empty
+							Customize how the reader speaks words or phrases in <strong className="text-copy">{bookTitle}</strong>. Leave the replacement empty
 							to skip a word entirely.
 						</p>
 					</div>
@@ -254,7 +254,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 							onChange={(checked) => setForm((prev) => ({ ...prev, caseSensitive: checked }))}
 						/>
 						<ToggleChip
-							label="Apply to all my novels"
+							label="Apply to all my books"
 							checked={form.isGlobal}
 							onChange={(checked) => setForm((prev) => ({ ...prev, isGlobal: checked }))}
 						/>
@@ -288,18 +288,18 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 				{loading ? (
 					<p className="text-xs text-muted-copy">Loading rules…</p>
 				) : rules.length === 0 ? (
-					<p className="text-xs text-muted-copy">No pronunciation rules yet. Add one above to customize this novel&apos;s TTS.</p>
+					<p className="text-xs text-muted-copy">No pronunciation rules yet. Add one above to customize this book&apos;s TTS.</p>
 				) : (
 					<div className="flex flex-col gap-3">
-						{novelRules.length > 0 && (
+						{bookRules.length > 0 && (
 							<div className="flex flex-col gap-1.5">
-								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">This novel</span>
-								<ul className="flex flex-col gap-1.5">{novelRules.map(renderRuleRow)}</ul>
+								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">This book</span>
+								<ul className="flex flex-col gap-1.5">{bookRules.map(renderRuleRow)}</ul>
 							</div>
 						)}
 						{globalRules.length > 0 && (
 							<div className="flex flex-col gap-1.5">
-								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">All novels</span>
+								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">All books</span>
 								<ul className="flex flex-col gap-1.5">{globalRules.map(renderRuleRow)}</ul>
 							</div>
 						)}

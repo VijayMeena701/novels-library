@@ -4,15 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input, Select } from "./ui/input";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { type CatalogNovelFilters, type Genre, type PublicationStatus, type Source, type Author, type NovelStatus } from "../utils/api";
+import { type CatalogBookFilters, type Genre, type PublicationStatus, type Source, type Author, type BookStatus } from "../utils/api";
 
 interface ReadingStatusOption {
-	value: NovelStatus;
+	value: BookStatus;
 	label: string;
 }
 
-interface NovelsFilterPanelProps {
-	filters: CatalogNovelFilters;
+interface BooksFilterPanelProps {
+	filters: CatalogBookFilters;
 	options: {
 		genres: Genre[];
 		publicationStatuses: PublicationStatus[];
@@ -20,7 +20,7 @@ interface NovelsFilterPanelProps {
 		authors: Author[];
 		readingStatuses: ReadingStatusOption[];
 	};
-	onChange: (filters: Partial<CatalogNovelFilters>) => void;
+	onChange: (filters: Partial<CatalogBookFilters>) => void;
 	onClear: () => void;
 }
 
@@ -35,7 +35,7 @@ function toggleKey(current: string | undefined, key: string): string | undefined
 	return next.length > 0 ? next.join(",") : undefined;
 }
 
-function getActiveFilterCount(filters: CatalogNovelFilters): number {
+function getActiveFilterCount(filters: CatalogBookFilters): number {
 	let count = 0;
 	if (filters.search) count++;
 	if (filters.genre) count += filters.genre.split(",").filter(Boolean).length;
@@ -48,11 +48,11 @@ function getActiveFilterCount(filters: CatalogNovelFilters): number {
 	return count;
 }
 
-export function NovelsFilterPanel({ filters, options, onChange, onClear }: NovelsFilterPanelProps) {
+export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksFilterPanelProps) {
 	const activeCount = getActiveFilterCount(filters);
 
-	const handleToggle = (field: keyof CatalogNovelFilters, key: string) => {
-		onChange({ [field]: toggleKey(filters[field] as string | undefined, key) } as Partial<CatalogNovelFilters>);
+	const handleToggle = (field: keyof CatalogBookFilters, key: string) => {
+		onChange({ [field]: toggleKey(filters[field] as string | undefined, key) } as Partial<CatalogBookFilters>);
 	};
 
 	return (
@@ -77,15 +77,15 @@ export function NovelsFilterPanel({ filters, options, onChange, onClear }: Novel
 					<div className="flex gap-2">
 						<Select
 							value={filters.sort || "updatedAt"}
-							onChange={(e) => onChange({ sort: e.target.value as CatalogNovelFilters["sort"] })}
+							onChange={(e) => onChange({ sort: e.target.value as CatalogBookFilters["sort"] })}
 							className="min-w-0 flex-1"
 						>
 							<option value="updatedAt">Updated</option>
 							<option value="createdAt">Added</option>
 							<option value="title">Title</option>
 							<option value="author">Author</option>
-							<option value="chaptersTotal">Chapters</option>
-							<option value="rawChaptersTotal">Raw chapters</option>
+							<option value="translatedUnitsTotal">Units</option>
+							<option value="rawUnitsTotal">Raw units</option>
 							<option value="rating">Rating</option>
 							<option value="publicationStatus">Publication status</option>
 							<option value="originalSource">Source</option>
@@ -106,7 +106,7 @@ export function NovelsFilterPanel({ filters, options, onChange, onClear }: Novel
 					<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Reading status</label>
 					<Select
 						value={filters.status || "all"}
-						onChange={(e) => onChange({ status: e.target.value as NovelStatus | "all" })}
+						onChange={(e) => onChange({ status: e.target.value as BookStatus | "all" })}
 					>
 						<option value="all">All</option>
 						{options.readingStatuses.map((s) => (
@@ -126,7 +126,7 @@ export function NovelsFilterPanel({ filters, options, onChange, onClear }: Novel
 						<option value="">All authors</option>
 						{options.authors.map((author) => (
 							<option key={author._id} value={author._id}>
-								{author.displayName} {author.novelCount ? `(${author.novelCount})` : ""}
+								{author.displayName} {author.bookCount ? `(${author.bookCount})` : ""}
 							</option>
 						))}
 					</Select>
@@ -150,7 +150,7 @@ export function NovelsFilterPanel({ filters, options, onChange, onClear }: Novel
 											className="size-4 accent-primary"
 										/>
 										<span className="flex-1 truncate">{genre.name}</span>
-										{genre.novelCount ? <span className="text-xs text-muted-copy">{genre.novelCount}</span> : null}
+										{genre.bookCount ? <span className="text-xs text-muted-copy">{genre.bookCount}</span> : null}
 									</label>
 								);
 								})}
@@ -176,7 +176,7 @@ export function NovelsFilterPanel({ filters, options, onChange, onClear }: Novel
 											className="size-4 accent-primary"
 										/>
 										<span className="flex-1 truncate">{status.name}</span>
-										{status.novelCount ? <span className="text-xs text-muted-copy">{status.novelCount}</span> : null}
+										{status.bookCount ? <span className="text-xs text-muted-copy">{status.bookCount}</span> : null}
 									</label>
 								);
 								})}

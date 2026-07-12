@@ -1,13 +1,13 @@
 import { BackgroundJob, IBackgroundJob } from "../models/BackgroundJob.js";
-import { Novel } from "../models/Novel.js";
+import { Book } from "../models/Novel.js";
 import { ManualInterventionRequiredError } from "../services/scraper.js";
 import { EmailService } from "../services/email.js";
-import { NovelArchiveService } from "../services/novelArchive.js";
+import { BookArchiveService } from "../services/novelArchive.js";
 
 // Configuration
 const POLL_INTERVAL_MS = 5000;
-const DELAY_BETWEEN_CHAPTERS_MS = getNumberFromEnv("SCRAPER_CHAPTER_DELAY_MS", 0, 0, 10000);
-const CHAPTER_SCRAPE_CONCURRENCY = getNumberFromEnv("SCRAPER_CHAPTER_CONCURRENCY", 8, 1, 10);
+const DELAY_BETWEEN_UNITS_MS = getNumberFromEnv("SCRAPER_UNIT_DELAY_MS", 0, 0, 10000);
+const UNIT_SCRAPE_CONCURRENCY = getNumberFromEnv("SCRAPER_UNIT_CONCURRENCY", 8, 1, 10);
 const MAX_RETRIES = 3;
 const RECOVER_PROCESSING_JOBS_ON_START = process.env.RECOVER_PROCESSING_JOBS_ON_START !== "false";
 
@@ -25,7 +25,7 @@ function getNumberFromEnv(name: string, defaultValue: number, min: number, max: 
 
 function isManualInterventionError(
 	error: any,
-): error is ManualInterventionRequiredError & { chapterNumber?: number; sourceKind?: "translated" | "raw" } {
+): error is ManualInterventionRequiredError & { unitNumber?: number; sourceKind?: "translated" | "raw" } {
 	return error?.code === "MANUAL_INTERVENTION_REQUIRED";
 }
 
@@ -120,27 +120,27 @@ async function processNextJob() {
 		return;
 	}
 
-	console.log(`[Worker] Claimed job ${job._id} of type ${job.type} for novel ${job.novelId}`);
+	console.log(`[Worker] Claimed job ${job._id} of type ${job.type} for book ${job.bookId}`);
 
-	const novel = await Novel.findById(job.novelId);
-	if (!novel) {
-		// Novel not found, job cannot be processed
+	const book = await Book.findById(job.bookId);
+	if (!book) {
+		// Book not found, job cannot be processed
 		job.status = "failed";
 		job.failedAt = new Date();
-		job.error = { message: "Associated novel not found in database." };
+		job.error = { message: "Associated book not found in database." };
 		await job.save();
 		return;
 	}
 
 	try {
 		if (job.type === "scrape_metadata") {
-			await handleScrapeMetadata(job, novel);
-		} else if (job.type === "scrape_chapters") {
-			await handleScrapeChapters(job, novel);
+			await handleScrapeMetadata(job, book);
+		} else if (job.type === "scrape_units") {
+			await handleScrapeUnits(job, book);
 		} else if (job.type === "scrape_raw_metadata") {
-			await handleScrapeRawMetadata(job, novel);
-		} else if (job.type === "scrape_raw_chapters") {
-			await handleScrapeRawChapters(job, novel);
+			await handleScrapeRawMetadata(job, book);
+		} else if (job.type === "scrape_raw_units") {
+			await handleScrapeRawUnits(job, book);
 		}
 	} catch (error: any) {
 		console.error(`[Worker] Job ${job._id} failed:`, error.message);
@@ -153,7 +153,7 @@ async function processNextJob() {
 				stack: error.stack,
 				code: error.code,
 				url: error.url,
-				chapterNumber: error.chapterNumber,
+				unitNumber: error.unitNumber,
 				sourceKind: error.sourceKind,
 			};
 			job.progress = {
@@ -174,7 +174,7 @@ async function processNextJob() {
 				stack: error.stack,
 				code: error.code,
 				url: error.url,
-				chapterNumber: error.chapterNumber,
+				unitNumber: error.unitNumber,
 				sourceKind: error.sourceKind,
 			};
 			await job.save();
@@ -182,7 +182,7 @@ async function processNextJob() {
 			// Trigger Email Notification Alert
 			await EmailService.sendJobFailureAlert(
 				job._id.toString(),
-				novel.title,
+				book.title,
 				job.type,
 				error.message || "Unknown error.",
 				error.stack,
@@ -197,13 +197,13 @@ async function processNextJob() {
 }
 
 /**
- * Handles scraping metadata of a novel and creating chapters index list
+ * Handles scraping metadata of a book and creating units index list
  */
-async function handleScrapeMetadata(job: IBackgroundJob, novel: any) {
-	job.progress = { current: 0, total: 1, message: "Scraping website metadata and chapters list..." };
+async function handleScrapeMetadata(job: IBackgroundJob, book: any) {
+	job.progress = { current: 0, total: 1, message: "Scraping website metadata and units list..." };
 	await job.save();
 
-	const result = await NovelArchiveService.scrapeMetadata(novel, "translated", { syncCover: true });
+	const result = await BookArchiveService.scrapeMetadata(book, "translated", { syncCover: true });
 
 	// Mark metadata job completed
 	job.status = "completed";
@@ -211,62 +211,62 @@ async function handleScrapeMetadata(job: IBackgroundJob, novel: any) {
 	job.progress = {
 		current: 1,
 		total: 1,
-		message: `Successfully fetched metadata. Found ${result.chaptersFound} chapters.`,
+		message: `Successfully fetched metadata. Found ${result.unitsFound} units.`,
 	};
 	await job.save();
 
-	// Queue chapters download job automatically
-	if (result.chaptersFound > 0) {
-		const chaptersJobExists = await BackgroundJob.findOne({
-			novelId: novel._id,
-			type: "scrape_chapters",
+	// Queue units download job automatically
+	if (result.unitsFound > 0) {
+		const unitsJobExists = await BackgroundJob.findOne({
+			bookId: book._id,
+			type: "scrape_units",
 			status: { $in: ["pending", "processing"] },
 		});
 
-		if (!chaptersJobExists) {
+		if (!unitsJobExists) {
 			await BackgroundJob.create({
-				novelId: novel._id,
+				bookId: book._id,
 				userId: job.userId,
-				type: "scrape_chapters",
+				type: "scrape_units",
 				status: "pending",
 			});
-			console.log(`[Worker] Automatically queued scrape_chapters job for novel ${novel.title}`);
+			console.log(`[Worker] Automatically queued scrape_units job for book ${book.title}`);
 		}
 	}
 }
 
-async function handleScrapeRawMetadata(job: IBackgroundJob, novel: any) {
-	job.progress = { current: 0, total: 1, message: "Scraping raw source metadata and chapter list..." };
+async function handleScrapeRawMetadata(job: IBackgroundJob, book: any) {
+	job.progress = { current: 0, total: 1, message: "Scraping raw source metadata and unit list..." };
 	await job.save();
 
-	const result = await NovelArchiveService.scrapeMetadata(novel, "raw", { requireChapters: true });
+	const result = await BookArchiveService.scrapeMetadata(book, "raw", { requireUnits: true });
 
 	job.status = "completed";
 	job.completedAt = new Date();
 	job.progress = {
 		current: 1,
 		total: 1,
-		message: `Successfully fetched raw metadata. Found ${result.chaptersFound} raw chapters.`,
+		message: `Successfully fetched raw metadata. Found ${result.unitsFound} raw units.`,
 	};
 	await job.save();
 
-	console.log(`[Worker] Raw metadata ready for ${novel.title}. Raw chapter archiving must be triggered explicitly by an admin.`);
+	console.log(`[Worker] Raw metadata ready for ${book.title}. Raw unit archiving must be triggered explicitly by an admin.`);
 }
 
 /**
- * Handles downloading and storing actual chapter contents with bounded parallelism
+ * Handles downloading and storing actual unit contents with bounded parallelism
  */
-async function handleScrapeChapters(job: IBackgroundJob, novel: any) {
+async function handleScrapeUnits(job: IBackgroundJob, book: any) {
 	job.progress = {
 		current: 0,
-		total: novel.chaptersList?.length || 0,
-		message: `Processing translated chapters with ${CHAPTER_SCRAPE_CONCURRENCY} parallel browser pages...`,
+		total: book.translatedUnitsList?.length || 0,
+		message: `Processing translated units with ${UNIT_SCRAPE_CONCURRENCY} parallel browser pages...`,
 	};
 	await job.save();
 
-	const result = await NovelArchiveService.archiveMissingChapters(novel, "translated", {
-		concurrency: CHAPTER_SCRAPE_CONCURRENCY,
-		delayMs: DELAY_BETWEEN_CHAPTERS_MS,
+	const result = await BookArchiveService.archiveMissingUnits(book, "translated", {
+		concurrency: UNIT_SCRAPE_CONCURRENCY,
+		delayMs: DELAY_BETWEEN_UNITS_MS,
 		shouldContinue: () => isRunning,
 		onProgress: async (progress) => {
 			await BackgroundJob.updateOne(
@@ -294,22 +294,22 @@ async function handleScrapeChapters(job: IBackgroundJob, novel: any) {
 	job.progress = {
 		current: result.total - result.pending,
 		total: result.total,
-		message: `Successfully archived ${result.archived} translated chapters. ${result.pending} remain.`,
+		message: `Successfully archived ${result.archived} translated units. ${result.pending} remain.`,
 	};
 	await job.save();
 }
 
-async function handleScrapeRawChapters(job: IBackgroundJob, novel: any) {
+async function handleScrapeRawUnits(job: IBackgroundJob, book: any) {
 	job.progress = {
 		current: 0,
-		total: novel.rawChaptersList?.length || 0,
-		message: `Processing raw chapters with ${CHAPTER_SCRAPE_CONCURRENCY} parallel browser pages...`,
+		total: book.rawUnitsList?.length || 0,
+		message: `Processing raw units with ${UNIT_SCRAPE_CONCURRENCY} parallel browser pages...`,
 	};
 	await job.save();
 
-	const result = await NovelArchiveService.archiveMissingChapters(novel, "raw", {
-		concurrency: CHAPTER_SCRAPE_CONCURRENCY,
-		delayMs: DELAY_BETWEEN_CHAPTERS_MS,
+	const result = await BookArchiveService.archiveMissingUnits(book, "raw", {
+		concurrency: UNIT_SCRAPE_CONCURRENCY,
+		delayMs: DELAY_BETWEEN_UNITS_MS,
 		shouldContinue: () => isRunning,
 		onProgress: async (progress) => {
 			await BackgroundJob.updateOne(
@@ -335,7 +335,7 @@ async function handleScrapeRawChapters(job: IBackgroundJob, novel: any) {
 	job.progress = {
 		current: result.total - result.pending,
 		total: result.total,
-		message: `Successfully archived ${result.archived} raw chapters. ${result.pending} remain.`,
+		message: `Successfully archived ${result.archived} raw units. ${result.pending} remain.`,
 	};
 	await job.save();
 }

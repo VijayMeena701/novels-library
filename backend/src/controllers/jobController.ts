@@ -1,15 +1,15 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
 import { BackgroundJob, JobType } from '../models/BackgroundJob.js';
-import { Novel } from '../models/Novel.js';
+import { Book } from '../models/Novel.js';
 import { hasCapability, CAPABILITY } from '../services/rbac.js';
-import { NovelArchiveService, SourceKind, isManualInterventionError } from '../services/novelArchive.js';
+import { BookArchiveService, SourceKind, isManualInterventionError } from '../services/novelArchive.js';
 import { openManualBrowserSession } from '../services/scraper.js';
 
-const VALID_JOB_TYPES = new Set(['scrape_metadata', 'scrape_chapters', 'scrape_raw_metadata', 'scrape_raw_chapters']);
+const VALID_JOB_TYPES = new Set(['scrape_metadata', 'scrape_units', 'scrape_raw_metadata', 'scrape_raw_units']);
 
 function jobTypeToSourceKind(type: JobType): SourceKind {
-  return type === 'scrape_raw_metadata' || type === 'scrape_raw_chapters' ? 'raw' : 'translated';
+  return type === 'scrape_raw_metadata' || type === 'scrape_raw_units' ? 'raw' : 'translated';
 }
 
 function sourceKindToMetadataJobType(sourceKind: SourceKind): 'scrape_metadata' | 'scrape_raw_metadata' {
@@ -20,8 +20,8 @@ function parseSourceKind(value: unknown): SourceKind {
   return value === 'raw' ? 'raw' : 'translated';
 }
 
-function isChapterJob(type: JobType): boolean {
-  return type === 'scrape_chapters' || type === 'scrape_raw_chapters';
+function isUnitJob(type: JobType): boolean {
+  return type === 'scrape_units' || type === 'scrape_raw_units';
 }
 
 function parseDirectArchiveLimit(value: unknown): number {
@@ -33,8 +33,8 @@ function parseDirectArchiveLimit(value: unknown): number {
   return Math.min(25, Math.max(1, parsed));
 }
 
-function defaultSourceUrl(novel: any, sourceKind: SourceKind): string {
-  return String(sourceKind === 'raw' ? novel.rawSourceUrl || '' : novel.sourceUrl || '').trim();
+function defaultSourceUrl(book: any, sourceKind: SourceKind): string {
+  return String(sourceKind === 'raw' ? book.rawSourceUrl || '' : book.sourceUrl || '').trim();
 }
 
 export async function listJobsHandler(request: FastifyRequest, reply: FastifyReply) {
@@ -51,11 +51,11 @@ export async function listJobsHandler(request: FastifyRequest, reply: FastifyRep
   }
 }
 
-export async function getJobsForNovelHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { novelId } = request.params as any;
+export async function getJobsForBookHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { bookId } = request.params as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   try {
@@ -63,11 +63,11 @@ export async function getJobsForNovelHandler(request: FastifyRequest, reply: Fas
       return reply.status(403).send({ error: 'Admin access is required to view scraper jobs.' });
     }
 
-    const jobs = await BackgroundJob.find({ novelId }).sort({ createdAt: -1 });
+    const jobs = await BackgroundJob.find({ bookId }).sort({ createdAt: -1 });
     return reply.send(jobs);
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: 'Server error fetching novel background jobs.' });
+    return reply.status(500).send({ error: 'Server error fetching book background jobs.' });
   }
 }
 
@@ -122,16 +122,16 @@ export async function openManualInterventionHandler(request: FastifyRequest, rep
       return reply.status(404).send({ error: 'Job not found or unauthorized.' });
     }
 
-    const novel = await Novel.findById(job.novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Associated novel not found.' });
+    const book = await Book.findById(job.bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Associated book not found.' });
     }
 
     const targetUrl =
       job.error?.url ||
-      (job.type === 'scrape_raw_metadata' || job.type === 'scrape_raw_chapters'
-        ? novel.rawSourceUrl
-        : novel.sourceUrl);
+      (job.type === 'scrape_raw_metadata' || job.type === 'scrape_raw_units'
+        ? book.rawSourceUrl
+        : book.sourceUrl);
 
     if (!targetUrl) {
       return reply.status(400).send({ error: 'No source URL is available for this job.' });
@@ -167,11 +167,11 @@ export async function importMetadataHtmlHandler(request: FastifyRequest, reply: 
 
 async function importMetadataHtmlForSource(request: FastifyRequest, reply: FastifyReply, sourceKind: SourceKind) {
   const userId = (request.user as any).id;
-  const { novelId } = request.params as any;
+  const { bookId } = request.params as any;
   const { html, pageUrl } = request.body as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   if (typeof html !== 'string' || html.trim().length < 100) {
@@ -183,12 +183,12 @@ async function importMetadataHtmlForSource(request: FastifyRequest, reply: Fasti
       return reply.status(403).send({ error: 'Admin access is required to import source HTML.' });
     }
 
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const importBaseUrl = String(pageUrl || defaultSourceUrl(novel, sourceKind) || '').trim();
+    const importBaseUrl = String(pageUrl || defaultSourceUrl(book, sourceKind) || '').trim();
     if (!importBaseUrl) {
       return reply.status(400).send({ error: 'Provide the page URL that this HTML was saved from.' });
     }
@@ -200,21 +200,21 @@ async function importMetadataHtmlForSource(request: FastifyRequest, reply: Fasti
       return reply.status(400).send({ error: 'The HTML page URL must be a valid http(s) URL.' });
     }
 
-    const result = await NovelArchiveService.importMetadataHtml(novel, sourceKind, html, parsedBaseUrl);
+    const result = await BookArchiveService.importMetadataHtml(book, sourceKind, html, parsedBaseUrl);
     const jobType = sourceKindToMetadataJobType(sourceKind);
-    const job = await NovelArchiveService.createCompletedImportJob(
-      novel,
+    const job = await BookArchiveService.createCompletedImportJob(
+      book,
       userId,
       jobType,
-      `Imported ${sourceKind} metadata from pasted HTML. Found ${result.chaptersFound} ${sourceKind} chapters.`,
+      `Imported ${sourceKind} metadata from pasted HTML. Found ${result.unitsFound} ${sourceKind} units.`,
     );
 
     return reply.send({
       success: true,
-      message: `Imported ${result.chaptersFound} ${sourceKind} chapter links from pasted HTML.`,
+      message: `Imported ${result.unitsFound} ${sourceKind} unit links from pasted HTML.`,
       sourceKind,
-      chaptersFound: result.chaptersFound,
-      novel,
+      unitsFound: result.unitsFound,
+      book,
       job,
     });
   } catch (err: any) {
@@ -223,7 +223,7 @@ async function importMetadataHtmlForSource(request: FastifyRequest, reply: Fasti
   }
 }
 
-export async function importFailedChapterHtmlHandler(request: FastifyRequest, reply: FastifyReply) {
+export async function importFailedUnitHtmlHandler(request: FastifyRequest, reply: FastifyReply) {
   const { jobId } = request.params as any;
   const { html, pageUrl } = request.body as any;
 
@@ -232,12 +232,12 @@ export async function importFailedChapterHtmlHandler(request: FastifyRequest, re
   }
 
   if (typeof html !== 'string' || html.trim().length < 100) {
-    return reply.status(400).send({ error: 'Paste the saved chapter HTML before importing.' });
+    return reply.status(400).send({ error: 'Paste the saved unit HTML before importing.' });
   }
 
   try {
     if (!(await hasCapability(request, CAPABILITY.JOBS_IMPORT))) {
-      return reply.status(403).send({ error: 'Admin access is required to import chapter HTML.' });
+      return reply.status(403).send({ error: 'Admin access is required to import unit HTML.' });
     }
 
     const job = await BackgroundJob.findOne({ _id: jobId });
@@ -245,119 +245,119 @@ export async function importFailedChapterHtmlHandler(request: FastifyRequest, re
       return reply.status(404).send({ error: 'Job not found or unauthorized.' });
     }
 
-    const novel = await Novel.findById(job.novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Associated novel not found.' });
+    const book = await Book.findById(job.bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Associated book not found.' });
     }
 
-    const sourceKind = job.type === 'scrape_raw_chapters' || job.error?.sourceKind === 'raw' ? 'raw' : 'translated';
+    const sourceKind = job.type === 'scrape_raw_units' || job.error?.sourceKind === 'raw' ? 'raw' : 'translated';
 
-    const chapterNumber = Number(job.error?.chapterNumber);
-    if (!Number.isFinite(chapterNumber) || chapterNumber <= 0) {
-      return reply.status(400).send({ error: 'This job does not include a failed chapter number to import.' });
+    const unitNumber = Number(job.error?.unitNumber);
+    if (!Number.isFinite(unitNumber) || unitNumber <= 0) {
+      return reply.status(400).send({ error: 'This job does not include a failed unit number to import.' });
     }
 
     const importUrl = String(pageUrl || job.error?.url || '').trim();
     if (!importUrl) {
-      return reply.status(400).send({ error: 'Provide the chapter URL that this HTML was saved from.' });
+      return reply.status(400).send({ error: 'Provide the unit URL that this HTML was saved from.' });
     }
 
     let parsedPageUrl: string;
     try {
       parsedPageUrl = new URL(importUrl).toString();
     } catch {
-      return reply.status(400).send({ error: 'The chapter page URL must be a valid http(s) URL.' });
+      return reply.status(400).send({ error: 'The unit page URL must be a valid http(s) URL.' });
     }
 
-    const imported = await NovelArchiveService.importChapterHtml(novel, sourceKind, chapterNumber, html, parsedPageUrl);
+    const imported = await BookArchiveService.importUnitHtml(book, sourceKind, unitNumber, html, parsedPageUrl);
 
     job.progress = {
       current: job.progress?.current || 0,
       total: job.progress?.total || 1,
-      message: `Imported ${sourceKind === 'raw' ? 'raw ' : ''}chapter ${chapterNumber} from pasted HTML. Retry this job to continue archiving.`,
+      message: `Imported ${sourceKind === 'raw' ? 'raw ' : ''}unit ${unitNumber} from pasted HTML. Retry this job to continue archiving.`,
     };
     await job.save();
 
     return reply.send({
       success: true,
-      message: `Imported ${sourceKind === 'raw' ? 'raw ' : ''}chapter ${chapterNumber} from pasted HTML.`,
+      message: `Imported ${sourceKind === 'raw' ? 'raw ' : ''}unit ${unitNumber} from pasted HTML.`,
       sourceKind,
-      chapterNumber: imported.chapterNumber,
+      unitNumber: imported.unitNumber,
       title: imported.title,
       sourceUrl: imported.sourceUrl,
       job,
     });
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: err.message || 'Server error importing chapter HTML.' });
+    return reply.status(500).send({ error: err.message || 'Server error importing unit HTML.' });
   }
 }
 
-export async function importChapterHtmlHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { novelId } = request.params as any;
-  const { html, pageUrl, chapterNumber, sourceKind: sourceKindValue } = request.body as any;
+export async function importUnitHtmlHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { bookId } = request.params as any;
+  const { html, pageUrl, unitNumber, sourceKind: sourceKindValue } = request.body as any;
   const sourceKind = parseSourceKind(sourceKindValue);
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChapterNumber = Number.parseInt(String(chapterNumber || ''), 10);
-  if (!Number.isFinite(parsedChapterNumber) || parsedChapterNumber <= 0) {
-    return reply.status(400).send({ error: 'Provide the chapter number this HTML belongs to.' });
+  const parsedUnitNumber = Number.parseInt(String(unitNumber || ''), 10);
+  if (!Number.isFinite(parsedUnitNumber) || parsedUnitNumber <= 0) {
+    return reply.status(400).send({ error: 'Provide the unit number this HTML belongs to.' });
   }
 
   if (typeof html !== 'string' || html.trim().length < 100) {
-    return reply.status(400).send({ error: 'Paste the saved chapter HTML before importing.' });
+    return reply.status(400).send({ error: 'Paste the saved unit HTML before importing.' });
   }
 
   try {
     if (!(await hasCapability(request, CAPABILITY.JOBS_IMPORT))) {
-      return reply.status(403).send({ error: 'Admin access is required to import chapter HTML.' });
+      return reply.status(403).send({ error: 'Admin access is required to import unit HTML.' });
     }
 
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const indexedChapter = (sourceKind === 'raw' ? novel.rawChaptersList : novel.chaptersList || [])
-      .find((chapter: any) => Number(chapter.number) === parsedChapterNumber);
-    const importUrl = String(pageUrl || indexedChapter?.url || '').trim();
+    const indexedUnit = (sourceKind === 'raw' ? book.rawUnitsList : book.translatedUnitsList || [])
+      .find((unit: any) => Number(unit.number) === parsedUnitNumber);
+    const importUrl = String(pageUrl || indexedUnit?.url || '').trim();
     if (!importUrl) {
-      return reply.status(400).send({ error: 'Provide the chapter URL that this HTML was saved from.' });
+      return reply.status(400).send({ error: 'Provide the unit URL that this HTML was saved from.' });
     }
 
     let parsedPageUrl: string;
     try {
       parsedPageUrl = new URL(importUrl).toString();
     } catch {
-      return reply.status(400).send({ error: 'The chapter page URL must be a valid http(s) URL.' });
+      return reply.status(400).send({ error: 'The unit page URL must be a valid http(s) URL.' });
     }
 
-    const imported = await NovelArchiveService.importChapterHtml(novel, sourceKind, parsedChapterNumber, html, parsedPageUrl);
+    const imported = await BookArchiveService.importUnitHtml(book, sourceKind, parsedUnitNumber, html, parsedPageUrl);
 
     return reply.send({
       success: true,
-      message: `Imported ${sourceKind === 'raw' ? 'raw ' : ''}chapter ${parsedChapterNumber} from pasted HTML.`,
+      message: `Imported ${sourceKind === 'raw' ? 'raw ' : ''}unit ${parsedUnitNumber} from pasted HTML.`,
       sourceKind,
-      chapterNumber: imported.chapterNumber,
+      unitNumber: imported.unitNumber,
       title: imported.title,
       sourceUrl: imported.sourceUrl,
     });
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: err.message || 'Server error importing chapter HTML.' });
+    return reply.status(500).send({ error: err.message || 'Server error importing unit HTML.' });
   }
 }
 
 export async function runScrapeNowHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { novelId } = request.params as any;
-  const { type, limit, chapterNumber } = request.body as any;
+  const { bookId } = request.params as any;
+  const { type, limit, unitNumber } = request.body as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   if (!VALID_JOB_TYPES.has(type)) {
@@ -369,32 +369,32 @@ export async function runScrapeNowHandler(request: FastifyRequest, reply: Fastif
       return reply.status(403).send({ error: 'Admin access is required to run scraper tasks.' });
     }
 
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
 
     const jobType = type as JobType;
     const sourceKind = jobTypeToSourceKind(jobType);
-    const requestedChapterNumber = Number.parseInt(String(chapterNumber || ''), 10);
-    const safeChapterNumber = Number.isFinite(requestedChapterNumber) && requestedChapterNumber > 0
-      ? requestedChapterNumber
+    const requestedUnitNumber = Number.parseInt(String(unitNumber || ''), 10);
+    const safeUnitNumber = Number.isFinite(requestedUnitNumber) && requestedUnitNumber > 0
+      ? requestedUnitNumber
       : undefined;
-    if ((jobType === 'scrape_metadata' || jobType === 'scrape_chapters') && !novel.sourceUrl) {
+    if ((jobType === 'scrape_metadata' || jobType === 'scrape_units') && !book.sourceUrl) {
       return reply.status(400).send({ error: 'Add a translated source URL before running translated scraping.' });
     }
-    if ((jobType === 'scrape_raw_metadata' || jobType === 'scrape_raw_chapters') && !novel.rawSourceUrl) {
+    if ((jobType === 'scrape_raw_metadata' || jobType === 'scrape_raw_units') && !book.rawSourceUrl) {
       return reply.status(400).send({ error: 'Add a raw source URL before running raw scraping.' });
     }
-    if (jobType === 'scrape_chapters' && (!novel.chaptersList || novel.chaptersList.length === 0)) {
-      return reply.status(400).send({ error: 'Run translated metadata indexing before archiving translated chapters.' });
+    if (jobType === 'scrape_units' && (!book.translatedUnitsList || book.translatedUnitsList.length === 0)) {
+      return reply.status(400).send({ error: 'Run translated metadata indexing before archiving translated units.' });
     }
-    if (jobType === 'scrape_raw_chapters' && (!novel.rawChaptersList || novel.rawChaptersList.length === 0)) {
-      return reply.status(400).send({ error: 'Run raw metadata indexing before archiving raw chapters.' });
+    if (jobType === 'scrape_raw_units' && (!book.rawUnitsList || book.rawUnitsList.length === 0)) {
+      return reply.status(400).send({ error: 'Run raw metadata indexing before archiving raw units.' });
     }
 
     const job = await BackgroundJob.create({
-      novelId,
+      bookId,
       userId,
       type: jobType,
       status: 'processing',
@@ -402,58 +402,58 @@ export async function runScrapeNowHandler(request: FastifyRequest, reply: Fastif
       retryCount: 1,
       progress: {
         current: 0,
-        total: isChapterJob(jobType) ? parseDirectArchiveLimit(limit) : 1,
+        total: isUnitJob(jobType) ? parseDirectArchiveLimit(limit) : 1,
         message: `Running ${jobType.replace(/_/g, ' ')} immediately from the admin API...`,
       },
     });
 
     try {
-      const result = isChapterJob(jobType)
-        ? await NovelArchiveService.archiveMissingChapters(novel, sourceKind, {
-            limit: safeChapterNumber ? 1 : parseDirectArchiveLimit(limit),
-            chapterNumber: safeChapterNumber,
-            concurrency: safeChapterNumber ? 1 : 2,
+      const result = isUnitJob(jobType)
+        ? await BookArchiveService.archiveMissingUnits(book, sourceKind, {
+            limit: safeUnitNumber ? 1 : parseDirectArchiveLimit(limit),
+            unitNumber: safeUnitNumber,
+            concurrency: safeUnitNumber ? 1 : 2,
             onProgress: async (progress) => {
               await BackgroundJob.updateOne({ _id: job._id }, { $set: { progress } });
             },
           })
-        : await NovelArchiveService.scrapeMetadata(novel, sourceKind, {
+        : await BookArchiveService.scrapeMetadata(book, sourceKind, {
             syncCover: sourceKind === 'translated',
-            requireChapters: true,
+            requireUnits: true,
           });
 
       job.status = 'completed';
       job.completedAt = new Date();
-      job.progress = isChapterJob(jobType)
+      job.progress = isUnitJob(jobType)
         ? {
             current: (result as any).total - (result as any).pending,
             total: (result as any).total,
-            message: `Direct run archived ${(result as any).archived} ${sourceKind} chapters. ${(result as any).pending} remain.`,
+            message: `Direct run archived ${(result as any).archived} ${sourceKind} units. ${(result as any).pending} remain.`,
           }
         : {
             current: 1,
             total: 1,
-            message: `Direct run indexed ${(result as any).chaptersFound} ${sourceKind} chapters.`,
+            message: `Direct run indexed ${(result as any).unitsFound} ${sourceKind} units.`,
           };
       await job.save();
 
       return reply.send({
         success: true,
-        message: isChapterJob(jobType)
-          ? `Archived ${(result as any).archived} ${sourceKind} chapters now.`
-          : `Indexed ${(result as any).chaptersFound} ${sourceKind} chapters now.`,
+        message: isUnitJob(jobType)
+          ? `Archived ${(result as any).archived} ${sourceKind} units now.`
+          : `Indexed ${(result as any).unitsFound} ${sourceKind} units now.`,
         result,
-        novel,
+        book,
         job,
       });
     } catch (err: any) {
-      await NovelArchiveService.recordDirectJobFailure(job, err);
+      await BookArchiveService.recordDirectJobFailure(job, err);
       const statusCode = isManualInterventionError(err) ? 409 : 500;
       return reply.status(statusCode).send({
         error: err.message || 'Direct scraper run failed.',
         requiresManualIntervention: isManualInterventionError(err),
         url: err.url,
-        chapterNumber: err.chapterNumber,
+        unitNumber: err.unitNumber,
         sourceKind: err.sourceKind,
         job,
       });
@@ -466,11 +466,11 @@ export async function runScrapeNowHandler(request: FastifyRequest, reply: Fastif
 
 export async function triggerScrapeHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { novelId } = request.params as any;
+  const { bookId } = request.params as any;
   const { type } = request.body as any;
 
-  if (!mongoose.Types.ObjectId.isValid(novelId)) {
-    return reply.status(400).send({ error: 'Invalid novel ID.' });
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
   if (!VALID_JOB_TYPES.has(type)) {
@@ -482,37 +482,37 @@ export async function triggerScrapeHandler(request: FastifyRequest, reply: Fasti
       return reply.status(403).send({ error: 'Admin access is required to trigger scraper jobs.' });
     }
 
-    const novel = await Novel.findById(novelId);
-    if (!novel) {
-      return reply.status(404).send({ error: 'Novel not found.' });
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return reply.status(404).send({ error: 'Book not found.' });
     }
-    if ((type === 'scrape_metadata' || type === 'scrape_chapters') && !novel.sourceUrl) {
+    if ((type === 'scrape_metadata' || type === 'scrape_units') && !book.sourceUrl) {
       return reply.status(400).send({ error: 'Add a translated source URL before triggering translated scraping.' });
     }
-    if ((type === 'scrape_raw_metadata' || type === 'scrape_raw_chapters') && !novel.rawSourceUrl) {
+    if ((type === 'scrape_raw_metadata' || type === 'scrape_raw_units') && !book.rawSourceUrl) {
       return reply.status(400).send({ error: 'Add a raw source URL before triggering raw scraping.' });
     }
-    if (type === 'scrape_chapters' && (!novel.chaptersList || novel.chaptersList.length === 0)) {
-      return reply.status(400).send({ error: 'Run translated metadata scraping before archiving translated chapters.' });
+    if (type === 'scrape_units' && (!book.translatedUnitsList || book.translatedUnitsList.length === 0)) {
+      return reply.status(400).send({ error: 'Run translated metadata scraping before archiving translated units.' });
     }
-    if (type === 'scrape_raw_chapters' && (!novel.rawChaptersList || novel.rawChaptersList.length === 0)) {
-      return reply.status(400).send({ error: 'Run raw metadata scraping before archiving raw chapters.' });
+    if (type === 'scrape_raw_units' && (!book.rawUnitsList || book.rawUnitsList.length === 0)) {
+      return reply.status(400).send({ error: 'Run raw metadata scraping before archiving raw units.' });
     }
 
     // Check if there is already an active job (pending or processing) of this type
     const activeJob = await BackgroundJob.findOne({
-      novelId,
+      bookId,
       type,
       status: { $in: ['pending', 'processing'] }
     });
 
     if (activeJob) {
-      return reply.status(400).send({ error: `An active ${type} job is already running for this novel.` });
+      return reply.status(400).send({ error: `An active ${type} job is already running for this book.` });
     }
 
     // Create new pending job
     const job = await BackgroundJob.create({
-      novelId,
+      bookId,
       userId,
       type,
       status: 'pending',
