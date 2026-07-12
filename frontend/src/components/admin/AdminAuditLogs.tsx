@@ -21,21 +21,28 @@ export default function AdminAuditLogs() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchLogs = async (pageNum: number) => {
-    setLoading(true);
-    try {
-      const data = await api.listAdminAuditLogs({ page: pageNum, limit: 50 });
-      setLogs(data.logs);
-      setTotalPages(data.totalPages);
-    } catch (err) {
-      console.error("Failed to load audit logs:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchLogs(page);
+    let cancelled = false;
+
+    async function loadLogs() {
+      setLoading(true);
+      try {
+        const data = await api.listAdminAuditLogs({ page, limit: 50 });
+        if (!cancelled) {
+          setLogs(data.logs);
+          setTotalPages(data.totalPages);
+        }
+      } catch (err) {
+        if (!cancelled) console.error("Failed to load audit logs:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadLogs();
+    return () => {
+      cancelled = true;
+    };
   }, [page]);
 
   return (

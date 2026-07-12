@@ -244,11 +244,11 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const [autoOpenNext, setAutoOpenNext] = useState(false);
 	const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 	const [isReaderPanelOpen, setIsReaderPanelOpen] = useState(false);
-	const [readerSettingsReady, setReaderSettingsReady] = useState(false);
+	const [readerSettingsReady, setReaderSettingsReady] = useState(true);
 	const [readerPanelTab, setReaderPanelTab] = useState<ReaderPanelTab>("read");
 	const [catalogSearch, setCatalogSearch] = useState("");
 
-	const [speechSupported, setSpeechSupported] = useState(false);
+	const speechSupported = typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
 	const [ttsStatus, setTtsStatus] = useState<TtsStatus>("idle");
 	const [speechRate, setSpeechRate] = useState(1);
 	const [speechPitch, setSpeechPitch] = useState(1);
@@ -356,15 +356,12 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	useEffect(() => {
 		if (authLoading) return;
 
-		if (!user) {
-			setReaderSettingsReady(true);
-			return;
-		}
+		if (!user) return;
 
 		let cancelled = false;
-		setReaderSettingsReady(false);
 
 		async function loadSettings() {
+			setReaderSettingsReady(false);
 			try {
 				const settings = await api.getSettings();
 				if (cancelled) return;
@@ -426,27 +423,29 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 	useEffect(() => {
 		if (authLoading || !user || !novelId) {
-			setPronunciationRules([]);
+			pronunciationRulesRef.current = [];
 			return;
 		}
 
 		let cancelled = false;
-		setPronunciationRulesLoading(true);
-		setPronunciationRulesError("");
 
-		api.getPronunciationRules(novelId)
-			.then((rules) => {
+		async function loadPronunciationRules() {
+			setPronunciationRulesLoading(true);
+			setPronunciationRulesError("");
+			try {
+				const rules = await api.getPronunciationRules(novelId);
 				if (!cancelled) {
 					pronunciationRulesRef.current = rules;
 					setPronunciationRules(rules);
 				}
-			})
-			.catch((err) => {
+			} catch (err) {
 				if (!cancelled) setPronunciationRulesError(getErrorMessage(err, "Could not load pronunciation rules."));
-			})
-			.finally(() => {
+			} finally {
 				if (!cancelled) setPronunciationRulesLoading(false);
-			});
+			}
+		}
+
+		void loadPronunciationRules();
 
 		return () => {
 			cancelled = true;
@@ -498,10 +497,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	useEffect(() => {
 		if (typeof window === "undefined") return;
 
-		const supportsSpeech = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
-		setSpeechSupported(supportsSpeech);
-
-		if (supportsSpeech) {
+		if (speechSupported) {
 			const loadVoices = () => {
 				setAvailableVoices(window.speechSynthesis.getVoices());
 			};
@@ -510,7 +506,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			window.speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
 			return () => window.speechSynthesis.removeEventListener?.("voiceschanged", loadVoices);
 		}
-	}, []);
+	}, [speechSupported]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -887,11 +883,6 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const archiveJobType: JobType = isRawReader ? "scrape_raw_chapters" : "scrape_chapters";
 	const currentSourceUrl = currentCatalogItem?.sourceUrl || chapter?.sourceUrl || "";
 	const missingChapterTitle = currentCatalogItem?.title || `${isRawReader ? "Raw chapter" : "Chapter"} ${chapterNumber}`;
-
-	useEffect(() => {
-		setChapterHtmlPageUrl(currentSourceUrl);
-		setChapterHtmlContent("");
-	}, [chapterNumber, currentSourceUrl, readingSource]);
 
 	const previousChapterNumber = currentCatalogIndex > 0 ? catalogItems[currentCatalogIndex - 1].number : chapterNumber - 1;
 	const nextChapterNumber =
@@ -1431,13 +1422,13 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 								)}
 							</div>
 
-							<form onSubmit={handleImportCurrentChapterHtml} style={{ display: "grid", gap: "1rem" }}>
+							<form key={`${readerSourceKind}-${chapterNumber}`} onSubmit={handleImportCurrentChapterHtml} style={{ display: "grid", gap: "1rem" }}>
 								<div className="form-group" style={{ marginBottom: 0 }}>
 									<label className="form-label">Chapter Page URL</label>
 									<input
 										type="url"
 										className="form-input"
-										value={chapterHtmlPageUrl}
+										value={chapterHtmlPageUrl || currentSourceUrl}
 										onChange={(event) => setChapterHtmlPageUrl(event.target.value)}
 										placeholder="https://example.com/chapter"
 										required

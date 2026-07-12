@@ -31,7 +31,24 @@ export default function AdminRoles() {
   };
 
   useEffect(() => {
-    fetchRoles();
+    let cancelled = false;
+
+    async function loadRoles() {
+      setLoading(true);
+      try {
+        const data = await api.listAdminRoles();
+        if (!cancelled) setRoles(data.roles);
+      } catch (err) {
+        if (!cancelled) console.error("Failed to load roles:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadRoles();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const deleteRole = async (id: string) => {

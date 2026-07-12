@@ -67,41 +67,45 @@ export default function NovelDetails({ params }: { params: Promise<{ id: string 
   const [sessionChRead, setSessionChRead] = useState(0);
 
   // Load all novel-related data
-  const loadData = async () => {
-    try {
-      const [novelData, chaptersData, chapterVisitsData, sessionsData] = await Promise.all([
-        api.getNovel(novelId),
-        api.getChapters(novelId),
-        api.getChapterVisits(novelId),
-        api.getSessions(novelId)
-      ]);
-      setNovel(novelData);
-      setChapters(chaptersData);
-      setChapterVisits(chapterVisitsData);
-      setSessions(sessionsData);
-
-      // Populate edit form
-      setEditStatus(novelData.status);
-      setEditChRead(novelData.chaptersRead);
-      setEditCompletedAt(formatDateTimeLocal(novelData.completedAt));
-      setEditRating(novelData.rating);
-      setEditReview(novelData.review);
-      setEditNotes(novelData.personalNotes);
-      setEditRawLegacyEntry(novelData.rawLegacyEntry || '');
-      setEditCharacterNotes(novelData.characterNotes || '');
-      setEditRelationshipNotes(novelData.relationshipNotes || '');
-      setEditPersonalTags((novelData.personalTags || []).join(', '));
-    } catch (err) {
-      console.error('Error fetching novel details:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (user && novelId) {
-      loadData();
+    if (!user || !novelId) return;
+    let cancelled = false;
+
+    async function loadData() {
+      try {
+        const [novelData, chaptersData, chapterVisitsData, sessionsData] = await Promise.all([
+          api.getNovel(novelId),
+          api.getChapters(novelId),
+          api.getChapterVisits(novelId),
+          api.getSessions(novelId),
+        ]);
+        if (cancelled) return;
+
+        setNovel(novelData);
+        setChapters(chaptersData);
+        setChapterVisits(chapterVisitsData);
+        setSessions(sessionsData);
+        setEditStatus(novelData.status);
+        setEditChRead(novelData.chaptersRead);
+        setEditCompletedAt(formatDateTimeLocal(novelData.completedAt));
+        setEditRating(novelData.rating);
+        setEditReview(novelData.review);
+        setEditNotes(novelData.personalNotes);
+        setEditRawLegacyEntry(novelData.rawLegacyEntry || '');
+        setEditCharacterNotes(novelData.characterNotes || '');
+        setEditRelationshipNotes(novelData.relationshipNotes || '');
+        setEditPersonalTags((novelData.personalTags || []).join(', '));
+      } catch (err) {
+        if (!cancelled) console.error('Error fetching novel details:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
+
+    void loadData();
+    return () => {
+      cancelled = true;
+    };
   }, [user, novelId]);
 
   // Handle Edit Submit

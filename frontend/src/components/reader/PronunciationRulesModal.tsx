@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Globe2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { CreatePronunciationRulePayload, PronunciationRule, UpdatePronunciationRulePayload } from "../../utils/api";
@@ -58,13 +58,12 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 	const [formError, setFormError] = useState("");
 	const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-	useEffect(() => {
-		if (!open) {
-			setForm(EMPTY_FORM);
-			setEditingId(null);
-			setFormError("");
-		}
-	}, [open]);
+	const handleClose = () => {
+		setForm(EMPTY_FORM);
+		setEditingId(null);
+		setFormError("");
+		onClose();
+	};
 
 	if (!open) return null;
 
@@ -194,7 +193,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 	);
 
 	return (
-		<div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3" onClick={onClose}>
+		<div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3" onClick={handleClose}>
 			<div
 				className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3.5 overflow-y-auto rounded-lg border border-border bg-card p-4 text-foreground shadow-elevated scrollbar-thin"
 				onClick={(event) => event.stopPropagation()}
@@ -209,7 +208,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 					</div>
 					<button
 						type="button"
-						onClick={onClose}
+						onClick={handleClose}
 						aria-label="Close pronunciation rules"
 						className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border text-muted-copy hover:text-foreground"
 					>

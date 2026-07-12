@@ -38,7 +38,24 @@ export default function AdminResources() {
   };
 
   useEffect(() => {
-    fetchResources();
+    let cancelled = false;
+
+    async function loadResources() {
+      setLoading(true);
+      try {
+        const data = await api.listAdminResources();
+        if (!cancelled) setResources(data.resources);
+      } catch (err) {
+        if (!cancelled) console.error("Failed to load resources:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadResources();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const toggleEnabled = async (id: string, isEnabled: boolean) => {

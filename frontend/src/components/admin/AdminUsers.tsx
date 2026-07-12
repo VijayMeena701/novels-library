@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { api } from "../../utils/api";
+import { api, type AdminUserUpdate } from "../../utils/api";
 import { Can } from "../Can";
 
 interface UserRow {
@@ -42,10 +42,30 @@ export default function AdminUsers() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    let cancelled = false;
+
+    async function loadUsers() {
+      setLoading(true);
+      try {
+        const [userData, roleData] = await Promise.all([api.listAdminUsers({ search, limit: 100 }), api.listAdminRoles()]);
+        if (!cancelled) {
+          setUsers(userData.users);
+          setRoles(roleData.roles);
+        }
+      } catch (err) {
+        if (!cancelled) console.error("Failed to load admin users:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadUsers();
+    return () => {
+      cancelled = true;
+    };
   }, [search]);
 
-  const updateUser = async (id: string, payload: any) => {
+  const updateUser = async (id: string, payload: AdminUserUpdate) => {
     setSaving(id);
     try {
       await api.updateAdminUser(id, payload);

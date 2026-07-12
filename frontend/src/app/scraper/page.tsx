@@ -11,7 +11,7 @@ export default function ScraperMonitor() {
   const { user, hasCapability } = useAuth();
   const { showToast } = useToast();
   const [jobs, setJobs] = useState<BackgroundJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const refreshInterval = 3000;
   const [chapterHtmlJob, setChapterHtmlJob] = useState<BackgroundJob | null>(null);
   const [chapterHtmlPageUrl, setChapterHtmlPageUrl] = useState('');
@@ -30,12 +30,26 @@ export default function ScraperMonitor() {
   };
 
   useEffect(() => {
-    if (hasCapability(CAPABILITY.JOBS_LIST)) {
-      fetchJobs();
-    } else if (user) {
-      setLoading(false);
+    if (!hasCapability(CAPABILITY.JOBS_LIST)) return;
+    let cancelled = false;
+
+    async function loadJobs() {
+      setLoading(true);
+      try {
+        const data = await api.getJobs();
+        if (!cancelled) setJobs(data);
+      } catch (err) {
+        if (!cancelled) console.error('Failed to fetch background jobs:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }, [user, hasCapability]);
+
+    void loadJobs();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasCapability]);
 
   // Auto-refresh when jobs are active
   useEffect(() => {
@@ -49,7 +63,7 @@ export default function ScraperMonitor() {
       }, refreshInterval);
       return () => clearInterval(timer);
     }
-  }, [jobs, user, refreshInterval]);
+  }, [jobs, user, refreshInterval, hasCapability]);
 
   const handleRetry = async (jobId: string) => {
     // Optimistic UI update

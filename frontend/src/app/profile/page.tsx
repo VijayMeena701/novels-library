@@ -40,9 +40,24 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchNovels();
+    if (!user) return;
+    let cancelled = false;
+
+    async function loadNovels() {
+      try {
+        const data = await api.getNovels();
+        if (!cancelled) setNovels(data);
+      } catch (err) {
+        if (!cancelled) console.error('Failed to load novels:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
+
+    void loadNovels();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   // Quick increment chaptersRead
@@ -110,8 +125,8 @@ export default function Dashboard() {
       setNewRawOriginalLanguage('');
       setIsModalOpen(false);
       window.location.href = `/novels/${created._id}`;
-    } catch (err: any) {
-      setSubmitError(err.message || 'Failed to create novel entry.');
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create novel entry.');
     } finally {
       setSubmitting(false);
     }

@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { use, useEffect, useMemo, useState, type FormEvent } from "react";
-import { api, getNovelCoverUrl, type BackgroundJob, type ChapterContent, type JobType, type Novel, type SourceKind } from "../../../utils/api";
+import { api, getNovelCoverUrl, type BackgroundJob, type ChapterContent, type JobType, type Novel, type SourceKind, type User } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 import { useToast } from "../../../context/ToastContext";
 import { CAPABILITY } from "../../../utils/permissions";
@@ -65,6 +66,33 @@ function getJobBadgeVariant(status: BackgroundJob["status"]): "processing" | "co
 	}
 }
 
+type CatalogItem = {
+	number: number;
+	title: string;
+	archived: boolean;
+	sourceUrl?: string;
+	scrapedAt?: string;
+};
+
+type PipelineAction = {
+	key: string;
+	label: string;
+	tone: string;
+	disabled: boolean;
+	busy?: boolean;
+	onClick: () => void;
+};
+
+type PipelineSection = {
+	key: string;
+	title: string;
+	actions: PipelineAction[];
+};
+
+type CommonAdminAction =
+	| { key: string; label: string; tone: string; disabled: boolean; onClick: () => void }
+	| { key: string; label: string; tone: string; disabled: boolean; href: string };
+
 // ==========================================
 // SUB-COMPONENTS (REUSABLE PORTIONS)
 // ==========================================
@@ -75,7 +103,7 @@ interface HeroProps {
 	chaptersCount: number;
 	rawCatalogCount: number;
 	coverSrc: string;
-	user: any;
+	user: User | null;
 	adding: boolean;
 	addMessage: string;
 	firstReadableChapter: number;
@@ -102,7 +130,7 @@ function NovelHero({
 		<Card className="p-[1.1rem] flex flex-col md:flex-row gap-6 bg-[#fffdf8] border-[#dfd6c8] shadow-md">
 			<div className="w-[190px] h-[260px] flex-shrink-0 border border-[#dfd6c8] rounded-lg bg-[#f8f5ee] flex items-center justify-center overflow-hidden mx-auto md:mx-0">
 				{coverSrc ? (
-					<img src={coverSrc} alt={novel.title} className="w-full h-full object-cover" />
+					<Image src={coverSrc} alt={novel.title} width={190} height={260} unoptimized className="w-full h-full object-cover" />
 				) : (
 					<span className="text-3xl font-extrabold text-[#405f8f] opacity-50">{novel.title.slice(0, 2).toUpperCase()}</span>
 				)}
@@ -223,21 +251,18 @@ function NovelHero({
 interface AdminConsoleProps {
 	novel: Novel;
 	jobs: BackgroundJob[];
-	jobsLoading: boolean;
 	activeJobTypes: Set<JobType>;
 	processingJobCount: number;
 	translatedArchivePercent: number;
-	translatedPipelineSections: any[];
-	rawPipelineSections: any[];
-	commonAdminActions: any[];
+	translatedPipelineSections: PipelineSection[];
+	rawPipelineSections: PipelineSection[];
+	commonAdminActions: CommonAdminAction[];
 	adminMessage: string;
-	onFetchJobs: () => void;
 }
 
 function AdminConsole({
 	novel,
 	jobs,
-	jobsLoading,
 	activeJobTypes,
 	processingJobCount,
 	translatedArchivePercent,
@@ -245,7 +270,6 @@ function AdminConsole({
 	rawPipelineSections,
 	commonAdminActions,
 	adminMessage,
-	onFetchJobs,
 }: AdminConsoleProps) {
 	const recentJobs = jobs.slice(0, 5);
 
@@ -311,7 +335,7 @@ function AdminConsole({
 							<div key={section.key} className="p-4 border border-[#dfd6c8] rounded-md bg-white flex flex-col gap-3">
 								<h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#5f584f]">{section.title}</h4>
 								<div className="flex flex-col gap-2">
-									{section.actions.map((action: any) => (
+									{section.actions.map((action) => (
 										<Button
 											key={action.key}
 											variant="secondary"
@@ -340,7 +364,7 @@ function AdminConsole({
 							<div key={section.key} className="p-4 border border-[#dfd6c8] rounded-md bg-white flex flex-col gap-3">
 								<h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#5f584f]">{section.title}</h4>
 								<div className="flex flex-col gap-2">
-									{section.actions.map((action: any) => (
+									{section.actions.map((action) => (
 										<Button
 											key={action.key}
 											variant="secondary"
@@ -444,8 +468,8 @@ function AdminConsole({
 // --- Table of Contents Listing Card ---
 interface TOCProps {
 	novel: Novel;
-	chapters: any[];
-	sortedItems: any[];
+	chapters: Omit<ChapterContent, "content">[];
+	sortedItems: CatalogItem[];
 	chapterSearch: string;
 	chapterSort: "asc" | "desc";
 	onSearchChange: (val: string) => void;
@@ -533,8 +557,8 @@ function TableOfContents({ novel, chapters, sortedItems, chapterSearch, chapterS
 // --- Raw Table of Contents ---
 interface RawTOCProps {
 	novel: Novel;
-	rawChapters: any[];
-	sortedRawItems: any[];
+	rawChapters: Omit<ChapterContent, "content">[];
+	sortedRawItems: CatalogItem[];
 	chapterSearch: string;
 	chapterSort: "asc" | "desc";
 	firstReadableRawChapter: number;
@@ -788,8 +812,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		loadNovel();
 	}, [id]);
 
-	// Initialize Edit Controls Form
-	useEffect(() => {
+	const openCatalogEditor = () => {
 		if (!novel) return;
 		setEditTitle(novel.title || "");
 		setEditAuthor(novel.author || "");
@@ -804,15 +827,29 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		setEditSourceUrl(novel.sourceUrl || "");
 		setEditRawSourceUrl(novel.rawSourceUrl || "");
 		setEditRawOriginalLanguage(novel.rawOriginalLanguage || "");
-	}, [novel]);
+		setIsEditCatalogOpen(true);
+	};
 
-	// Fetch Jobs Loop
 	useEffect(() => {
-		if (hasCapability(CAPABILITY.JOBS_LIST)) {
-			fetchNovelJobs();
-		} else {
-			setJobs([]);
+		if (!hasCapability(CAPABILITY.JOBS_LIST)) return;
+		let cancelled = false;
+
+		async function loadNovelJobs() {
+			setJobsLoading(true);
+			try {
+				const jobData = await api.getNovelJobs(id);
+				if (!cancelled) setJobs(jobData);
+			} catch (err) {
+				if (!cancelled) console.error("Failed to load novel jobs:", err);
+			} finally {
+				if (!cancelled) setJobsLoading(false);
+			}
 		}
+
+		void loadNovelJobs();
+		return () => {
+			cancelled = true;
+		};
 	}, [id, user?.capabilities, hasCapability]);
 
 	const firstReadableChapter = useMemo(() => chapters[0]?.chapterNumber || 1, [chapters]);
@@ -822,7 +859,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		if (!novel) return [];
 		const archivedByNumber = new Map(rawChapters.map((chapter) => [chapter.chapterNumber, chapter]));
 		const seen = new Set<number>();
-		const indexedItems: any[] = [];
+		const indexedItems: CatalogItem[] = [];
 		for (const chapter of novel.rawChaptersList || []) {
 			if (!Number.isFinite(chapter.number) || seen.has(chapter.number)) continue;
 			seen.add(chapter.number);
@@ -858,7 +895,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 		if (!novel) return [];
 		const archivedByNumber = new Map(chapters.map((chapter) => [chapter.chapterNumber, chapter]));
 		const seen = new Set<number>();
-		const indexedItems: any[] = [];
+		const indexedItems: CatalogItem[] = [];
 		for (const chapter of novel.chaptersList || []) {
 			if (!Number.isFinite(chapter.number) || seen.has(chapter.number)) continue;
 			seen.add(chapter.number);
@@ -1056,7 +1093,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			label: "Edit Book Details",
 			tone: "neutral",
 			disabled: !canManageCatalog,
-			onClick: () => setIsEditCatalogOpen(true),
+			onClick: openCatalogEditor,
 		},
 		novel?.sourceUrl
 			? {
@@ -1083,7 +1120,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			disabled: !canReadJobs || jobsLoading,
 			onClick: fetchNovelJobs,
 		},
-	].filter(Boolean);
+	].filter((action): action is CommonAdminAction => action !== null);
 
 	// --- Handlers ---
 	const handleAddToLibrary = async () => {
@@ -1096,8 +1133,8 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			window.setTimeout(() => {
 				window.location.href = `/profile/novels/${created._id}`;
 			}, 700);
-		} catch (err: any) {
-			setAddMessage(err.message || "Could not add this novel.");
+		} catch (err: unknown) {
+			setAddMessage(err instanceof Error ? err.message : "Could not add this novel.");
 		} finally {
 			setAdding(false);
 		}
@@ -1111,8 +1148,8 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			const result = await api.triggerScrape(novel._id, type);
 			setAdminMessage(result.message || "Scraper job queued.");
 			await fetchNovelJobs();
-		} catch (err: any) {
-			setAdminMessage(err.message || "Could not queue scraper job.");
+		} catch (err: unknown) {
+			setAdminMessage(err instanceof Error ? err.message : "Could not queue scraper job.");
 		} finally {
 			setQueueing(null);
 		}
@@ -1128,8 +1165,8 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			await refreshChapterLists();
 			setAdminMessage(result.message || "Direct scraper run completed.");
 			await fetchNovelJobs();
-		} catch (err: any) {
-			setAdminMessage(err.message || "Direct scraper run failed.");
+		} catch (err: unknown) {
+			setAdminMessage(err instanceof Error ? err.message : "Direct scraper run failed.");
 			await fetchNovelJobs();
 		} finally {
 			setRunningNow(null);
@@ -1162,8 +1199,8 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 			setIndexHtmlContent("");
 			setIndexHtmlPageUrl("");
 			await fetchNovelJobs();
-		} catch (err: any) {
-			setAdminMessage(err.message || "Could not import catalogue HTML.");
+		} catch (err: unknown) {
+			setAdminMessage(err instanceof Error ? err.message : "Could not import catalogue HTML.");
 		} finally {
 			setImportingIndexHtml(false);
 		}
@@ -1239,7 +1276,6 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 				<AdminConsole
 					novel={novel}
 					jobs={jobs}
-					jobsLoading={jobsLoading}
 					activeJobTypes={activeJobTypes}
 					processingJobCount={processingJobCount}
 					translatedArchivePercent={translatedArchivePercent}
@@ -1247,7 +1283,6 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 					rawPipelineSections={rawPipelineSections}
 					commonAdminActions={commonAdminActions}
 					adminMessage={adminMessage}
-					onFetchJobs={fetchNovelJobs}
 				/>
 			)}
 
@@ -1279,9 +1314,12 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 												{/* Novel Thumb Cover */}
 												<div className="w-[48px] h-[64px] bg-[#f8f5ee] border border-[#dfd6c8] rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
 													{item.coverUrl ? (
-														<img
+														<Image
 															src={item.coverUrl}
 															alt={item.title}
+															width={48}
+															height={64}
+															unoptimized
 															className="w-full h-full object-cover transition-transform group-hover:scale-105"
 														/>
 													) : (
@@ -1435,7 +1473,7 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 								if (!novel) return;
 								setEditingCatalog(true);
 								try {
-									const updates: any = {
+									const updates: Partial<Novel> = {
 										title: editTitle,
 										author: editAuthor,
 										authorPenName: editAuthorPenName,
@@ -1459,9 +1497,9 @@ export default function PublicNovelDetails({ params }: { params: Promise<{ id: s
 									const updated = await api.updateCatalogNovel(novel._id, updates);
 									setNovel(updated);
 									setIsEditCatalogOpen(false);
-								} catch (err: any) {
+								} catch (err: unknown) {
 									console.error("Failed to update catalog novel:", err);
-									showToast({ message: err.message || "Failed to update catalog novel.", variant: "error" });								} finally {
+									showToast({ message: err instanceof Error ? err.message : "Failed to update catalog novel.", variant: "error" });								} finally {
 									setEditingCatalog(false);
 								}
 							}}

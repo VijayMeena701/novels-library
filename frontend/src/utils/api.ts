@@ -33,6 +33,89 @@ export interface User {
 	authProvider?: "password" | "google" | "both";
 }
 
+export interface AdminRole {
+	_id: string;
+	key: string;
+	name: string;
+	description: string;
+	isSuperuser: boolean;
+	isSystem: boolean;
+	groups: { _id: string; name: string }[];
+}
+
+export interface AdminUser {
+	_id: string;
+	username: string;
+	email: string;
+	roles: { _id: string; key: string; name: string }[];
+	isDisabled: boolean;
+	isLocked: boolean;
+	isVerified: boolean;
+	isDeleted: boolean;
+}
+
+export interface AdminGroup {
+	_id: string;
+	key: string;
+	name: string;
+	description: string;
+	isSystem: boolean;
+	resource?: { _id: string; key: string; name: string };
+	capabilities: { _id: string; resource: { key: string; name: string }; action: { key: string; name: string } }[];
+}
+
+export interface AdminAction {
+	_id: string;
+	key: string;
+	name: string;
+}
+
+export interface AdminResource {
+	_id: string;
+	key: string;
+	name: string;
+	description: string;
+	isEnabled: boolean;
+	isSystem: boolean;
+	category: string;
+	actions: AdminAction[];
+}
+
+export interface AdminAuditLog {
+	_id: string;
+	action: string;
+	method: string;
+	path: string;
+	outcome: string;
+	userId?: string;
+	email?: string;
+	ip?: string;
+	timestamp: string;
+}
+
+export interface AdminUserUpdate {
+	roleIds?: string[];
+	isDisabled?: boolean;
+	isLocked?: boolean;
+	isVerified?: boolean;
+}
+
+export interface AdminRolePayload {
+	key?: string;
+	name?: string;
+	description?: string;
+	isSuperuser?: boolean;
+	groupIds?: string[];
+}
+
+export interface AdminGroupPayload {
+	key?: string;
+	name?: string;
+	description?: string;
+	resourceId?: string;
+	capabilityIds?: string[];
+}
+
 export type ReaderTheme = "dark" | "light" | "sepia";
 export type ReaderWidth = "narrow" | "medium" | "wide";
 export type ReaderHighlightMode = "off" | "paragraph" | "word";
@@ -401,11 +484,11 @@ class ApiClient {
 		if (query.page !== undefined) params.set("page", String(query.page));
 		if (query.limit !== undefined) params.set("limit", String(query.limit));
 		const suffix = params.toString() ? `?${params.toString()}` : "";
-		return this.request<{ users: any[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/users${suffix}`);
+		return this.request<{ users: AdminUser[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/users${suffix}`);
 	}
 
-	async updateAdminUser(id: string, payload: any) {
-		return this.request<{ user: any }>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+	async updateAdminUser(id: string, payload: AdminUserUpdate) {
+		return this.request<{ user: AdminUser }>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 	}
 
 	async deleteAdminUser(id: string) {
@@ -413,15 +496,15 @@ class ApiClient {
 	}
 
 	async listAdminRoles() {
-		return this.request<{ roles: any[] }>("/admin/roles");
+		return this.request<{ roles: AdminRole[] }>("/admin/roles");
 	}
 
-	async createAdminRole(payload: any) {
-		return this.request<{ role: any }>("/admin/roles", { method: "POST", body: JSON.stringify(payload) });
+	async createAdminRole(payload: AdminRolePayload) {
+		return this.request<{ role: AdminRole }>("/admin/roles", { method: "POST", body: JSON.stringify(payload) });
 	}
 
-	async updateAdminRole(id: string, payload: any) {
-		return this.request<{ role: any }>(`/admin/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+	async updateAdminRole(id: string, payload: AdminRolePayload) {
+		return this.request<{ role: AdminRole }>(`/admin/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 	}
 
 	async deleteAdminRole(id: string) {
@@ -429,15 +512,15 @@ class ApiClient {
 	}
 
 	async listAdminGroups() {
-		return this.request<{ groups: any[] }>("/admin/groups");
+		return this.request<{ groups: AdminGroup[] }>("/admin/groups");
 	}
 
-	async createAdminGroup(payload: any) {
-		return this.request<{ group: any }>("/admin/groups", { method: "POST", body: JSON.stringify(payload) });
+	async createAdminGroup(payload: AdminGroupPayload) {
+		return this.request<{ group: AdminGroup }>("/admin/groups", { method: "POST", body: JSON.stringify(payload) });
 	}
 
-	async updateAdminGroup(id: string, payload: any) {
-		return this.request<{ group: any }>(`/admin/groups/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+	async updateAdminGroup(id: string, payload: AdminGroupPayload) {
+		return this.request<{ group: AdminGroup }>(`/admin/groups/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 	}
 
 	async deleteAdminGroup(id: string) {
@@ -445,11 +528,11 @@ class ApiClient {
 	}
 
 	async listAdminResources() {
-		return this.request<{ resources: any[] }>("/admin/resources");
+		return this.request<{ resources: AdminResource[] }>("/admin/resources");
 	}
 
 	async enableAdminResource(id: string, isEnabled: boolean) {
-		return this.request<{ resource: any }>(`/admin/resources/${id}/enable`, { method: "PUT", body: JSON.stringify({ isEnabled }) });
+		return this.request<{ resource: AdminResource }>(`/admin/resources/${id}/enable`, { method: "PUT", body: JSON.stringify({ isEnabled }) });
 	}
 
 	async listAdminAuditLogs(query: { page?: number; limit?: number } = {}) {
@@ -457,7 +540,7 @@ class ApiClient {
 		if (query.page !== undefined) params.set("page", String(query.page));
 		if (query.limit !== undefined) params.set("limit", String(query.limit));
 		const suffix = params.toString() ? `?${params.toString()}` : "";
-		return this.request<{ logs: any[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/audit-logs${suffix}`);
+		return this.request<{ logs: AdminAuditLog[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/audit-logs${suffix}`);
 	}
 
 	// User Settings Methods

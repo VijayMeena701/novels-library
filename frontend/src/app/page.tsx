@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
@@ -32,6 +33,10 @@ function getAuthor(novel: Novel): string {
 
 function getChapterCount(novel: Novel): number {
   return novel.chaptersTotal || novel.chaptersList?.length || 0;
+}
+
+function stableNovelOrder(novel: Novel): number {
+  return novel._id.split("").reduce((hash, character) => ((hash << 5) - hash + character.charCodeAt(0)) | 0, 0);
 }
 
 const FEATURES = [
@@ -68,41 +73,37 @@ export default function PublicHomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    api.getPublicCatalogNovelsPaginated({ pageSize: 100 })
-      .then((data) => {
-        if (!cancelled) {
-          setNovels(Array.isArray(data) ? data : data.novels || []);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
+
+    async function loadCatalog() {
+      try {
+        const data = await api.getPublicCatalogNovelsPaginated({ pageSize: 100 });
+        if (!cancelled) setNovels(Array.isArray(data) ? data : data.novels || []);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadCatalog();
     return () => {
       cancelled = true;
     };
   }, []);
 
   useEffect(() => {
+    if (!user) return;
     let cancelled = false;
-    if (!user) {
-      setLibraryNovels([]);
-      return;
+
+    async function loadLibrary() {
+      setLibraryLoading(true);
+      try {
+        const data = await api.getNovels();
+        if (!cancelled) setLibraryNovels(data || []);
+      } finally {
+        if (!cancelled) setLibraryLoading(false);
+      }
     }
-    setLibraryLoading(true);
-    api.getNovels()
-      .then((data) => {
-        if (!cancelled) {
-          setLibraryNovels(data || []);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLibraryLoading(false);
-        }
-      });
+
+    void loadLibrary();
     return () => {
       cancelled = true;
     };
@@ -117,7 +118,7 @@ export default function PublicHomePage() {
       return publicationStatusKey === 'completed' || (novel.publicationStatus || '').toLowerCase() === 'completed';
     });
     const recent = newest.slice(0, 12);
-    const random = [...novels].sort(() => 0.5 - Math.random());
+    const random = [...novels].sort((a, b) => stableNovelOrder(a) - stableNovelOrder(b));
     const genres = Array.from(new Set(novels.flatMap((novel) => novel.genres || []).filter(Boolean)));
     const totalChapters = novels.reduce((sum, novel) => sum + getChapterCount(novel), 0);
 
@@ -317,9 +318,12 @@ export default function PublicHomePage() {
               <div className="grid md:grid-cols-[180px_1fr]">
                 <div className="relative min-h-[240px] bg-gradient-to-br from-surface to-surface-muted">
                   <Link href={`/novels/${spotlightNovel._id}`} className="absolute inset-0">
-                    <img
+                    <Image
                       src={spotlightNovel.coverUrl || '/placeholder.svg'}
                       alt={spotlightNovel.title}
+                      width={180}
+                      height={240}
+                      unoptimized
                       className="h-full w-full object-cover"
                     />
                   </Link>

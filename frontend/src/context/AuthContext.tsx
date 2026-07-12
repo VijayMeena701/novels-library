@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		}
 	}, [user, loading, pathname, router, hasCapability]);
 
-	const login = async (email: string, password: string) => {
+	const login = useCallback(async (email: string, password: string) => {
 		setLoading(true);
 		try {
 			const data = await api.login(email, password);
@@ -113,9 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			setLoading(false);
 			throw err;
 		}
-	};
+	}, [setUserAndAbility, router]);
 
-	const register = async (username: string, email: string, password: string) => {
+	const register = useCallback(async (username: string, email: string, password: string) => {
 		setLoading(true);
 		try {
 			const data = await api.register(username, email, password);
@@ -126,22 +126,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			setLoading(false);
 			throw err;
 		}
-	};
+	}, [setUserAndAbility, router]);
 
-	const updateUser = async (payload: { username?: string; avatarUrl?: string }) => {
+	const updateUser = useCallback(async (payload: { username?: string; avatarUrl?: string }) => {
 		const data = await api.updateMe(payload);
 		setUserAndAbility(data.user);
-	};
+	}, [setUserAndAbility]);
 
-	const logout = () => {
+	const logout = useCallback(() => {
 		api.logout();
 		setUserAndAbility(null);
 		router.push("/login");
-	};
+	}, [setUserAndAbility, router]);
 
 	const value = useMemo(
 		() => ({ user, ability, loading, login, register, updateUser, logout, hasCapability }),
-		[user, ability, loading, hasCapability]
+		[user, ability, loading, login, logout, register, updateUser, hasCapability]
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

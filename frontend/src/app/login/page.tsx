@@ -23,16 +23,12 @@ function LoginContent() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => searchParams.get('error') || '');
   const [submitting, setSubmitting] = useState(false);
   const showPasswordLogin = process.env.NEXT_PUBLIC_AUTH_MODE !== 'google';
 
   useEffect(() => {
     const token = searchParams.get('token');
-    const oauthError = searchParams.get('error');
-    if (oauthError) {
-      setError(oauthError);
-    }
     if (token) {
       api.setToken(token);
       window.location.href = '/profile';
@@ -59,8 +55,8 @@ function LoginContent() {
       } else {
         await login(email, password);
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during authentication.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred during authentication.');
       setSubmitting(false);
     }
   };

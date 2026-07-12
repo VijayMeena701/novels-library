@@ -4,7 +4,6 @@ import React from "react";
 import { cn } from "../../../lib/utils";
 import { Field } from "../../ui/field";
 import { ToggleRow } from "../../ui/toggle-row";
-import { SegmentedControl } from "../../ui/segmented-control";
 import type { ReaderBottomToolbarProps } from "./types";
 
 export function SettingsTab(props: ReaderBottomToolbarProps) {

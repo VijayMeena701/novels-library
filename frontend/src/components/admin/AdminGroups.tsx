@@ -31,7 +31,24 @@ export default function AdminGroups() {
   };
 
   useEffect(() => {
-    fetchGroups();
+    let cancelled = false;
+
+    async function loadGroups() {
+      setLoading(true);
+      try {
+        const data = await api.listAdminGroups();
+        if (!cancelled) setGroups(data.groups);
+      } catch (err) {
+        if (!cancelled) console.error("Failed to load groups:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadGroups();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const deleteGroup = async (id: string) => {
