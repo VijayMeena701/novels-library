@@ -105,9 +105,11 @@ interface HeroProps {
 	rawCatalogCount: number;
 	coverSrc: string;
 	user: User | null;
+	isUserBook: boolean;
 	adding: boolean;
 	addMessage: string;
 	firstReadableUnit: number;
+	continueUnit: number;
 	firstReadableRawUnit: number;
 	onAddToLibrary: () => void;
 	voting: boolean;
@@ -121,9 +123,11 @@ function BookHero({
 	rawCatalogCount,
 	coverSrc,
 	user,
+	isUserBook,
 	adding,
 	addMessage,
 	firstReadableUnit,
+	continueUnit,
 	firstReadableRawUnit,
 	onAddToLibrary,
 	voting,
@@ -132,6 +136,8 @@ function BookHero({
 }: HeroProps) {
 	const translatedUnitsTotal = book.translatedUnitsTotal || unitsCount || 1;
 	const archivePercentage = Math.min(100, Math.round((unitsCount / translatedUnitsTotal) * 100));
+	const resumeUnit = continueUnit > 0 ? continueUnit : firstReadableUnit;
+	const isContinue = continueUnit > 0 && continueUnit !== firstReadableUnit;
 
 	return (
 		<Card className="p-[1.1rem] flex flex-col md:flex-row gap-6 bg-[#fffdf8] border-[#dfd6c8] shadow-md">
@@ -212,18 +218,28 @@ function BookHero({
 
 				<div className="flex flex-wrap gap-2.5 mt-2">
 					{user ? (
-						<Button
-							variant="secondary"
-							onClick={onAddToLibrary}
-							disabled={adding}
-							className="h-9 font-semibold text-xs border-[#dfd6c8] hover:bg-white"
-						>
-							{adding ? (
-								<div className="w-4 h-4 border-2 border-slate-300 border-t-[#405f8f] rounded-full animate-spin" />
-							) : (
-								"Add to Profile Library"
-							)}
-						</Button>
+						isUserBook ? (
+							<Button
+								variant="secondary"
+								disabled
+								className="h-9 font-semibold text-xs border-[#dfd6c8] bg-[#f8f5ee] text-[#5f584f] cursor-default"
+							>
+								In Your Library
+							</Button>
+						) : (
+							<Button
+								variant="secondary"
+								onClick={onAddToLibrary}
+								disabled={adding}
+								className="h-9 font-semibold text-xs border-[#dfd6c8] hover:bg-white"
+							>
+								{adding ? (
+									<div className="w-4 h-4 border-2 border-slate-300 border-t-[#405f8f] rounded-full animate-spin" />
+								) : (
+									"Add to Profile Library"
+								)}
+							</Button>
+						)
 					) : (
 						<Button asChild variant="secondary" className="h-9 font-semibold text-xs">
 							<Link href="/login">Login to Track</Link>
@@ -247,7 +263,9 @@ function BookHero({
 					)}
 					{unitsCount > 0 ? (
 						<Button asChild className="h-9 font-semibold text-xs bg-[#405f8f] hover:bg-[#304a72] text-white">
-							<Link href={`/books/${book._id}/reader/${firstReadableUnit}`}>Start Reading</Link>
+							<Link href={`/books/${book._id}/reader/${resumeUnit}`}>
+								{isContinue ? "Continue Reading" : "Start Reading"}
+							</Link>
 						</Button>
 					) : book.sourceUrl ? (
 						<Button asChild className="h-9 font-semibold text-xs bg-[#405f8f] hover:bg-[#304a72] text-white">
@@ -926,6 +944,7 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 				]);
 				setBook(bookData);
 				setIsUserBook(userBook);
+				setVoted(bookData.userVoted || false);
 				setUnits(unitData);
 				setRawUnits(rawUnitData);
 				setAuthorBooks((authorData?.books || []).filter((item) => item._id !== bookData._id).slice(0, 6));
@@ -980,6 +999,15 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 	}, [id, user?.capabilities, hasCapability]);
 
 	const firstReadableUnit = useMemo(() => units[0]?.unitNumber || 1, [units]);
+
+	const continueUnit = useMemo(() => {
+		if (!isUserBook || !book) return 0;
+		const last = book.lastVisitedUnitNumber;
+		if (last && last > 0) return last;
+		const read = book.unitsRead;
+		if (read && read > 0) return read;
+		return 0;
+	}, [isUserBook, book]);
 
 	// Catalog items builders
 	const rawCatalogItems = useMemo(() => {
@@ -1272,7 +1300,7 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 		setVoting(true);
 		try {
 			const result = await api.voteBook(book._id);
-			setBook((prev) => (prev ? { ...prev, totalVotes: result.totalVotes } : prev));
+			setBook((prev) => (prev ? { ...prev, totalVotes: result.totalVotes, userVoted: result.voted } : prev));
 			setVoted(result.voted);
 		} catch (err) {
 			console.error("Failed to vote for book:", err);
@@ -1379,9 +1407,11 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 				rawCatalogCount={rawCatalogItems.length}
 				coverSrc={coverSrc}
 				user={user}
+				isUserBook={isUserBook}
 				adding={adding}
 				addMessage={addMessage}
 				firstReadableUnit={firstReadableUnit}
+				continueUnit={continueUnit}
 				firstReadableRawUnit={firstReadableRawUnit}
 				onAddToLibrary={handleAddToLibrary}
 				voting={voting}

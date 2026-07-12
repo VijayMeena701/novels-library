@@ -249,6 +249,7 @@ export interface Book {
 	reviewCount?: number;
 	totalVisits?: number;
 	totalVotes?: number;
+	userVoted?: boolean;
 	createdAt: string;
 	updatedAt: string;
 }

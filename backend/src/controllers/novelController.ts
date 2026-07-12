@@ -52,6 +52,8 @@ const PERSONAL_LIBRARY_FIELDS = [
   'relationshipNotes',
   'personalTags',
   'completedAt',
+  'lastVisitedUnitNumber',
+  'lastVisitedAt',
 ];
 
 const SHARED_BOOK_FIELDS = [
@@ -409,7 +411,17 @@ export async function getCatalogBookHandler(request: FastifyRequest, reply: Fast
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const bookStats = await BookStats.findOne({ bookId: book._id }).lean();
+    const [bookStats, userVote] = await Promise.all([
+      BookStats.findOne({ bookId: book._id }).lean(),
+      (request.user as any)?.id
+        ? BookActivity.findOne({
+            bookId: book._id,
+            userId: new mongoose.Types.ObjectId((request.user as any).id),
+            activityType: 'vote',
+          }).lean()
+        : Promise.resolve(null),
+    ]);
+
     return reply.send({
       ...book.toObject(),
       ratingAverage: bookStats?.ratingAverage || 0,
@@ -417,6 +429,7 @@ export async function getCatalogBookHandler(request: FastifyRequest, reply: Fast
       reviewCount: bookStats?.reviewCount || 0,
       totalVisits: bookStats?.totalVisits || 0,
       totalVotes: bookStats?.totalVotes || 0,
+      userVoted: Boolean(userVote),
     });
   } catch (err: any) {
     request.log.error(err);
@@ -570,7 +583,14 @@ export async function getBookHandler(request: FastifyRequest, reply: FastifyRepl
       return reply.status(404).send({ error: 'Book not found in your library.' });
     }
     const serialized = serializeBookForUser(book, userBook);
-    const bookStats = await BookStats.findOne({ bookId: book._id }).lean();
+    const [bookStats, userVote] = await Promise.all([
+      BookStats.findOne({ bookId: book._id }).lean(),
+      BookActivity.findOne({
+        bookId: book._id,
+        userId: new mongoose.Types.ObjectId(userId),
+        activityType: 'vote',
+      }).lean(),
+    ]);
     return reply.send({
       ...serialized,
       ratingAverage: bookStats?.ratingAverage || 0,
@@ -578,6 +598,7 @@ export async function getBookHandler(request: FastifyRequest, reply: FastifyRepl
       reviewCount: bookStats?.reviewCount || 0,
       totalVisits: bookStats?.totalVisits || 0,
       totalVotes: bookStats?.totalVotes || 0,
+      userVoted: Boolean(userVote),
     });
   } catch (err: any) {
     request.log.error(err);
