@@ -42,11 +42,7 @@ async function findUserLibraryBook(bookId: string, userId: string) {
   if (!book) return null;
 
   const userBook = await UserBook.findOne({ bookId, userId });
-  if (userBook || book.userId?.toString() === userId) {
-    return book;
-  }
-
-  return null;
+  return userBook ? book : null;
 }
 
 export async function listUnitsHandler(request: FastifyRequest, reply: FastifyReply) {

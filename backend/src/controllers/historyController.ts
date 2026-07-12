@@ -1,8 +1,24 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import mongoose from "mongoose";
 import { BookVisit } from "../models/ChapterVisit.js";
+import { UserBook } from "../models/UserNovel.js";
 
 const DEFAULT_HISTORY_LIMIT = 50;
+
+const PERSONAL_LIBRARY_FIELDS = [
+	"status",
+	"unitsRead",
+	"rating",
+	"review",
+	"personalNotes",
+	"rawLegacyEntry",
+	"characterNotes",
+	"relationshipNotes",
+	"personalTags",
+	"completedAt",
+	"lastVisitedUnitNumber",
+	"lastVisitedAt",
+] as const;
 
 export async function getHistoryHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
@@ -22,6 +38,32 @@ export async function getHistoryHandler(request: FastifyRequest, reply: FastifyR
         .lean(),
       BookVisit.countDocuments({ userId: new mongoose.Types.ObjectId(userId) }),
     ]);
+
+    const bookIds = visits
+      .map((visit: any) => visit.bookId?._id)
+      .filter((id: any) => id && mongoose.Types.ObjectId.isValid(id));
+    const userBooks = await UserBook.find({
+      userId: new mongoose.Types.ObjectId(userId),
+      bookId: { $in: bookIds },
+    }).lean();
+    const userBookByBookId = new Map(userBooks.map((userBook) => [userBook.bookId.toString(), userBook]));
+
+    for (const visit of visits as any[]) {
+      const book = visit.bookId;
+      if (!book || typeof book !== "object") continue;
+
+      const userBook = userBookByBookId.get(book._id?.toString());
+      if (userBook) {
+        for (const field of PERSONAL_LIBRARY_FIELDS) {
+          if (userBook[field] !== undefined) {
+            book[field] = userBook[field];
+          }
+        }
+      } else {
+        book.status = book.status ?? "planning";
+        book.unitsRead = book.unitsRead ?? 0;
+      }
+    }
 
     return reply.send({
       visits,

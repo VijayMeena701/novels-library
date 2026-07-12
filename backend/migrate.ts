@@ -152,6 +152,79 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
+async function migrateLegacyBookUserIds(db: any) {
+  const booksColl = db.collection('books');
+  const legacyBooks = await booksColl.find({ userId: { $exists: true, $ne: null } }).toArray();
+  let userBooksCreated = 0;
+  let booksCleaned = 0;
+
+  for (const book of legacyBooks) {
+    const userId = book.userId;
+    const bookId = book._id;
+    const addedByUserId = book.addedByUserId || userId;
+
+    const existingUserBook = await UserBook.findOne({ userId, bookId });
+    if (!existingUserBook) {
+      const unitsRead = book.unitsRead ?? book.chaptersRead ?? 0;
+      const personalTags = Array.isArray(book.personalTags) ? book.personalTags : [];
+      await UserBook.create({
+        userId,
+        bookId,
+        status: book.status || 'planning',
+        unitsRead,
+        rating: book.rating || 0,
+        review: book.review || '',
+        personalNotes: book.personalNotes || '',
+        rawLegacyEntry: book.rawLegacyEntry || JSON.stringify({
+          _id: bookId,
+          title: book.title,
+          userId,
+          status: book.status,
+          chaptersRead: book.chaptersRead,
+          unitsRead: book.unitsRead,
+          rating: book.rating,
+          review: book.review,
+          personalNotes: book.personalNotes,
+          completedAt: book.completedAt,
+          updatedAt: book.updatedAt,
+          createdAt: book.createdAt,
+        }),
+        characterNotes: book.characterNotes || '',
+        relationshipNotes: book.relationshipNotes || '',
+        personalTags,
+        completedAt: book.completedAt || null,
+        lastVisitedUnitNumber: unitsRead,
+        lastVisitedAt: unitsRead ? (book.updatedAt || new Date()) : null,
+        createdAt: book.createdAt || new Date(),
+        updatedAt: book.updatedAt || new Date(),
+      });
+      userBooksCreated++;
+    }
+
+    await booksColl.updateOne(
+      { _id: bookId },
+      { $set: { addedByUserId }, $unset: { userId: 1 } }
+    );
+    booksCleaned++;
+  }
+
+  console.log(`Legacy book userId cleanup: ${booksCleaned} books cleaned, ${userBooksCreated} user books created.`);
+}
+
+async function dropLegacyCollections(db: any) {
+  const legacyCollections = ['novels', 'usernovels', 'chaptercontents', 'rawchaptercontents', 'chaptervisits'];
+  for (const name of legacyCollections) {
+    try {
+      await db.collection(name).drop();
+      console.log(`Dropped legacy collection: ${name}`);
+    } catch (err: any) {
+      if (err.code !== 26 && err.codeName !== 'NamespaceNotFound') {
+        console.error(`Failed to drop legacy collection ${name}:`, err.message);
+      }
+    }
+  }
+}
+
 async function main() {
   await mongoose.connect(MONGODB_URI);
   const db = mongoose.connection;
@@ -257,7 +330,6 @@ async function main() {
       book = existing;
     } else {
       book = new Book({
-        userId: oldNovel.userId || null,
         addedByUserId: oldNovel.addedByUserId || oldNovel.userId || null,
         mediaType: 'novel',
         authorId,
@@ -298,10 +370,11 @@ async function main() {
     const userNovels = userNovelsByNovel.get(String(oldNovel._id)) || [];
     if (userNovels.length) {
       for (const un of userNovels) {
+        const personalTags = Array.isArray(un.personalTags) ? un.personalTags : [];
         await UserBook.updateOne(
           { userId: un.userId, bookId },
           {
-            $set: {
+            $setOnInsert: {
               userId: un.userId,
               bookId,
               status: un.status || 'planning',
@@ -312,7 +385,8 @@ async function main() {
               rawLegacyEntry: un.rawLegacyEntry || '',
               characterNotes: un.characterNotes || '',
               relationshipNotes: un.relationshipNotes || '',
-              personalTags: un.personalTags || [],
+              personalTags,
+              personalTagKeys: personalTags.map((tag: string) => normalizeFilterKey(tag)).filter(Boolean),
               completedAt: un.completedAt || null,
               lastVisitedUnitNumber: un.chaptersRead || 0,
               lastVisitedAt: un.chaptersRead ? un.updatedAt : null,
@@ -325,10 +399,11 @@ async function main() {
         stats.userBooks++;
       }
     } else if (oldNovel.userId) {
+      const personalTags = Array.isArray(oldNovel.personalTags) ? oldNovel.personalTags : [];
       await UserBook.updateOne(
         { userId: oldNovel.userId, bookId },
         {
-          $set: {
+          $setOnInsert: {
             userId: oldNovel.userId,
             bookId,
             status: oldNovel.status || 'planning',
@@ -348,7 +423,8 @@ async function main() {
             }),
             characterNotes: oldNovel.characterNotes || '',
             relationshipNotes: oldNovel.relationshipNotes || '',
-            personalTags: oldNovel.personalTags || [],
+            personalTags,
+            personalTagKeys: personalTags.map((tag: string) => normalizeFilterKey(tag)).filter(Boolean),
             completedAt: oldNovel.completedAt || null,
             lastVisitedUnitNumber: oldNovel.chaptersRead || 0,
             lastVisitedAt: oldNovel.chaptersRead ? oldNovel.updatedAt : null,
@@ -448,6 +524,9 @@ async function main() {
 
     console.log(`Migrated: ${book.title} (chapters: ${chapters.length}, raw: ${rawChapters.length}, visits: ${visits.length})`);
   }
+
+  await migrateLegacyBookUserIds(db);
+  await dropLegacyCollections(db);
 
   console.log('Migration stats:', stats);
   await mongoose.disconnect();

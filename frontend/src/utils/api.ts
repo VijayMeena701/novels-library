@@ -250,6 +250,8 @@ export interface Book {
 	totalVisits?: number;
 	totalVotes?: number;
 	userVoted?: boolean;
+	userBookCreatedAt?: string;
+	userBookUpdatedAt?: string;
 	createdAt: string;
 	updatedAt: string;
 }

@@ -10,7 +10,6 @@ export interface IUnitIndex {
 }
 
 export interface IBook extends Document {
-  userId?: mongoose.Types.ObjectId;
   addedByUserId?: mongoose.Types.ObjectId;
   mediaType: string;
   authorId?: mongoose.Types.ObjectId;
@@ -75,7 +74,6 @@ function cleanStringList(values: string[]): string[] {
 }
 
 const BookSchema = new Schema<IBook>({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
   addedByUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
   mediaType: { type: String, default: 'novel' },
   authorId: { type: Schema.Types.ObjectId, ref: 'Author', index: true },

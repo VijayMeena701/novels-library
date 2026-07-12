@@ -5,6 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, getBookCoverUrl, Book, ReadingSession, BookContent, BookVisit, BookStatus } from '../utils/api';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
+import { Button } from './ui/button';
+import { Modal } from './ui/modal';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Input, Select, Textarea } from './ui/input';
+import { Field } from './ui/field';
+import { Badge } from './ui/badge';
+import { Spinner } from './ui/spinner';
+import { CAPABILITY, hasCapability } from '../utils/permissions';
 
 function splitListInput(value: string): string[] {
   return value
@@ -33,6 +42,23 @@ function isGenericUnitTitle(value: string, bookTitle: string, unitNumber: number
     normalized === `ch ${unitNumber}`;
 }
 
+function getStatusBadgeVariant(status?: BookStatus | string) {
+  switch (status) {
+    case 'reading':
+      return 'reading';
+    case 'completed':
+      return 'completed';
+    case 'on_hold':
+      return 'hold';
+    case 'dropped':
+      return 'dropped';
+    case 'planning':
+      return 'planning';
+    default:
+      return 'default';
+  }
+}
+
 export interface BookLibraryPanelProps {
   bookId: string;
   book: Book;
@@ -43,15 +69,15 @@ export interface BookLibraryPanelProps {
 export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onUpdate }: BookLibraryPanelProps) {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const canRemoveLibrary = hasCapability(user, CAPABILITY.LIBRARY_DELETE);
 
-  // Page state
   const [book, setBook] = useState<Book>(bookProp);
   const [units, setUnits] = useState<Omit<BookContent, 'content'>[]>(unitsProp);
   const [unitVisits, setBookVisits] = useState<BookVisit[]>([]);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Edit form state
   const [isEditing, setIsEditing] = useState(false);
   const [editStatus, setEditStatus] = useState<BookStatus>('reading');
   const [editChRead, setEditChRead] = useState(0);
@@ -65,33 +91,32 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
   const [editPersonalTags, setEditPersonalTags] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Active re-read state
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
   const [sessionChRead, setSessionChRead] = useState(0);
 
-  // Sync props into local state
+  const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
   useEffect(() => {
     setBook(bookProp);
     setUnits(unitsProp);
   }, [bookProp, unitsProp]);
 
-  // Initialize edit form when book changes
   useEffect(() => {
     if (!book) return;
-    setEditStatus(book.status);
-    setEditChRead(book.unitsRead);
+    setEditStatus(book.status ?? 'reading');
+    setEditChRead(book.unitsRead ?? 0);
     setEditCompletedAt(formatDateTimeLocal(book.completedAt));
-    setEditRating(book.rating);
-    setEditReview(book.review);
-    setEditNotes(book.personalNotes);
+    setEditRating(book.rating ?? 0);
+    setEditReview(book.review || '');
+    setEditNotes(book.personalNotes || '');
     setEditRawLegacyEntry(book.rawLegacyEntry || '');
     setEditCharacterNotes(book.characterNotes || '');
     setEditRelationshipNotes(book.relationshipNotes || '');
     setEditPersonalTags((book.personalTags || []).join(', '));
   }, [book]);
 
-  // Load visits and sessions
   useEffect(() => {
     if (!bookId) return;
     let cancelled = false;
@@ -107,7 +132,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
         setBookVisits(unitVisitsData);
         setSessions(sessionsData);
       } catch (err) {
-        if (!cancelled) console.error('Error fetching book details:', err);
+        if (!cancelled) console.error('Error fetching library details:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -119,7 +144,6 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
     };
   }, [bookId]);
 
-  // Handle Edit Submit
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -147,33 +171,35 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
     }
   };
 
-  // Delete Book Cascade
-  const handleDeleteBook = async () => {
-    if (!confirm('Remove this book from your profile library? The shared catalog and archived units will stay in the system.')) {
-      return;
-    }
-
-    try {
-      await api.deleteBook(bookId);
-      router.push('/');
-    } catch (err) {
-      console.error('Delete failed:', err);
-      showToast({ message: 'Failed to delete book.', variant: 'error' });    }
+  const handleRemoveClick = () => {
+    setIsRemoveModalOpen(true);
   };
 
-  // Re-read Log Actions
+  const handleConfirmRemove = async () => {
+    setRemoving(true);
+    try {
+      await api.deleteBook(bookId);
+      setIsRemoveModalOpen(false);
+      router.push('/profile');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      showToast({ message: 'Failed to delete book.', variant: 'error' });
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   const handleStartSession = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await api.startSession(bookId, {
         notes: sessionNotes || 'Started new session.',
-        unitsRead: sessionChRead
+        unitsRead: sessionChRead,
       });
       setIsSessionModalOpen(false);
       setSessionNotes('');
       setSessionChRead(0);
-      
-      // Update local sessions state
+
       const sessionsData = await api.getSessions(bookId);
       setSessions(sessionsData);
     } catch (err) {
@@ -204,10 +230,10 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
   if (loading) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
-          <span style={{ color: 'var(--text-secondary)' }}>Loading book details...</span>
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" />
+          <span className="text-sm text-muted-copy">Loading library details...</span>
         </div>
       </div>
     );
@@ -215,26 +241,36 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
   if (!book) {
     return (
-      <div className="container">
-        <div className="glass-card empty-state">
-        <h2>Book Not Found</h2>
-        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>The requested book entry could not be found or is unauthorized.</p>
-        <Link href="/profile" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>Back to Library</Link>
-        </div>
+      <div className="max-w-[1520px] mx-auto px-4 py-12">
+        <Card className="p-8 text-center max-w-md mx-auto">
+          <CardTitle className="text-xl">Book Not Found</CardTitle>
+          <CardDescription className="mt-2">
+            The requested book entry could not be found or is unauthorized.
+          </CardDescription>
+          <Button asChild variant="secondary" className="mt-6">
+            <Link href="/profile">Back to Library</Link>
+          </Button>
+        </Card>
       </div>
     );
   }
 
   const displayAuthor = book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
   const coverSrc = getBookCoverUrl(book);
+  const resumeUnit = book.lastVisitedUnitNumber || book.unitsRead || 1;
+  const readPercent = book.translatedUnitsTotal > 0
+    ? Math.min(100, Math.round(((book.unitsRead ?? 0) / book.translatedUnitsTotal) * 100))
+    : 0;
   const hasSourceMetadata = Boolean(
     book.authorRealName ||
     (book.alternativeNames || []).length > 0 ||
     (book.genres || []).length > 0 ||
     book.originalSource ||
-    book.publicationStatus
+    book.publicationStatus,
   );
+
   const unitIndexByNumber = new Map((book.translatedUnitsList || []).map((unit) => [unit.unitNumber, unit]));
+
   const getUnitDisplayTitle = (unit: Omit<BookContent, 'content'>) => {
     const indexedTitle = unitIndexByNumber.get(unit.unitNumber)?.title?.trim() || '';
     const archivedTitle = unit.title?.trim() || '';
@@ -245,6 +281,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
     return archivedTitle || indexedTitle || `Unit ${unit.unitNumber}`;
   };
+
   const getVisitDisplayTitle = (visit: BookVisit) => {
     const indexedTitle = unitIndexByNumber.get(visit.unitNumber)?.title?.trim() || '';
     const visitTitle = visit.unitTitle?.trim() || '';
@@ -255,480 +292,548 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
     return visitTitle || indexedTitle || `Unit ${visit.unitNumber}`;
   };
+
   const unitVisitsBySession = unitVisits.reduce<Record<string, BookVisit[]>>((groups, visit) => {
     if (!visit.sessionId) return groups;
     groups[visit.sessionId] = groups[visit.sessionId] || [];
     groups[visit.sessionId].push(visit);
     return groups;
   }, {});
+
   const standaloneBookVisits = unitVisits.filter((visit) => !visit.sessionId);
 
+  const hasNotes = Boolean(
+    book.review ||
+    book.personalNotes ||
+    book.characterNotes ||
+    book.relationshipNotes ||
+    book.rawLegacyEntry,
+  );
+
   return (
-    <div className="container page-stack">
-      
-      {/* Navigation & Header Actions */}
-      <div className="flex-between">
-        <Link href="/profile" className="nav-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          ← Back to Library
-        </Link>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)}>
-            {isEditing ? 'Cancel Edit' : 'Edit My Details'}
-          </button>
-          <button className="btn btn-danger" onClick={handleDeleteBook}>
-            Remove from Library
-          </button>
-        </div>
-      </div>
-
-      <div className="detail-grid">
-        
-        {/* LEFT COLUMN: Book Cover, Specs, Notes, Re-reads */}
-        <div className="detail-column">
-          
-          {/* Main Info Box */}
-          <div className="glass-card detail-summary">
-            <div className="detail-cover">
-              {coverSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={coverSrc} alt={book.title} />
-              ) : (
-                <span style={{ fontSize: '2rem', opacity: 0.15, fontWeight: 'bold' }}>{book.title.substring(0, 2).toUpperCase()}</span>
-              )}
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="flex flex-col gap-6">
+        {/* Header / Quick Actions */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/profile">← Back to Library</Link>
+              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
+                  Edit My Details
+                </Button>
+                <Button variant="danger" size="sm" onClick={handleRemoveClick} disabled={!canRemoveLibrary}>
+                  Remove from Library
+                </Button>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
-              <h2 style={{ fontSize: '1.5rem' }} className="text-gradient">{book.title}</h2>
-              <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>By {displayAuthor}</p>
-              
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                <span className={`badge badge-${book.status.replace('_', '-')}`}>
-                  {book.status.replace('_', ' ')}
-                </span>
-                {book.rating > 0 && (
-                  <span style={{ fontSize: '0.85rem', color: 'var(--warning)', fontWeight: 'bold' }}>
-                    ★ {book.rating}/5
-                  </span>
-                )}
-              </div>
-
-              {book.completedAt && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Completed: {new Date(book.completedAt).toLocaleString()}
-                </p>
-              )}
-
-              {(book.personalTags || []).length > 0 && (
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                  {book.personalTags.map((tag) => (
-                    <span key={tag} className="badge" style={{ fontSize: '0.68rem' }}>{tag}</span>
-                  ))}
-                </div>
-              )}
-              
-              {book.sourceUrl && (
-                <a 
-                  href={book.sourceUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'underline', marginTop: '0.25rem', wordBreak: 'break-all' }}
-                >
-                  Original Website Link
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* EDIT FORM (Conditionally Rendered) */}
-          {isEditing ? (
-            <div className="glass-card" style={{ padding: '2rem' }}>
-              <h3 style={{ marginBottom: '1.25rem', fontSize: '1.2rem' }}>Edit My Reading Details</h3>
-              <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Reading Status</label>
-                    <select className="form-select" value={editStatus} onChange={(e) => setEditStatus(e.target.value as BookStatus)}>
-                      <option value="reading">📖 Reading</option>
-                      <option value="completed">✅ Completed</option>
-                      <option value="on_hold">⏳ On Hold</option>
-                      <option value="dropped">🛑 Dropped</option>
-                      <option value="planning">📋 Planning</option>
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Units Read</label>
-                    <input type="number" className="form-input" min="0" value={editChRead} onChange={(e) => setEditChRead(parseInt(e.target.value) || 0)} />
-                  </div>
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Completed At</label>
-                  <input type="datetime-local" className="form-input" value={editCompletedAt} onChange={(e) => setEditCompletedAt(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Personal Rating</label>
-                  <select className="form-select" value={editRating} onChange={(e) => setEditRating(parseInt(e.target.value))}>
-                    <option value="0">Unrated</option>
-                    <option value="1">⭐ (Poor)</option>
-                    <option value="2">⭐⭐ (Average)</option>
-                    <option value="3">⭐⭐⭐ (Good)</option>
-                    <option value="4">⭐⭐⭐⭐ (Excellent)</option>
-                    <option value="5">⭐⭐⭐⭐⭐ (Masterpiece)</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">What did you like? (Review)</label>
-                  <textarea className="form-textarea" rows={3} value={editReview} onChange={(e) => setEditReview(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Detailed Notes</label>
-                  <textarea className="form-textarea" rows={4} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Personal Tags</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editPersonalTags}
-                    onChange={(e) => setEditPersonalTags(e.target.value)}
-                    placeholder="Comma-separated recall/filter tags"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Original Legacy Entry</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    value={editRawLegacyEntry}
-                    onChange={(e) => setEditRawLegacyEntry(e.target.value)}
-                    placeholder="Paste the old full record here so nothing is lost."
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Character Notes</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={4}
-                    value={editCharacterNotes}
-                    onChange={(e) => setEditCharacterNotes(e.target.value)}
-                    placeholder="Names, aliases, role, cultivation/powers, important memory hooks..."
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Relationship Notes</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={4}
-                    value={editRelationshipNotes}
-                    onChange={(e) => setEditRelationshipNotes(e.target.value)}
-                    placeholder="Character relationships, romance, factions, family, enemies..."
-                  />
-                </div>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? <span className="spinner"></span> : 'Save Updates'}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <>
-              {/* Synopsis / Description */}
-              {hasSourceMetadata && (
-                <div className="glass-card" style={{ padding: '2rem' }}>
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Source Metadata</h3>
-                  <div style={{ display: 'grid', gap: '0.85rem', fontSize: '0.9rem' }}>
-                    {book.authorRealName && (
-                      <div>
-                        <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Author Real Name</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{book.authorRealName}</span>
-                      </div>
-                    )}
-                    {(book.alternativeNames || []).length > 0 && (
-                      <div>
-                        <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Alternative Names</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{book.alternativeNames.join(', ')}</span>
-                      </div>
-                    )}
-                    {(book.genres || []).length > 0 && (
-                      <div>
-                        <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.35rem' }}>Genres</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                          {book.genres.map((genre) => (
-                            <span key={genre} className="badge" style={{ fontSize: '0.72rem' }}>{genre}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {(book.originalSource || book.publicationStatus) && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        {book.originalSource && (
-                          <div>
-                            <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Book Source</span>
-                            <span style={{ color: 'var(--text-secondary)' }}>{book.originalSource}</span>
-                          </div>
-                        )}
-                        {book.publicationStatus && (
-                          <div>
-                            <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem' }}>Publication Status</span>
-                            <span style={{ color: 'var(--text-secondary)' }}>{book.publicationStatus}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Synopsis / Description */}
-              <div className="glass-card" style={{ padding: '2rem' }}>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>Synopsis</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                  {book.description || 'No description scraped yet.'}
-                </p>
-              </div>
-
-              {/* Review & Personal Notes */}
-              <div className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>My Review</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', fontStyle: 'italic' }}>
-                    {book.review ? `"${book.review}"` : 'No review notes written yet.'}
-                  </p>
-                </div>
-                
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Personal Reading Notes</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', whiteSpace: 'pre-line' }}>
-                    {book.personalNotes || 'No custom reading notes stored.'}
-                  </p>
-                </div>
-
-                {book.rawLegacyEntry && (
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Original Legacy Entry</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>
-                      {book.rawLegacyEntry}
-                    </p>
-                  </div>
-                )}
-
-                {book.characterNotes && (
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Character Notes</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>
-                      {book.characterNotes}
-                    </p>
-                  </div>
-                )}
-
-                {book.relationshipNotes && (
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Relationship Notes</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>
-                      {book.relationshipNotes}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Re-read Log Manager */}
-              <div className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="flex-between">
-                  <h3 style={{ fontSize: '1.2rem' }}>Re-reading Logs</h3>
-                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => setIsSessionModalOpen(true)}>
-                    + Log Session
-                  </button>
-                </div>
-
-                {sessions.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem 0' }}>
-                    No re-read logs exist for this book yet.
-                  </p>
+            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              <div className="w-[120px] h-[170px] shrink-0 rounded-md border border-border bg-surface-muted overflow-hidden">
+                {coverSrc ? (
+                  <img src={coverSrc} alt={book.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {sessions.map((sess) => (
-                      <div key={sess._id} style={{ 
-                        backgroundColor: 'var(--surface-2)', 
-                        padding: '1rem', 
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-color)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem'
-                      }}>
-                        <div className="flex-between">
-                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: sess.completed ? 'var(--success)' : 'var(--info)' }}>
-                            {sess.completed ? '✅ Completed Re-read' : '📖 Active Re-read'}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {new Date(sess.startDate).toLocaleDateString()}
-                            {sess.endDate ? ` - ${new Date(sess.endDate).toLocaleDateString()}` : ''}
-                          </span>
-                        </div>
-                        
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                          <strong>Notes:</strong> {sess.notes}
-                        </p>
-
-                        {(unitVisitsBySession[sess._id] || []).length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                              Unit Opens
-                            </span>
-                            {(unitVisitsBySession[sess._id] || []).slice(0, 5).map((visit) => (
-                              <Link
-                                key={visit._id}
-                                href={`/books/${bookId}/reader/${visit.unitNumber}`}
-                                style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontSize: '0.8rem' }}
-                              >
-                                Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
-                                <span style={{ color: 'var(--text-muted)' }}> · {new Date(visit.openedAt).toLocaleString()}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="flex-between" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Units Read: <strong>{sess.unitsRead}</strong>
-                          </span>
-                          
-                          {!sess.completed && (
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} onClick={() => handleUpdateSessionProgress(sess, false)}>-</button>
-                              <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} onClick={() => handleUpdateSessionProgress(sess, true)}>+</button>
-                              <button className="btn btn-primary" style={{ padding: '2px 8px', fontSize: '0.75rem', backgroundColor: 'var(--success)' }} onClick={() => handleCompleteSession(sess)}>Complete</button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {standaloneBookVisits.length > 0 && (
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <h4 style={{ fontSize: '0.95rem' }}>Recent Standalone Revisits</h4>
-                    {standaloneBookVisits.slice(0, 8).map((visit) => (
-                      <Link
-                        key={visit._id}
-                        href={`/books/${bookId}/reader/${visit.unitNumber}`}
-                        style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontSize: '0.82rem' }}
-                      >
-                        Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
-                        <span style={{ color: 'var(--text-muted)' }}> · {new Date(visit.openedAt).toLocaleString()}</span>
-                      </Link>
-                    ))}
+                  <div className="flex h-full items-center justify-center text-2xl font-black text-primary/50">
+                    {book.title.slice(0, 2).toUpperCase()}
                   </div>
                 )}
               </div>
-            </>
-          )}
 
-        </div>
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <h1 className="text-2xl font-extrabold leading-tight text-foreground">{book.title}</h1>
+                <p className="text-sm text-copy font-semibold">By {displayAuthor}</p>
 
-        {/* RIGHT COLUMN: Personal reading table of contents */}
-        <div className="detail-column">
-          {/* Table of Contents / Scraped Units List */}
-          <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>Table of Contents</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Archived: <strong>{units.length}</strong> / <strong>{book.translatedUnitsTotal || '?'}</strong> units.
-              </p>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Badge variant={getStatusBadgeVariant(book.status)}>
+                    {(book.status ?? 'unknown').replace('_', ' ')}
+                  </Badge>
+                  {book.rating > 0 && (
+                    <span className="text-sm text-warning font-bold">
+                      {'★'.repeat(book.rating)}
+                      <span className="text-xs text-muted-copy ml-1">({book.rating}/5)</span>
+                    </span>
+                  )}
+                  {book.completedAt && (
+                    <span className="text-xs text-muted-copy">
+                      Completed {new Date(book.completedAt).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                {(book.personalTags || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {book.personalTags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-[0.62rem]">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-1">
+                  <div className="flex justify-between text-xs font-bold mb-1">
+                    <span className="text-copy">Reading progress</span>
+                    <span className="text-primary">
+                      {book.unitsRead ?? 0} / {book.translatedUnitsTotal || '?'} units ({readPercent}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-surface-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      style={{ width: `${readPercent}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <Button asChild size="sm" className="bg-primary text-background hover:bg-primary-hover">
+                    <Link href={`/books/${bookId}/reader/${resumeUnit}`}>Continue Reading</Link>
+                  </Button>
+                  {book.sourceUrl && (
+                    <Button asChild variant="ghost" size="sm">
+                      <a href={book.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-hover">
+                        Original Website
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {units.length === 0 ? (
-              <div className="empty-state" style={{ padding: '2rem 1rem', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                  No units have been archived locally yet.
-                </p>
-                <Link href={`/books/${bookId}`} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-                  View Catalog Page
-                </Link>
+        {/* Source Metadata */}
+        {hasSourceMetadata && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Source Metadata</CardTitle>
+              <CardDescription>Catalog details for this book.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {book.authorRealName && (
+                  <Field label="Author Real Name" className="sm:col-span-2">
+                    <span className="text-sm font-semibold text-foreground">{book.authorRealName}</span>
+                  </Field>
+                )}
+                {(book.alternativeNames || []).length > 0 && (
+                  <Field label="Alternative Names" className="sm:col-span-2">
+                    <span className="text-sm text-copy">{book.alternativeNames.join(', ')}</span>
+                  </Field>
+                )}
+                {(book.genres || []).length > 0 && (
+                  <Field label="Genres" className="sm:col-span-2">
+                    <div className="flex flex-wrap gap-1">
+                      {book.genres.map((genre) => (
+                        <Badge key={genre} variant="outline" className="text-[0.62rem]">
+                          {genre}
+                        </Badge>
+                      ))}
+                    </div>
+                  </Field>
+                )}
+                <Field label="Book Source">
+                  <span className="text-sm text-copy">
+                    {book.originalSource || '—'}
+                  </span>
+                </Field>
+                <Field label="Publication Status">
+                  <span className="text-sm font-semibold text-foreground">
+                    {book.publicationStatus || '—'}
+                  </span>
+                </Field>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Synopsis */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Synopsis</CardTitle>
+            <CardDescription>A summary of the story.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-sm text-copy leading-relaxed whitespace-pre-line">
+              {book.description || 'No description scraped yet.'}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Notes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>My Notes</CardTitle>
+            <CardDescription>Review, notes, and legacy entry.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            {hasNotes ? (
+              <div className="space-y-4">
+                {book.review && (
+                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-foreground mb-1">My Review</h4>
+                    <p className="text-sm text-copy italic whitespace-pre-line">&ldquo;{book.review}&rdquo;</p>
+                  </div>
+                )}
+                {book.personalNotes && (
+                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-foreground mb-1">Personal Reading Notes</h4>
+                    <p className="text-sm text-copy whitespace-pre-line">{book.personalNotes}</p>
+                  </div>
+                )}
+                {book.characterNotes && (
+                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-foreground mb-1">Character Notes</h4>
+                    <p className="text-sm text-copy whitespace-pre-line">{book.characterNotes}</p>
+                  </div>
+                )}
+                {book.relationshipNotes && (
+                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-foreground mb-1">Relationship Notes</h4>
+                    <p className="text-sm text-copy whitespace-pre-line">{book.relationshipNotes}</p>
+                  </div>
+                )}
+                {book.rawLegacyEntry && (
+                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-foreground mb-1">Original Legacy Entry</h4>
+                    <p className="text-sm text-copy whitespace-pre-line">{book.rawLegacyEntry}</p>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="unit-list">
+              <p className="text-sm text-muted-copy italic">No custom notes stored yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Re-reading Logs */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle>Re-reading Logs</CardTitle>
+              <CardDescription>Track focused re-reads of this book.</CardDescription>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => setIsSessionModalOpen(true)}>
+              + Log Session
+            </Button>
+          </CardHeader>
+          <CardContent className="p-4">
+            {sessions.length === 0 && standaloneBookVisits.length === 0 && (
+              <p className="text-sm text-muted-copy italic">No re-read logs or standalone visits exist for this book yet.</p>
+            )}
+
+            {sessions.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {sessions.map((sess) => (
+                  <Card key={sess._id} className="p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge variant={sess.completed ? 'completed' : 'reading'}>
+                        {sess.completed ? 'Completed' : 'Active Re-read'}
+                      </Badge>
+                      <span className="text-xs text-muted-copy">
+                        {new Date(sess.startDate).toLocaleDateString()}
+                        {sess.endDate ? ` - ${new Date(sess.endDate).toLocaleDateString()}` : ''}
+                      </span>
+                    </div>
+
+                    {sess.notes && (
+                      <p className="text-sm text-copy mt-2">
+                        <span className="font-semibold">Notes:</span> {sess.notes}
+                      </p>
+                    )}
+
+                    {(unitVisitsBySession[sess._id] || []).length > 0 && (
+                      <div className="flex flex-col gap-1 mt-2">
+                        <span className="text-xs font-extrabold uppercase text-muted-copy">Unit Opens</span>
+                        {(unitVisitsBySession[sess._id] || []).slice(0, 5).map((visit) => (
+                          <Link
+                            key={visit._id}
+                            href={`/books/${bookId}/reader/${visit.unitNumber}`}
+                            className="text-xs text-copy hover:text-primary transition-colors"
+                          >
+                            Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
+                            <span className="text-muted-copy"> · {new Date(visit.openedAt).toLocaleString()}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between border-t border-border pt-2 mt-2">
+                      <span className="text-xs text-muted-copy">
+                        Units Read: <strong className="text-foreground">{sess.unitsRead}</strong>
+                      </span>
+                      {!sess.completed && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => handleUpdateSessionProgress(sess, false)}
+                          >
+                            -
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => handleUpdateSessionProgress(sess, true)}
+                          >
+                            +
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-7 bg-success hover:bg-success/90 text-white"
+                            onClick={() => handleCompleteSession(sess)}
+                          >
+                            Complete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {standaloneBookVisits.length > 0 && (
+              <div className={sessions.length > 0 ? 'border-t border-border pt-4 mt-4' : ''}>
+                <h4 className="text-sm font-extrabold text-foreground mb-2">Recent Standalone Revisits</h4>
+                <div className="flex flex-col gap-1">
+                  {standaloneBookVisits.slice(0, 8).map((visit) => (
+                    <Link
+                      key={visit._id}
+                      href={`/books/${bookId}/reader/${visit.unitNumber}`}
+                      className="text-xs text-copy hover:text-primary transition-colors"
+                    >
+                      Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
+                      <span className="text-muted-copy"> · {new Date(visit.openedAt).toLocaleString()}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Table of Contents */}
+      <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle>Table of Contents</CardTitle>
+            <CardDescription>
+              Archived: {units.length} / {book.translatedUnitsTotal || '?'} units.
+            </CardDescription>
+          </CardHeader>
+          {units.length === 0 ? (
+            <CardContent className="p-8 text-center">
+              <p className="text-sm text-muted-copy mb-4">No units have been archived locally yet.</p>
+              <Button asChild variant="secondary" size="sm">
+                <Link href={`/books/${bookId}`}>View Catalog Page</Link>
+              </Button>
+            </CardContent>
+          ) : (
+            <CardContent className="p-0">
+              <div className="max-h-[520px] overflow-y-auto">
                 {units.map((ch) => {
-                  const isRead = ch.unitNumber <= book.unitsRead;
+                  const isRead = ch.unitNumber <= (book.unitsRead ?? 0);
                   const unitTitle = getUnitDisplayTitle(ch);
                   return (
-                    <Link key={ch._id} href={`/books/${bookId}/reader/${ch.unitNumber}`} style={{ textDecoration: 'none' }}>
-                      <div className={`unit-row ${isRead ? 'unit-row-read' : ''}`}>
-                        <span className="unit-title">
+                    <Link
+                      key={ch._id}
+                      href={`/books/${bookId}/reader/${ch.unitNumber}`}
+                      className="block"
+                    >
+                      <div
+                        className={`flex items-center justify-between gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-surface-muted transition-colors ${
+                          isRead ? 'bg-surface-muted text-copy' : 'bg-card text-foreground'
+                        }`}
+                      >
+                        <span className={`min-w-0 truncate text-sm ${isRead ? 'font-medium' : 'font-semibold'}`}>
                           {unitTitle}
                         </span>
-                        <div className="unit-meta">
-                          <span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-copy">
                             {new Date(ch.scrapedAt).toLocaleDateString()}
                           </span>
-                          <span className={`status-dot ${isRead ? 'status-dot-muted' : ''}`}></span>
+                          <span className={`w-2 h-2 rounded-full ${isRead ? 'bg-muted-copy' : 'bg-primary'}`} />
                         </div>
                       </div>
                     </Link>
                   );
                 })}
               </div>
-            )}
-          </div>
-
-        </div>
-
+            </CardContent>
+          )}
+        </Card>
       </div>
 
-      {/* Log Reading Session Modal */}
-      {isSessionModalOpen && (
-        <div className="modal-backdrop">
-          <div className="glass-card modal-panel" style={{ maxWidth: '440px' }}>
-            <div className="flex-between">
-              <h2 style={{ fontSize: '1.4rem' }}>Log Re-reading Session</h2>
-              <button 
-                onClick={() => setIsSessionModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
-              >
-                &times;
-              </button>
-            </div>
+      {/* Edit Details Modal */}
+      <Modal
+        open={isEditing}
+        onClose={() => setIsEditing(false)}
+        title="Edit My Reading Details"
+        size="full"
+        contentClassName="max-w-4xl"
+      >
+        <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Reading Status">
+              <Select value={editStatus} onChange={(e) => setEditStatus(e.target.value as BookStatus)}>
+                <option value="reading">Reading</option>
+                <option value="completed">Completed</option>
+                <option value="on_hold">On Hold</option>
+                <option value="dropped">Dropped</option>
+                <option value="planning">Planning</option>
+              </Select>
+            </Field>
+            <Field label="Units Read">
+              <Input
+                type="number"
+                min={0}
+                value={editChRead}
+                onChange={(e) => setEditChRead(parseInt(e.target.value, 10) || 0)}
+              />
+            </Field>
+            <Field label="Completed At">
+              <Input
+                type="datetime-local"
+                value={editCompletedAt}
+                onChange={(e) => setEditCompletedAt(e.target.value)}
+              />
+            </Field>
+            <Field label="Personal Rating">
+              <Select value={String(editRating)} onChange={(e) => setEditRating(parseInt(e.target.value, 10))}>
+                <option value="0">Unrated</option>
+                <option value="1">1 - Poor</option>
+                <option value="2">2 - Average</option>
+                <option value="3">3 - Good</option>
+                <option value="4">4 - Excellent</option>
+                <option value="5">5 - Masterpiece</option>
+              </Select>
+            </Field>
+            <Field label="Personal Tags" className="sm:col-span-2">
+              <Input
+                type="text"
+                value={editPersonalTags}
+                onChange={(e) => setEditPersonalTags(e.target.value)}
+                placeholder="Comma-separated recall/filter tags"
+              />
+            </Field>
+            <Field label="What did you like? (Review)" className="sm:col-span-2">
+              <Textarea
+                rows={3}
+                value={editReview}
+                onChange={(e) => setEditReview(e.target.value)}
+              />
+            </Field>
+            <Field label="Detailed Notes" className="sm:col-span-2">
+              <Textarea
+                rows={4}
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+              />
+            </Field>
+            <Field label="Original Legacy Entry" className="sm:col-span-2">
+              <Textarea
+                rows={3}
+                value={editRawLegacyEntry}
+                onChange={(e) => setEditRawLegacyEntry(e.target.value)}
+                placeholder="Paste the old full record here so nothing is lost."
+              />
+            </Field>
+            <Field label="Character Notes" className="sm:col-span-2">
+              <Textarea
+                rows={4}
+                value={editCharacterNotes}
+                onChange={(e) => setEditCharacterNotes(e.target.value)}
+                placeholder="Names, aliases, role, powers, important memory hooks..."
+              />
+            </Field>
+            <Field label="Relationship Notes" className="sm:col-span-2">
+              <Textarea
+                rows={4}
+                value={editRelationshipNotes}
+                onChange={(e) => setEditRelationshipNotes(e.target.value)}
+                placeholder="Character relationships, romance, factions, family, enemies..."
+              />
+            </Field>
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button type="button" variant="secondary" onClick={() => setIsEditing(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? (
+                <>
+                  <Spinner size="sm" />
+                  Saving...
+                </>
+              ) : (
+                'Save Updates'
+              )}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-            <form onSubmit={handleStartSession} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Starting Unit Progress</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  min="0"
-                  value={sessionChRead}
-                  onChange={(e) => setSessionChRead(Math.max(0, parseInt(e.target.value) || 0))}
-                />
-              </div>
+      {/* Log Session Modal */}
+      <Modal
+        open={isSessionModalOpen}
+        onClose={() => setIsSessionModalOpen(false)}
+        title="Log Re-reading Session"
+        size="sm"
+      >
+        <form onSubmit={handleStartSession} className="flex flex-col gap-4">
+          <Field label="Starting Unit Progress">
+            <Input
+              type="number"
+              min={0}
+              value={sessionChRead}
+              onChange={(e) => setSessionChRead(Math.max(0, parseInt(e.target.value, 10) || 0))}
+            />
+          </Field>
+          <Field label="Initial Session Notes">
+            <Textarea
+              rows={3}
+              value={sessionNotes}
+              onChange={(e) => setSessionNotes(e.target.value)}
+              placeholder="e.g. Re-reading my favorite arc starting at volume 3."
+              required
+            />
+          </Field>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button type="button" variant="secondary" onClick={() => setIsSessionModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">Start Session</Button>
+          </div>
+        </form>
+      </Modal>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Initial Session Notes</label>
-                <textarea 
-                  className="form-textarea" 
-                  rows={3}
-                  placeholder="e.g. Re-reading my favorite arc starting at volume 3."
-                  value={sessionNotes}
-                  onChange={(e) => setSessionNotes(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setIsSessionModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Start Session
-                </button>
-              </div>
-            </form>
+      {/* Remove Modal */}
+      <Modal
+        open={isRemoveModalOpen}
+        onClose={() => setIsRemoveModalOpen(false)}
+        title="Remove from library?"
+        size="sm"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-copy">
+            Remove this book from your profile library? The shared catalog and archived units will stay in the system.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setIsRemoveModalOpen(false)} disabled={removing}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleConfirmRemove} disabled={removing}>
+              {removing ? 'Removing...' : 'Remove'}
+            </Button>
           </div>
         </div>
-      )}
-
+      </Modal>
     </div>
   );
 }

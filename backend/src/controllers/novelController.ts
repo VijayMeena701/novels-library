@@ -17,30 +17,6 @@ import { hasCapability, CAPABILITY } from '../services/rbac.js';
 
 const VALID_BOOK_STATUSES = new Set<BookStatus>(['reading', 'completed', 'on_hold', 'dropped', 'planning']);
 
-async function syncUserBookFromLegacyBook(book: any) {
-  const ownerId = book?.userId;
-  if (!ownerId || !book?._id) return;
-
-  await UserBook.updateOne(
-    { userId: ownerId, bookId: book._id },
-    {
-      $set: {
-        status: book.status || 'planning',
-        unitsRead: book.unitsRead || 0,
-        rating: book.rating || 0,
-        review: book.review || '',
-        personalNotes: book.personalNotes || '',
-        rawLegacyEntry: book.rawLegacyEntry || '',
-        characterNotes: book.characterNotes || '',
-        relationshipNotes: book.relationshipNotes || '',
-        personalTags: Array.isArray(book.personalTags) ? book.personalTags : [],
-        completedAt: book.completedAt,
-      },
-    },
-    { upsert: true }
-  );
-}
-
 const PERSONAL_LIBRARY_FIELDS = [
   'status',
   'unitsRead',
@@ -113,6 +89,8 @@ function serializeBookForUser(book: any, userBook?: any) {
   }
 
   serialized.userBookId = personal._id;
+  serialized.userBookCreatedAt = personal.createdAt;
+  serialized.userBookUpdatedAt = personal.updatedAt;
   return serialized;
 }
 
@@ -301,9 +279,6 @@ export async function listBooksHandler(request: FastifyRequest, reply: FastifyRe
   const { status } = request.query as any;
 
   try {
-    const legacyBooks = await Book.find({ userId }).sort({ updatedAt: -1 });
-    await Promise.all(legacyBooks.map(syncUserBookFromLegacyBook));
-
     const userBookFilter: Record<string, any> = { userId };
     if (typeof status === 'string' && status !== 'all' && VALID_BOOK_STATUSES.has(status as BookStatus)) {
       userBookFilter.status = status;
@@ -320,14 +295,6 @@ export async function listBooksHandler(request: FastifyRequest, reply: FastifyRe
     const bookFilter = andFilters.length > 1 ? { $and: andFilters } : filter;
 
     const books = await Book.find(bookFilter);
-    if (books.some((book) => !book.addedByUserId && book.userId)) {
-      await Promise.all(books.map(async (book) => {
-        if (!book.addedByUserId && book.userId) {
-          book.addedByUserId = book.userId;
-          await book.save();
-        }
-      }));
-    }
     const bookById = new Map(books.map((book) => [book._id.toString(), book]));
     const serialized = userBooks
       .map((userBook) => {
@@ -568,17 +535,12 @@ export async function getBookHandler(request: FastifyRequest, reply: FastifyRepl
   }
 
   try {
-    let userBook = await UserBook.findOne({ bookId: id, userId });
-    let book = await Book.findById(id);
-
-    if (!userBook && book?.userId?.toString() === userId) {
-      await syncUserBookFromLegacyBook(book);
-      userBook = await UserBook.findOne({ bookId: id, userId });
-    }
-
+    const book = await Book.findById(id);
     if (!book) {
       return reply.status(404).send({ error: 'Book not found.' });
     }
+
+    const userBook = await UserBook.findOne({ bookId: id, userId });
     if (!userBook) {
       return reply.status(404).send({ error: 'Book not found in your library.' });
     }
@@ -638,17 +600,12 @@ export async function updateBookHandler(request: FastifyRequest, reply: FastifyR
       delete updates.authorIds;
     }
 
-    let userBook = await UserBook.findOne({ bookId: id, userId });
     const book = await Book.findById(id);
     if (!book) {
       return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    const ownsLegacyBook = book.userId?.toString() === userId;
-    if (!userBook && ownsLegacyBook) {
-      await syncUserBookFromLegacyBook(book);
-      userBook = await UserBook.findOne({ bookId: id, userId });
-    }
+    const userBook = await UserBook.findOne({ bookId: id, userId });
     if (!userBook) {
       return reply.status(404).send({ error: 'Book not found in your library.' });
     }
@@ -765,7 +722,7 @@ async function syncBookStatsAndActivities(
   }
 
   if (oldReview !== newReview && newHasReview) {
-    const ownerId = book.addedByUserId || book.userId;
+    const ownerId = book.addedByUserId;
     if (ownerId && ownerId.toString() !== userId) {
       await Notification.create({
         userId: ownerId,
@@ -852,7 +809,7 @@ export async function voteBookHandler(request: FastifyRequest, reply: FastifyRep
     bookStats.totalVotes += 1;
     await bookStats.save();
 
-    const ownerId = book.addedByUserId || book.userId;
+    const ownerId = book.addedByUserId;
     if (ownerId && ownerId.toString() !== userId) {
       await Notification.create({
         userId: ownerId,
@@ -923,13 +880,7 @@ export async function deleteBookHandler(request: FastifyRequest, reply: FastifyR
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    let userBook = await UserBook.findOne({ bookId: id, userId });
-    const ownsLegacyBook = book.userId?.toString() === userId;
-    if (!userBook && ownsLegacyBook) {
-      await syncUserBookFromLegacyBook(book);
-      userBook = await UserBook.findOne({ bookId: id, userId });
-    }
-
+    const userBook = await UserBook.findOne({ bookId: id, userId });
     if (!userBook) {
       return reply.status(404).send({ error: 'Book not found in your library.' });
     }
@@ -998,12 +949,10 @@ export async function startReadingSessionHandler(request: FastifyRequest, reply:
   const { notes, unitsRead } = request.body as any;
 
   try {
-    const book = await Book.findById(bookId);
-    let userBook = await UserBook.findOne({ bookId, userId });
-    if (!userBook && book?.userId?.toString() === userId) {
-      await syncUserBookFromLegacyBook(book);
-      userBook = await UserBook.findOne({ bookId, userId });
-    }
+    const [book, userBook] = await Promise.all([
+      Book.findById(bookId),
+      UserBook.findOne({ bookId, userId }),
+    ]);
     if (!book || !userBook) {
       return reply.status(404).send({ error: 'Book not found.' });
     }
