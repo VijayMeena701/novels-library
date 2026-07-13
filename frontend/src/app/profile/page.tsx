@@ -60,28 +60,28 @@ export default function Dashboard() {
     };
   }, [user]);
 
-  // Quick increment unitsRead
+  // Quick increment chaptersRead
   const handleQuickIncrement = async (e: React.MouseEvent, book: Book) => {
     e.preventDefault(); // Prevent navigating to details link
     e.stopPropagation();
     
-    const nextCh = book.unitsRead + 1;
+    const nextCh = book.chaptersRead + 1;
     // Optimistic UI update
     setBooks(prev => prev.map(n => {
       if (n._id === book._id) {
         let updatedStatus = n.status;
-        if (n.translatedUnitsTotal > 0 && nextCh >= n.translatedUnitsTotal) {
+        if (n.translatedChaptersTotal > 0 && nextCh >= n.translatedChaptersTotal) {
           updatedStatus = 'completed';
         }
-        return { ...n, unitsRead: nextCh, status: updatedStatus as BookStatus };
+        return { ...n, chaptersRead: nextCh, status: updatedStatus as BookStatus };
       }
       return n;
     }));
 
     try {
-      await api.updateBook(book._id, { unitsRead: nextCh });
+      await api.updateBook(book._id, { chaptersRead: nextCh });
     } catch (err) {
-      console.error('Failed to update units read:', err);
+      console.error('Failed to update chapters read:', err);
       // Rollback on error
       fetchBooks();
     }
@@ -149,7 +149,7 @@ export default function Dashboard() {
     total: books.length,
     reading: books.filter((book) => book.status === 'reading').length,
     completed: books.filter((book) => book.status === 'completed').length,
-    rawReady: books.filter((book) => Boolean(book.rawSourceUrl || book.rawUnitsTotal > 0)).length,
+    rawReady: books.filter((book) => Boolean(book.rawSourceUrl || book.rawChaptersTotal > 0)).length,
   };
 
   if (authLoading || loading) {
@@ -303,7 +303,7 @@ export default function Dashboard() {
                   onChange={(e) => setNewUrl(e.target.value)}
                 />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                  If provided, our background crawler will download and archive metadata & units automatically.
+                  If provided, our background crawler will download and archive metadata & chapters automatically.
                 </span>
               </div>
 

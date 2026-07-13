@@ -5,7 +5,7 @@ export interface IUserBook extends Document {
   userId: mongoose.Types.ObjectId;
   bookId: mongoose.Types.ObjectId;
   status: BookStatus;
-  unitsRead: number;
+  chaptersRead: number;
   rating: number;
   review: string;
   personalNotes: string;
@@ -15,7 +15,7 @@ export interface IUserBook extends Document {
   personalTags: string[];
   personalTagKeys: string[];
   completedAt?: Date;
-  lastVisitedUnitNumber?: number;
+  lastVisitedChapterNumber?: number;
   lastVisitedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -43,7 +43,7 @@ const UserBookSchema = new Schema<IUserBook>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
   status: { type: String, enum: ['reading', 'completed', 'on_hold', 'dropped', 'planning'], default: 'planning', index: true },
-  unitsRead: { type: Number, default: 0 },
+  chaptersRead: { type: Number, default: 0 },
   rating: { type: Number, default: 0 },
   review: { type: String, default: '' },
   personalNotes: { type: String, default: '' },
@@ -53,7 +53,7 @@ const UserBookSchema = new Schema<IUserBook>({
   personalTags: { type: [String], default: [], index: true },
   personalTagKeys: { type: [String], default: [], index: true },
   completedAt: { type: Date },
-  lastVisitedUnitNumber: { type: Number },
+  lastVisitedChapterNumber: { type: Number },
   lastVisitedAt: { type: Date },
 }, { timestamps: true });
 

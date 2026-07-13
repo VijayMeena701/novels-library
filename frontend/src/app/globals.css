@@ -1075,7 +1075,7 @@ h4 {
 	justify-content: flex-end;
 }
 
-.unit-list {
+.chapter-list {
 	max-height: 450px;
 	overflow-y: auto;
 	border: 1px solid var(--border-color);
@@ -1083,7 +1083,7 @@ h4 {
 	background: #ffffff;
 }
 
-.unit-row {
+.chapter-row {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -1093,15 +1093,15 @@ h4 {
 	transition: background-color var(--transition);
 }
 
-.unit-row:hover {
+.chapter-row:hover {
 	background: var(--surface-2);
 }
 
-.unit-row-read {
+.chapter-row-read {
 	background: #fbfcfc;
 }
 
-.unit-title {
+.chapter-title {
 	min-width: 0;
 	color: var(--text-primary);
 	font-size: 0.9rem;
@@ -1111,12 +1111,12 @@ h4 {
 	white-space: nowrap;
 }
 
-.unit-row-read .unit-title {
+.chapter-row-read .chapter-title {
 	color: var(--text-secondary);
 	font-weight: 500;
 }
 
-.unit-meta {
+.chapter-meta {
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
@@ -1950,19 +1950,19 @@ h4 {
 	line-height: 1.8;
 }
 
-.reader-unit-header {
+.reader-chapter-header {
 	border-bottom: 1px solid var(--reader-border);
 	padding-bottom: 1.4rem;
 }
 
-.reader-unit-header h1 {
+.reader-chapter-header h1 {
 	color: var(--reader-text);
 	font-family: inherit;
 	font-size: clamp(1.8rem, 4vw, 2.35rem);
 	line-height: 1.28;
 }
 
-.reader-unit-meta {
+.reader-chapter-meta {
 	display: flex;
 	justify-content: space-between;
 	flex-wrap: wrap;
@@ -1972,7 +1972,7 @@ h4 {
 	font-size: 0.82rem;
 }
 
-.reader-unit-meta a {
+.reader-chapter-meta a {
 	color: inherit;
 	text-decoration: underline;
 }
@@ -2411,12 +2411,12 @@ tbody tr:hover {
 		justify-content: flex-start;
 	}
 
-	.unit-row {
+	.chapter-row {
 		align-items: flex-start;
 		flex-direction: column;
 	}
 
-	.unit-title {
+	.chapter-title {
 		white-space: normal;
 	}
 
@@ -2483,12 +2483,12 @@ tbody tr:hover {
 		flex: 1 1 96px;
 	}
 
-	.unit-row {
+	.chapter-row {
 		align-items: flex-start;
 		flex-direction: column;
 	}
 
-	.unit-title {
+	.chapter-title {
 		white-space: normal;
 	}
 

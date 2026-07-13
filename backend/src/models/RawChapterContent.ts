@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IRawBookContent extends Document {
+export interface IRawChapterContent extends Document {
   bookId: mongoose.Types.ObjectId;
-  unitNumber: number;
-  unitType?: string;
+  chapterNumber: number;
+  chapterType?: string;
   title: string;
   content: string;
   sourceUrl: string;
@@ -11,10 +11,10 @@ export interface IRawBookContent extends Document {
   scrapedAt: Date;
 }
 
-const RawBookContentSchema = new Schema<IRawBookContent>({
+const RawChapterContentSchema = new Schema<IRawChapterContent>({
   bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
-  unitNumber: { type: Number, required: true },
-  unitType: { type: String, default: 'chapter' },
+  chapterNumber: { type: Number, required: true },
+  chapterType: { type: String, default: 'chapter' },
   title: { type: String, default: '' },
   content: { type: String, required: true },
   sourceUrl: { type: String, default: '' },
@@ -22,6 +22,6 @@ const RawBookContentSchema = new Schema<IRawBookContent>({
   scrapedAt: { type: Date, default: Date.now },
 });
 
-RawBookContentSchema.index({ bookId: 1, unitNumber: 1 }, { unique: true });
+RawChapterContentSchema.index({ bookId: 1, chapterNumber: 1 }, { unique: true });
 
-export const RawBookContent = mongoose.model<IRawBookContent>('RawBookContent', RawBookContentSchema);
+export const RawChapterContent = mongoose.model<IRawChapterContent>('RawChapterContent', RawChapterContentSchema, 'rawbookcontents');

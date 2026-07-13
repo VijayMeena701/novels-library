@@ -29,17 +29,17 @@ import {
 	upsertPublicationStatusHandler,
 } from "../controllers/taxonomyController.js";
 import {
-	listUnitsHandler,
-	getUnitHandler,
-	listRawUnitsHandler,
-	getRawUnitHandler,
-	listPublicUnitsHandler,
-	getPublicUnitHandler,
-	listPublicRawUnitsHandler,
-	getPublicRawUnitHandler,
-	listBookVisitsHandler,
-	recordBookVisitHandler,
-	translateRawUnitHandler,
+	listChaptersHandler,
+	getChapterHandler,
+	listRawChaptersHandler,
+	getRawChapterHandler,
+	listPublicChaptersHandler,
+	getPublicChapterHandler,
+	listPublicRawChaptersHandler,
+	getPublicRawChapterHandler,
+	listChapterVisitsHandler,
+	recordChapterVisitHandler,
+	translateRawChapterHandler,
 } from "../controllers/chapterController.js";
 import { getPublicBookCoverHandler, syncBookCoverHandler } from "../controllers/coverController.js";
 import { getUserSettingsHandler, updateUserSettingsHandler } from "../controllers/settingsController.js";
@@ -67,8 +67,8 @@ import {
 	voteBookRequestHandler,
 } from "../controllers/requestController.js";
 import {
-	importFailedUnitHtmlHandler,
-	importUnitHtmlHandler,
+	importFailedChapterHtmlHandler,
+	importChapterHtmlHandler,
 	listJobsHandler,
 	getJobsForBookHandler,
 	importMetadataHtmlHandler,
@@ -139,10 +139,10 @@ export async function apiRoutes(fastify: FastifyInstance) {
 	fastify.get("/home", { preHandler: requireCapability(CAPABILITY.BOOKS_READ, { allowAnonymous: true }) }, getHomeHandler);
 	fastify.get("/public/books/:id", { preHandler: requireCapability(CAPABILITY.BOOKS_READ, { allowAnonymous: true }) }, getCatalogBookHandler);
 	fastify.get("/public/books/:id/reviews", { preHandler: requireCapability(CAPABILITY.BOOKS_READ, { allowAnonymous: true }) }, getBookReviewsHandler);
-	fastify.get("/public/books/:id/units", { preHandler: requireCapability(CAPABILITY.UNITS_READ, { allowAnonymous: true }) }, listPublicUnitsHandler);
-	fastify.get("/public/books/:id/units/:unitNumber", { preHandler: requireCapability(CAPABILITY.UNITS_READ, { allowAnonymous: true }) }, getPublicUnitHandler);
-	fastify.get("/public/books/:id/raw-units", { preHandler: requireCapability(CAPABILITY.UNITS_READ_RAW, { allowAnonymous: true }) }, listPublicRawUnitsHandler);
-	fastify.get("/public/books/:id/raw-units/:unitNumber", { preHandler: requireCapability(CAPABILITY.UNITS_READ_RAW, { allowAnonymous: true }) }, getPublicRawUnitHandler);
+	fastify.get("/public/books/:id/chapters", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ, { allowAnonymous: true }) }, listPublicChaptersHandler);
+	fastify.get("/public/books/:id/chapters/:chapterNumber", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ, { allowAnonymous: true }) }, getPublicChapterHandler);
+	fastify.get("/public/books/:id/raw-chapters", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ_RAW, { allowAnonymous: true }) }, listPublicRawChaptersHandler);
+	fastify.get("/public/books/:id/raw-chapters/:chapterNumber", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ_RAW, { allowAnonymous: true }) }, getPublicRawChapterHandler);
 	fastify.get("/public/authors", { preHandler: requireCapability(CAPABILITY.AUTHORS_READ, { allowAnonymous: true }) }, listAuthorsHandler);
 	fastify.get("/public/authors/:id", { preHandler: requireCapability(CAPABILITY.AUTHORS_READ, { allowAnonymous: true }) }, getAuthorHandler);
 	fastify.get("/public/genres", { preHandler: requireCapability(CAPABILITY.GENRES_READ, { allowAnonymous: true }) }, listGenresHandler);
@@ -205,22 +205,22 @@ export async function apiRoutes(fastify: FastifyInstance) {
 		protectedGroup.put("/pronunciation-rules/:ruleId", { preHandler: requireCapability(CAPABILITY.PRONUNCIATION_MANAGE) }, updatePronunciationRuleHandler);
 		protectedGroup.delete("/pronunciation-rules/:ruleId", { preHandler: requireCapability(CAPABILITY.PRONUNCIATION_MANAGE) }, deletePronunciationRuleHandler);
 
-		protectedGroup.get("/books/:id/units", { preHandler: requireCapability(CAPABILITY.UNITS_READ) }, listUnitsHandler);
-		protectedGroup.get("/books/:id/units/:unitNumber", { preHandler: requireCapability(CAPABILITY.UNITS_READ) }, getUnitHandler);
-		protectedGroup.get("/books/:id/raw-units", { preHandler: requireCapability(CAPABILITY.UNITS_READ_RAW) }, listRawUnitsHandler);
-		protectedGroup.get("/books/:id/raw-units/:unitNumber", { preHandler: requireCapability(CAPABILITY.UNITS_READ_RAW) }, getRawUnitHandler);
-		protectedGroup.post("/books/:id/raw-units/:unitNumber/translate", { preHandler: requireCapability(CAPABILITY.UNITS_TRANSLATE) }, translateRawUnitHandler);
-		protectedGroup.get("/books/:id/visits", { preHandler: requireCapability(CAPABILITY.UNITS_VISIT) }, listBookVisitsHandler);
-		protectedGroup.post("/books/:id/units/:unitNumber/visits", { preHandler: requireCapability(CAPABILITY.UNITS_VISIT) }, recordBookVisitHandler);
+		protectedGroup.get("/books/:id/chapters", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ) }, listChaptersHandler);
+		protectedGroup.get("/books/:id/chapters/:chapterNumber", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ) }, getChapterHandler);
+		protectedGroup.get("/books/:id/raw-chapters", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ_RAW) }, listRawChaptersHandler);
+		protectedGroup.get("/books/:id/raw-chapters/:chapterNumber", { preHandler: requireCapability(CAPABILITY.CHAPTERS_READ_RAW) }, getRawChapterHandler);
+		protectedGroup.post("/books/:id/raw-chapters/:chapterNumber/translate", { preHandler: requireCapability(CAPABILITY.CHAPTERS_TRANSLATE) }, translateRawChapterHandler);
+		protectedGroup.get("/books/:id/visits", { preHandler: requireCapability(CAPABILITY.CHAPTERS_VISIT) }, listChapterVisitsHandler);
+		protectedGroup.post("/books/:id/chapters/:chapterNumber/visits", { preHandler: requireCapability(CAPABILITY.CHAPTERS_VISIT) }, recordChapterVisitHandler);
 
 		protectedGroup.get("/jobs", { preHandler: requireCapability(CAPABILITY.JOBS_LIST) }, listJobsHandler);
 		protectedGroup.get("/jobs/book/:bookId", { preHandler: requireCapability(CAPABILITY.JOBS_LIST) }, getJobsForBookHandler);
 		protectedGroup.post("/jobs/:jobId/retry", { preHandler: requireCapability(CAPABILITY.JOBS_RETRY) }, retryJobHandler);
 		protectedGroup.post("/jobs/:jobId/manual-intervention", { preHandler: requireCapability(CAPABILITY.JOBS_MANUAL_INTERVENTION) }, openManualInterventionHandler);
-		protectedGroup.post("/jobs/:jobId/import-unit-html", { preHandler: requireCapability(CAPABILITY.JOBS_IMPORT), bodyLimit: 20 * 1024 * 1024 }, importFailedUnitHtmlHandler);
+		protectedGroup.post("/jobs/:jobId/import-chapter-html", { preHandler: requireCapability(CAPABILITY.JOBS_IMPORT), bodyLimit: 20 * 1024 * 1024 }, importFailedChapterHtmlHandler);
 		protectedGroup.post("/jobs/book/:bookId/import-html-index", { preHandler: requireCapability(CAPABILITY.JOBS_IMPORT), bodyLimit: 20 * 1024 * 1024 }, importMetadataHtmlHandler);
 		protectedGroup.post("/jobs/book/:bookId/import-raw-html", { preHandler: requireCapability(CAPABILITY.JOBS_IMPORT), bodyLimit: 20 * 1024 * 1024 }, importRawMetadataHtmlHandler);
-		protectedGroup.post("/jobs/book/:bookId/import-unit-html", { preHandler: requireCapability(CAPABILITY.JOBS_IMPORT), bodyLimit: 20 * 1024 * 1024 }, importUnitHtmlHandler);
+		protectedGroup.post("/jobs/book/:bookId/import-chapter-html", { preHandler: requireCapability(CAPABILITY.JOBS_IMPORT), bodyLimit: 20 * 1024 * 1024 }, importChapterHtmlHandler);
 		protectedGroup.post("/jobs/book/:bookId/scrape-now", { preHandler: requireCapability(CAPABILITY.JOBS_SCRAPE) }, runScrapeNowHandler);
 		protectedGroup.post("/jobs/book/:bookId/scrape", { preHandler: requireCapability(CAPABILITY.JOBS_SCRAPE) }, triggerScrapeHandler);
 

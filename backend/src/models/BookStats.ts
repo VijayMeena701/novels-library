@@ -5,7 +5,7 @@ export interface IBookStats extends Document {
   totalVisits: number;
   totalUniqueVisitors: number;
   totalReadingSessions: number;
-  totalUnitsRead: number;
+  totalChaptersRead: number;
   totalVotes: number;
   ratingCount: number;
   ratingSum: number;
@@ -21,7 +21,7 @@ const BookStatsSchema = new Schema<IBookStats>({
   totalVisits: { type: Number, default: 0 },
   totalUniqueVisitors: { type: Number, default: 0 },
   totalReadingSessions: { type: Number, default: 0 },
-  totalUnitsRead: { type: Number, default: 0 },
+  totalChaptersRead: { type: Number, default: 0 },
   totalVotes: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
   ratingSum: { type: Number, default: 0 },

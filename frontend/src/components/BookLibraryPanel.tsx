@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, getBookCoverUrl, Book, ReadingSession, BookContent, BookVisit, BookStatus } from '../utils/api';
+import { api, getBookCoverUrl, Book, ReadingSession, ChapterContent, ChapterVisit, BookStatus } from '../utils/api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
@@ -34,12 +34,12 @@ function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function isGenericUnitTitle(value: string, bookTitle: string, unitNumber: number): boolean {
+function isGenericChapterTitle(value: string, bookTitle: string, chapterNumber: number): boolean {
   const normalized = normalizeTitle(value);
   return !normalized ||
     normalized === normalizeTitle(bookTitle) ||
-    normalized === `unit ${unitNumber}` ||
-    normalized === `ch ${unitNumber}`;
+    normalized === `chapter ${chapterNumber}` ||
+    normalized === `ch ${chapterNumber}`;
 }
 
 function getStatusBadgeVariant(status?: BookStatus | string) {
@@ -62,19 +62,19 @@ function getStatusBadgeVariant(status?: BookStatus | string) {
 export interface BookLibraryPanelProps {
   bookId: string;
   book: Book;
-  units: Omit<BookContent, 'content'>[];
+  chapters: Omit<ChapterContent, 'content'>[];
   onUpdate?: (book: Book) => void;
 }
 
-export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onUpdate }: BookLibraryPanelProps) {
+export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersProp, onUpdate }: BookLibraryPanelProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
   const canRemoveLibrary = hasCapability(user, CAPABILITY.LIBRARY_DELETE);
 
   const [book, setBook] = useState<Book>(bookProp);
-  const [units, setUnits] = useState<Omit<BookContent, 'content'>[]>(unitsProp);
-  const [unitVisits, setBookVisits] = useState<BookVisit[]>([]);
+  const [chapters, setChapters] = useState<Omit<ChapterContent, 'content'>[]>(chaptersProp);
+  const [chapterVisits, setChapterVisits] = useState<ChapterVisit[]>([]);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,13 +100,13 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
   useEffect(() => {
     setBook(bookProp);
-    setUnits(unitsProp);
-  }, [bookProp, unitsProp]);
+    setChapters(chaptersProp);
+  }, [bookProp, chaptersProp]);
 
   useEffect(() => {
     if (!book) return;
     setEditStatus(book.status ?? 'reading');
-    setEditChRead(book.unitsRead ?? 0);
+    setEditChRead(book.chaptersRead ?? 0);
     setEditCompletedAt(formatDateTimeLocal(book.completedAt));
     setEditRating(book.rating ?? 0);
     setEditReview(book.review || '');
@@ -123,13 +123,13 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
     async function loadData() {
       try {
-        const [unitVisitsData, sessionsData] = await Promise.all([
-          api.getBookVisits(bookId),
+        const [chapterVisitsData, sessionsData] = await Promise.all([
+          api.getChapterVisits(bookId),
           api.getSessions(bookId),
         ]);
         if (cancelled) return;
 
-        setBookVisits(unitVisitsData);
+        setChapterVisits(chapterVisitsData);
         setSessions(sessionsData);
       } catch (err) {
         if (!cancelled) console.error('Error fetching library details:', err);
@@ -150,7 +150,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
     try {
       const updated = await api.updateBook(bookId, {
         status: editStatus,
-        unitsRead: editChRead,
+        chaptersRead: editChRead,
         completedAt: editCompletedAt ? new Date(editCompletedAt).toISOString() : null,
         rating: editRating,
         review: editReview,
@@ -194,7 +194,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
     try {
       await api.startSession(bookId, {
         notes: sessionNotes || 'Started new session.',
-        unitsRead: sessionChRead,
+        chaptersRead: sessionChRead,
       });
       setIsSessionModalOpen(false);
       setSessionNotes('');
@@ -208,9 +208,9 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
   };
 
   const handleUpdateSessionProgress = async (session: ReadingSession, increment: boolean) => {
-    const nextCh = increment ? session.unitsRead + 1 : Math.max(0, session.unitsRead - 1);
+    const nextCh = increment ? session.chaptersRead + 1 : Math.max(0, session.chaptersRead - 1);
     try {
-      await api.updateSession(bookId, session._id, { unitsRead: nextCh });
+      await api.updateSession(bookId, session._id, { chaptersRead: nextCh });
       const sessionsData = await api.getSessions(bookId);
       setSessions(sessionsData);
     } catch (err) {
@@ -257,9 +257,9 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
   const displayAuthor = book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
   const coverSrc = getBookCoverUrl(book);
-  const resumeUnit = book.lastVisitedUnitNumber || book.unitsRead || 1;
-  const readPercent = book.translatedUnitsTotal > 0
-    ? Math.min(100, Math.round(((book.unitsRead ?? 0) / book.translatedUnitsTotal) * 100))
+  const resumeChapter = book.lastVisitedChapterNumber || book.chaptersRead || 1;
+  const readPercent = book.translatedChaptersTotal > 0
+    ? Math.min(100, Math.round(((book.chaptersRead ?? 0) / book.translatedChaptersTotal) * 100))
     : 0;
   const hasSourceMetadata = Boolean(
     book.authorRealName ||
@@ -269,38 +269,38 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
     book.publicationStatus,
   );
 
-  const unitIndexByNumber = new Map((book.translatedUnitsList || []).map((unit) => [unit.unitNumber, unit]));
+  const chapterIndexByNumber = new Map((book.translatedChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]));
 
-  const getUnitDisplayTitle = (unit: Omit<BookContent, 'content'>) => {
-    const indexedTitle = unitIndexByNumber.get(unit.unitNumber)?.title?.trim() || '';
-    const archivedTitle = unit.title?.trim() || '';
+  const getChapterDisplayTitle = (chapter: Omit<ChapterContent, 'content'>) => {
+    const indexedTitle = chapterIndexByNumber.get(chapter.chapterNumber)?.title?.trim() || '';
+    const archivedTitle = chapter.title?.trim() || '';
 
-    if (indexedTitle && isGenericUnitTitle(archivedTitle, book.title, unit.unitNumber)) {
+    if (indexedTitle && isGenericChapterTitle(archivedTitle, book.title, chapter.chapterNumber)) {
       return indexedTitle;
     }
 
-    return archivedTitle || indexedTitle || `Unit ${unit.unitNumber}`;
+    return archivedTitle || indexedTitle || `Chapter ${chapter.chapterNumber}`;
   };
 
-  const getVisitDisplayTitle = (visit: BookVisit) => {
-    const indexedTitle = unitIndexByNumber.get(visit.unitNumber)?.title?.trim() || '';
-    const visitTitle = visit.unitTitle?.trim() || '';
+  const getVisitDisplayTitle = (visit: ChapterVisit) => {
+    const indexedTitle = chapterIndexByNumber.get(visit.chapterNumber)?.title?.trim() || '';
+    const visitTitle = visit.chapterTitle?.trim() || '';
 
-    if (indexedTitle && isGenericUnitTitle(visitTitle, book.title, visit.unitNumber)) {
+    if (indexedTitle && isGenericChapterTitle(visitTitle, book.title, visit.chapterNumber)) {
       return indexedTitle;
     }
 
-    return visitTitle || indexedTitle || `Unit ${visit.unitNumber}`;
+    return visitTitle || indexedTitle || `Chapter ${visit.chapterNumber}`;
   };
 
-  const unitVisitsBySession = unitVisits.reduce<Record<string, BookVisit[]>>((groups, visit) => {
+  const chapterVisitsBySession = chapterVisits.reduce<Record<string, ChapterVisit[]>>((groups, visit) => {
     if (!visit.sessionId) return groups;
     groups[visit.sessionId] = groups[visit.sessionId] || [];
     groups[visit.sessionId].push(visit);
     return groups;
   }, {});
 
-  const standaloneBookVisits = unitVisits.filter((visit) => !visit.sessionId);
+  const standaloneChapterVisits = chapterVisits.filter((visit) => !visit.sessionId);
 
   const hasNotes = Boolean(
     book.review ||
@@ -376,7 +376,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
                   <div className="flex justify-between text-xs font-bold mb-1">
                     <span className="text-copy">Reading progress</span>
                     <span className="text-primary">
-                      {book.unitsRead ?? 0} / {book.translatedUnitsTotal || '?'} units ({readPercent}%)
+                      {book.chaptersRead ?? 0} / {book.translatedChaptersTotal || '?'} chapters ({readPercent}%)
                     </span>
                   </div>
                   <div className="w-full h-1.5 bg-surface-muted rounded-full overflow-hidden">
@@ -389,7 +389,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
                 <div className="flex flex-wrap gap-2 mt-1">
                   <Button asChild size="sm" className="bg-primary text-background hover:bg-primary-hover">
-                    <Link href={`/books/${bookId}/reader/${resumeUnit}`}>Continue Reading</Link>
+                    <Link href={`/books/${bookId}/reader/${resumeChapter}`}>Continue Reading</Link>
                   </Button>
                   {book.sourceUrl && (
                     <Button asChild variant="ghost" size="sm">
@@ -520,7 +520,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
             </Button>
           </CardHeader>
           <CardContent className="p-4">
-            {sessions.length === 0 && standaloneBookVisits.length === 0 && (
+            {sessions.length === 0 && standaloneChapterVisits.length === 0 && (
               <p className="text-sm text-muted-copy italic">No re-read logs or standalone visits exist for this book yet.</p>
             )}
 
@@ -544,16 +544,16 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
                       </p>
                     )}
 
-                    {(unitVisitsBySession[sess._id] || []).length > 0 && (
+                    {(chapterVisitsBySession[sess._id] || []).length > 0 && (
                       <div className="flex flex-col gap-1 mt-2">
-                        <span className="text-xs font-extrabold uppercase text-muted-copy">Unit Opens</span>
-                        {(unitVisitsBySession[sess._id] || []).slice(0, 5).map((visit) => (
+                        <span className="text-xs font-extrabold uppercase text-muted-copy">Chapter Opens</span>
+                        {(chapterVisitsBySession[sess._id] || []).slice(0, 5).map((visit) => (
                           <Link
                             key={visit._id}
-                            href={`/books/${bookId}/reader/${visit.unitNumber}`}
+                            href={`/books/${bookId}/reader/${visit.chapterNumber}`}
                             className="text-xs text-copy hover:text-primary transition-colors"
                           >
-                            Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
+                            Ch. {visit.chapterNumber}: {getVisitDisplayTitle(visit)}
                             <span className="text-muted-copy"> · {new Date(visit.openedAt).toLocaleString()}</span>
                           </Link>
                         ))}
@@ -562,7 +562,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
 
                     <div className="flex items-center justify-between border-t border-border pt-2 mt-2">
                       <span className="text-xs text-muted-copy">
-                        Units Read: <strong className="text-foreground">{sess.unitsRead}</strong>
+                        Chapters Read: <strong className="text-foreground">{sess.chaptersRead}</strong>
                       </span>
                       {!sess.completed && (
                         <div className="flex gap-2">
@@ -597,17 +597,17 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
               </div>
             )}
 
-            {standaloneBookVisits.length > 0 && (
+            {standaloneChapterVisits.length > 0 && (
               <div className={sessions.length > 0 ? 'border-t border-border pt-4 mt-4' : ''}>
                 <h4 className="text-sm font-extrabold text-foreground mb-2">Recent Standalone Revisits</h4>
                 <div className="flex flex-col gap-1">
-                  {standaloneBookVisits.slice(0, 8).map((visit) => (
+                  {standaloneChapterVisits.slice(0, 8).map((visit) => (
                     <Link
                       key={visit._id}
-                      href={`/books/${bookId}/reader/${visit.unitNumber}`}
+                      href={`/books/${bookId}/reader/${visit.chapterNumber}`}
                       className="text-xs text-copy hover:text-primary transition-colors"
                     >
-                      Ch. {visit.unitNumber}: {getVisitDisplayTitle(visit)}
+                      Ch. {visit.chapterNumber}: {getVisitDisplayTitle(visit)}
                       <span className="text-muted-copy"> · {new Date(visit.openedAt).toLocaleString()}</span>
                     </Link>
                   ))}
@@ -624,12 +624,12 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
           <CardHeader>
             <CardTitle>Table of Contents</CardTitle>
             <CardDescription>
-              Archived: {units.length} / {book.translatedUnitsTotal || '?'} units.
+              Archived: {chapters.length} / {book.translatedChaptersTotal || '?'} chapters.
             </CardDescription>
           </CardHeader>
-          {units.length === 0 ? (
+          {chapters.length === 0 ? (
             <CardContent className="p-8 text-center">
-              <p className="text-sm text-muted-copy mb-4">No units have been archived locally yet.</p>
+              <p className="text-sm text-muted-copy mb-4">No chapters have been archived locally yet.</p>
               <Button asChild variant="secondary" size="sm">
                 <Link href={`/books/${bookId}`}>View Catalog Page</Link>
               </Button>
@@ -637,13 +637,13 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
           ) : (
             <CardContent className="p-0">
               <div className="max-h-[520px] overflow-y-auto">
-                {units.map((ch) => {
-                  const isRead = ch.unitNumber <= (book.unitsRead ?? 0);
-                  const unitTitle = getUnitDisplayTitle(ch);
+                {chapters.map((ch) => {
+                  const isRead = ch.chapterNumber <= (book.chaptersRead ?? 0);
+                  const chapterTitle = getChapterDisplayTitle(ch);
                   return (
                     <Link
                       key={ch._id}
-                      href={`/books/${bookId}/reader/${ch.unitNumber}`}
+                      href={`/books/${bookId}/reader/${ch.chapterNumber}`}
                       className="block"
                     >
                       <div
@@ -652,7 +652,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
                         }`}
                       >
                         <span className={`min-w-0 truncate text-sm ${isRead ? 'font-medium' : 'font-semibold'}`}>
-                          {unitTitle}
+                          {chapterTitle}
                         </span>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-xs text-muted-copy">
@@ -689,7 +689,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
                 <option value="planning">Planning</option>
               </Select>
             </Field>
-            <Field label="Units Read">
+            <Field label="Chapters Read">
               <Input
                 type="number"
                 min={0}
@@ -787,7 +787,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
         size="sm"
       >
         <form onSubmit={handleStartSession} className="flex flex-col gap-4">
-          <Field label="Starting Unit Progress">
+          <Field label="Starting Chapter Progress">
             <Input
               type="number"
               min={0}
@@ -822,7 +822,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, units: unitsProp, onU
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-copy">
-            Remove this book from your profile library? The shared catalog and archived units will stay in the system.
+            Remove this book from your profile library? The shared catalog and archived chapters will stay in the system.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setIsRemoveModalOpen(false)} disabled={removing}>

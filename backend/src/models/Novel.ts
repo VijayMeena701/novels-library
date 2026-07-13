@@ -2,11 +2,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export type BookStatus = 'reading' | 'completed' | 'on_hold' | 'dropped' | 'planning';
 
-export interface IUnitIndex {
+export interface IChapterIndex {
   title: string;
   url: string;
-  unitNumber: number;
-  unitType: string;
+  chapterNumber: number;
+  chapterType: string;
 }
 
 export interface IBook extends Document {
@@ -37,11 +37,11 @@ export interface IBook extends Document {
   sourceUrl: string;
   rawSourceUrl: string;
   rawOriginalLanguage: string;
-  rawUnitsTotal: number;
-  rawUnitsList: IUnitIndex[];
+  rawChaptersTotal: number;
+  rawChaptersList: IChapterIndex[];
   status: BookStatus;
-  translatedUnitsTotal: number;
-  translatedUnitsList: IUnitIndex[];
+  translatedChaptersTotal: number;
+  translatedChaptersList: IChapterIndex[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,22 +101,22 @@ const BookSchema = new Schema<IBook>({
   sourceUrl: { type: String, default: '' },
   rawSourceUrl: { type: String, default: '' },
   rawOriginalLanguage: { type: String, default: '' },
-  rawUnitsTotal: { type: Number, default: 0 },
-  rawUnitsList: [
+  rawChaptersTotal: { type: Number, default: 0 },
+  rawChaptersList: [
     {
       title: { type: String, required: true },
       url: { type: String, required: true },
-      unitNumber: { type: Number, required: true },
-      unitType: { type: String, default: 'chapter' },
+      chapterNumber: { type: Number, required: true },
+      chapterType: { type: String, default: 'chapter' },
     }
   ],
-  translatedUnitsTotal: { type: Number, default: 0 },
-  translatedUnitsList: [
+  translatedChaptersTotal: { type: Number, default: 0 },
+  translatedChaptersList: [
     {
       title: { type: String, required: true },
       url: { type: String, required: true },
-      unitNumber: { type: Number, required: true },
-      unitType: { type: String, default: 'chapter' },
+      chapterNumber: { type: Number, required: true },
+      chapterType: { type: String, default: 'chapter' },
     }
   ],
 }, { timestamps: true });

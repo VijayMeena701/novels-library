@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, ChevronLeft, Clock, Library, Pencil } from 'lucide-react';
-import { api, getBookCoverUrl, type Book, type BookVisit } from '../../../utils/api';
+import { api, getBookCoverUrl, type Book, type ChapterVisit } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -37,7 +37,7 @@ function formatDate(value: string) {
 type HistoryEvent =
   | { type: 'library_add'; date: string; label: string; icon: typeof Library }
   | { type: 'library_update'; date: string; label: string; icon: typeof Pencil }
-  | { type: 'visit'; date: string; label: string; icon: typeof BookOpen; visit: BookVisit };
+  | { type: 'visit'; date: string; label: string; icon: typeof BookOpen; visit: ChapterVisit };
 
 export default function BookHistoryPage() {
   const { user } = useAuth();
@@ -45,29 +45,29 @@ export default function BookHistoryPage() {
   const bookId = params?.bookId || '';
 
   const [book, setBook] = useState<Book | null>(null);
-  const [visits, setVisits] = useState<BookVisit[]>([]);
+  const [visits, setVisits] = useState<ChapterVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !bookId) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     async function loadBookHistory() {
+      setLoading(true);
+      setError(null);
       try {
         const [bookData, visitsData] = await Promise.all([
           api.getBook(bookId),
-          api.getBookVisits(bookId, 200),
+          api.getChapterVisits(bookId, 200),
         ]);
         if (!cancelled) {
           setBook(bookData);
           setVisits(visitsData);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          setError(err?.message || 'Failed to load book history.');
+          setError(err instanceof Error ? err.message : 'Failed to load book history.');
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -105,9 +105,9 @@ export default function BookHistoryPage() {
       list.push({
         type: 'visit',
         date: visit.openedAt,
-        label: visit.unitTitle
-          ? `Read Unit ${visit.unitNumber}: ${visit.unitTitle}`
-          : `Read Unit ${visit.unitNumber}`,
+        label: visit.chapterTitle
+          ? `Read Chapter ${visit.chapterNumber}: ${visit.chapterTitle}`
+          : `Read Chapter ${visit.chapterNumber}`,
         icon: BookOpen,
         visit,
       });
@@ -182,9 +182,9 @@ export default function BookHistoryPage() {
                 </div>
               </div>
 
-              {book.lastVisitedUnitNumber ? (
+              {book.lastVisitedChapterNumber ? (
                 <Button asChild className="sm:ml-auto">
-                  <Link href={`/books/${book._id}/reader/${book.lastVisitedUnitNumber}`}>
+                  <Link href={`/books/${book._id}/reader/${book.lastVisitedChapterNumber}`}>
                     Continue reading
                   </Link>
                 </Button>
@@ -216,7 +216,7 @@ export default function BookHistoryPage() {
                   return (
                     <Link
                       key={index}
-                      href={`/books/${book._id}/reader/${event.visit.unitNumber}`}
+                      href={`/books/${book._id}/reader/${event.visit.chapterNumber}`}
                       className="block"
                     >
                       <Card className="transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">

@@ -53,7 +53,7 @@ export function SpeechTab(props: ReaderBottomToolbarProps) {
 			</div>
 
 			<ToggleRow
-				label="Continue TTS into next unit"
+				label="Continue TTS into next chapter"
 				checked={props.autoOpenNext}
 				onChange={props.onAutoOpenNextChange}
 			/>

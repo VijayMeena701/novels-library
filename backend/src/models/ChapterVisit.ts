@@ -1,30 +1,30 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IBookVisit extends Document {
+export interface IChapterVisit extends Document {
   bookId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   sessionId?: mongoose.Types.ObjectId;
-  unitNumber: number;
-  unitType?: string;
-  unitTitle: string;
+  chapterNumber: number;
+  chapterType?: string;
+  chapterTitle: string;
   sourceUrl: string;
   openedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const BookVisitSchema = new Schema<IBookVisit>({
+const ChapterVisitSchema = new Schema<IChapterVisit>({
   bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   sessionId: { type: Schema.Types.ObjectId, ref: 'ReadingSession', index: true },
-  unitNumber: { type: Number, required: true, index: true },
-  unitType: { type: String, default: 'chapter' },
-  unitTitle: { type: String, default: '' },
+  chapterNumber: { type: Number, required: true, index: true },
+  chapterType: { type: String, default: 'chapter' },
+  chapterTitle: { type: String, default: '' },
   sourceUrl: { type: String, default: '' },
   openedAt: { type: Date, default: Date.now, index: true },
 }, { timestamps: true });
 
-BookVisitSchema.index({ userId: 1, bookId: 1, openedAt: -1 });
-BookVisitSchema.index({ userId: 1, sessionId: 1, openedAt: -1 });
+ChapterVisitSchema.index({ userId: 1, bookId: 1, openedAt: -1 });
+ChapterVisitSchema.index({ userId: 1, sessionId: 1, openedAt: -1 });
 
-export const BookVisit = mongoose.model<IBookVisit>('BookVisit', BookVisitSchema);
+export const ChapterVisit = mongoose.model<IChapterVisit>('ChapterVisit', ChapterVisitSchema, 'bookvisits');

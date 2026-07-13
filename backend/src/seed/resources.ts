@@ -26,10 +26,10 @@ export const RESOURCES: ResourceDefinition[] = [
     isSystem: true,
   },
   {
-    key: 'units',
-    name: 'Units',
-    description: 'Translated and raw units.',
-    category: 'units',
+    key: 'chapters',
+    name: 'Chapters',
+    description: 'Translated and raw chapters.',
+    category: 'chapters',
     actions: ['list', 'read', 'read_raw', 'translate', 'visit', 'manage'],
     isSystem: true,
   },
@@ -100,7 +100,7 @@ export const RESOURCES: ResourceDefinition[] = [
   {
     key: 'translation',
     name: 'Translation',
-    description: 'Raw unit translation.',
+    description: 'Raw chapter translation.',
     category: 'translation',
     actions: ['execute', 'manage'],
     isSystem: true,

@@ -79,7 +79,7 @@ export async function syncPolicies(): Promise<void> {
     }
   }
 
-  await e.addPolicy('role:anonymous', 'novels', 'read');
+  await e.addPolicy('role:anonymous', 'books', 'read');
   await e.addPolicy('role:anonymous', 'chapters', 'read');
   await e.addPolicy('role:anonymous', 'chapters', 'read_raw');
   await e.addPolicy('role:anonymous', 'authors', 'read');

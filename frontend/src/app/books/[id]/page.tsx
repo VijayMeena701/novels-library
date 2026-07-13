@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { use, useEffect, useMemo, useState, type FormEvent } from "react";
-import { api, getBookCoverUrl, type BackgroundJob, type BookContent, type BookReview, type JobType, type Book, type SourceKind, type User } from "../../../utils/api";
+import { api, getBookCoverUrl, ApiError, type BackgroundJob, type ChapterContent, type BookReview, type JobType, type Book, type SourceKind, type User } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 import { useToast } from "../../../context/ToastContext";
 import { CAPABILITY } from "../../../utils/permissions";
@@ -24,17 +24,17 @@ function normalizeTitle(value: string): string {
 	return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-function isGenericUnitTitle(value: string, bookTitle: string, unitNumber: number): boolean {
+function isGenericChapterTitle(value: string, bookTitle: string, chapterNumber: number): boolean {
 	const normalized = normalizeTitle(value);
-	return !normalized || normalized === normalizeTitle(bookTitle) || normalized === `unit ${unitNumber}` || normalized === `ch ${unitNumber}`;
+	return !normalized || normalized === normalizeTitle(bookTitle) || normalized === `chapter ${chapterNumber}` || normalized === `ch ${chapterNumber}`;
 }
 
 function formatJobTypeLabel(type: JobType): string {
 	const labels: Record<JobType, string> = {
 		scrape_metadata: "Translated index",
-		scrape_units: "Translated archive",
+		scrape_chapters: "Translated archive",
 		scrape_raw_metadata: "Raw index",
-		scrape_raw_units: "Raw archive",
+		scrape_raw_chapters: "Raw archive",
 	};
 	return labels[type];
 }
@@ -68,7 +68,7 @@ function getJobBadgeVariant(status: BackgroundJob["status"]): "processing" | "co
 }
 
 type CatalogItem = {
-	unitNumber: number;
+	chapterNumber: number;
 	title: string;
 	archived: boolean;
 	sourceUrl?: string;
@@ -101,16 +101,16 @@ type CommonAdminAction =
 // --- Hero section for cover art, primary tracking features, and title stats ---
 interface HeroProps {
 	book: Book;
-	unitsCount: number;
+	chaptersCount: number;
 	rawCatalogCount: number;
 	coverSrc: string;
 	user: User | null;
 	isUserBook: boolean;
 	adding: boolean;
 	addMessage: string;
-	firstReadableUnit: number;
-	continueUnit: number;
-	firstReadableRawUnit: number;
+	firstReadableChapter: number;
+	continueChapter: number;
+	firstReadableRawChapter: number;
 	onAddToLibrary: () => void;
 	voting: boolean;
 	voted: boolean;
@@ -119,25 +119,25 @@ interface HeroProps {
 
 function BookHero({
 	book,
-	unitsCount,
+	chaptersCount,
 	rawCatalogCount,
 	coverSrc,
 	user,
 	isUserBook,
 	adding,
 	addMessage,
-	firstReadableUnit,
-	continueUnit,
-	firstReadableRawUnit,
+	firstReadableChapter,
+	continueChapter,
+	firstReadableRawChapter,
 	onAddToLibrary,
 	voting,
 	voted,
 	onVote,
 }: HeroProps) {
-	const translatedUnitsTotal = book.translatedUnitsTotal || unitsCount || 1;
-	const archivePercentage = Math.min(100, Math.round((unitsCount / translatedUnitsTotal) * 100));
-	const resumeUnit = continueUnit > 0 ? continueUnit : firstReadableUnit;
-	const isContinue = continueUnit > 0 && continueUnit !== firstReadableUnit;
+	const translatedChaptersTotal = book.translatedChaptersTotal || chaptersCount || 1;
+	const archivePercentage = Math.min(100, Math.round((chaptersCount / translatedChaptersTotal) * 100));
+	const resumeChapter = continueChapter > 0 ? continueChapter : firstReadableChapter;
+	const isContinue = continueChapter > 0 && continueChapter !== firstReadableChapter;
 
 	return (
 		<Card className="p-[1.1rem] flex flex-col md:flex-row gap-6 bg-[#fffdf8] border-[#dfd6c8] shadow-md">
@@ -173,16 +173,16 @@ function BookHero({
 						<strong className="text-[#24211d] font-extrabold text-sm">{book.publicationStatus || "Unknown"}</strong>
 					</div>
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
-						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Units</span>
-						<strong className="text-[#24211d] font-extrabold text-sm">{book.translatedUnitsTotal || unitsCount || "?"}</strong>
+						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Chapters</span>
+						<strong className="text-[#24211d] font-extrabold text-sm">{book.translatedChaptersTotal || chaptersCount || "?"}</strong>
 					</div>
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
 						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Archived</span>
-						<strong className="text-[#24211d] font-extrabold text-sm">{unitsCount}</strong>
+						<strong className="text-[#24211d] font-extrabold text-sm">{chaptersCount}</strong>
 					</div>
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
 						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Raw</span>
-						<strong className="text-[#24211d] font-extrabold text-sm">{book.rawUnitsTotal || 0}</strong>
+						<strong className="text-[#24211d] font-extrabold text-sm">{book.rawChaptersTotal || 0}</strong>
 					</div>
 					<div className="p-3 border border-[#dfd6c8] rounded-md bg-[#f8f5ee]">
 						<span className="block text-[10px] font-bold text-[#877d70] uppercase tracking-wider">Rating</span>
@@ -205,7 +205,7 @@ function BookHero({
 					<div className="flex justify-between text-xs font-bold mb-1.5">
 						<span className="text-[#5f584f]">Archive Progress</span>
 						<span className="text-[#405f8f]">
-							{unitsCount} / {book.translatedUnitsTotal || unitsCount || "?"} units ({archivePercentage}%)
+							{chaptersCount} / {book.translatedChaptersTotal || chaptersCount || "?"} chapters ({archivePercentage}%)
 						</span>
 					</div>
 					<div className="w-full h-1.5 bg-[#e8dfd1] rounded-full overflow-hidden">
@@ -261,9 +261,9 @@ function BookHero({
 							)}
 						</Button>
 					)}
-					{unitsCount > 0 ? (
+					{chaptersCount > 0 ? (
 						<Button asChild className="h-9 font-semibold text-xs bg-[#405f8f] hover:bg-[#304a72] text-white">
-							<Link href={`/books/${book._id}/reader/${resumeUnit}`}>
+							<Link href={`/books/${book._id}/reader/${resumeChapter}`}>
 								{isContinue ? "Continue Reading" : "Start Reading"}
 							</Link>
 						</Button>
@@ -276,7 +276,7 @@ function BookHero({
 					) : null}
 					{rawCatalogCount > 0 && (
 						<Button asChild variant="secondary" className="h-9 font-semibold text-xs">
-							<Link href={`/books/${book._id}/reader/${firstReadableRawUnit}?source=raw`}>Open Raw</Link>
+							<Link href={`/books/${book._id}/reader/${firstReadableRawChapter}?source=raw`}>Open Raw</Link>
 						</Button>
 					)}
 					{book.rawSourceUrl && rawCatalogCount === 0 && (
@@ -336,7 +336,7 @@ function AdminConsole({
 					<span className="block text-[10px] font-black tracking-wider text-[#877d70] uppercase mb-1">Catalog administration</span>
 					<h2 className="text-xl font-bold uppercase text-[#24211d]">{book.title}</h2>
 					<p className="text-sm text-[#5f584f] mt-1">
-						Manage this shared book record, queue indexing jobs, import unit index HTML, and update catalog metadata.
+						Manage this shared book record, queue indexing jobs, import chapter index HTML, and update catalog metadata.
 					</p>
 				</div>
 				<Button asChild variant="secondary" size="sm" className="h-8 text-xs font-semibold">
@@ -367,11 +367,11 @@ function AdminConsole({
 
 				<div className="p-4 border border-[#dfd6c8] rounded-md bg-[#f8f5ee] flex flex-col justify-between">
 					<div className="flex justify-between items-center mb-1">
-						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Indexed units</span>
+						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Indexed chapters</span>
 						<span className="text-xs font-bold text-[#405f8f]">{translatedArchivePercent}%</span>
 					</div>
 					<strong className="text-lg font-extrabold text-[#24211d]">
-						{book.translatedUnitsList?.length || 0} / {book.translatedUnitsTotal || "?"}
+						{book.translatedChaptersList?.length || 0} / {book.translatedChaptersTotal || "?"}
 					</strong>
 					<div className="w-full h-1.5 bg-[#e8dfd1] rounded-full overflow-hidden mt-2">
 						<div className="h-full bg-[#405f8f] rounded-full transition-all duration-300" style={{ width: `${translatedArchivePercent}%` }}></div>
@@ -524,29 +524,29 @@ function AdminConsole({
 // --- Table of Contents Listing Card ---
 interface TOCProps {
 	book: Book;
-	units: Omit<BookContent, "content">[];
+	chapters: Omit<ChapterContent, "content">[];
 	sortedItems: CatalogItem[];
-	unitSearch: string;
-	unitSort: "asc" | "desc";
+	chapterSearch: string;
+	chapterSort: "asc" | "desc";
 	onSearchChange: (val: string) => void;
 	onSortToggle: () => void;
 }
 
-function TableOfContents({ book, units, sortedItems, unitSearch, unitSort, onSearchChange, onSortToggle }: TOCProps) {
+function TableOfContents({ book, chapters, sortedItems, chapterSearch, chapterSort, onSearchChange, onSortToggle }: TOCProps) {
 	return (
 		<Card className="p-[1.1rem] bg-white border-[#dfd6c8] flex flex-col gap-4">
 			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#dfd6c8] pb-3">
 				<div>
 					<h2 className="text-base font-bold text-[#24211d]">Table of Contents</h2>
 					<p className="text-xs text-[#5f584f] mt-0.5">
-						Archived translated: {units.length} / {book.translatedUnitsTotal || sortedItems.length || "?"} units.
+						Archived translated: {chapters.length} / {book.translatedChaptersTotal || sortedItems.length || "?"} chapters.
 					</p>
 				</div>
 				<div className="flex gap-2 items-center">
 					<input
 						type="text"
-						placeholder="Search units..."
-						value={unitSearch}
+						placeholder="Search chapters..."
+						value={chapterSearch}
 						onChange={(e) => onSearchChange(e.target.value)}
 						className="w-40 h-8 bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-2.5 text-xs outline-none transition-all duration-150 focus:bg-white focus:border-[#405f8f] focus:ring-4 focus:ring-[#405f8f]/10"
 					/>
@@ -556,16 +556,16 @@ function TableOfContents({ book, units, sortedItems, unitSearch, unitSort, onSea
 						onClick={onSortToggle}
 						className="h-8 text-xs font-semibold px-2.5 border-[#dfd6c8] hover:bg-slate-50"
 					>
-						{unitSort === "asc" ? "oldest" : "newest"}
+						{chapterSort === "asc" ? "oldest" : "newest"}
 					</Button>
 				</div>
 			</div>
 
 			{sortedItems.length === 0 ? (
 				<p className="text-sm text-[#5f584f] mt-2">
-					{units.length === 0 ? (
+					{chapters.length === 0 ? (
 						<span>
-							No translated units have been indexed yet.
+							No translated chapters have been indexed yet.
 							{book.sourceUrl && (
 								<>
 									{" "}
@@ -577,31 +577,31 @@ function TableOfContents({ book, units, sortedItems, unitSearch, unitSort, onSea
 							)}
 						</span>
 					) : (
-						"No units match your search."
+						"No chapters match your search."
 					)}
 				</p>
 			) : (
 				<>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[520px] overflow-y-auto pr-1">
-						{sortedItems.slice(0, 120).map((unitItem) => (
+						{sortedItems.slice(0, 120).map((chapterItem) => (
 							<Link
-								key={unitItem.unitNumber}
-								href={`/books/${book._id}/reader/${unitItem.unitNumber}`}
+								key={chapterItem.chapterNumber}
+								href={`/books/${book._id}/reader/${chapterItem.chapterNumber}`}
 								className={`grid gap-1 p-3 border border-[#dfd6c8] rounded-md transition-all duration-150 ${
-									unitItem.archived
+									chapterItem.archived
 										? "bg-[#f8f5ee] hover:bg-white hover:border-[#b9aa95]"
 										: "bg-[#ece5d8]/40 hover:bg-[#f8f5ee] opacity-75 hover:opacity-100"
 								}`}
 							>
-								<span className="text-[10px] font-black text-[#877d70] uppercase">Unit {unitItem.unitNumber}</span>
-								<strong className="text-xs font-bold text-[#24211d] truncate">{unitItem.title}</strong>
-								{!unitItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
+								<span className="text-[10px] font-black text-[#877d70] uppercase">Chapter {chapterItem.chapterNumber}</span>
+								<strong className="text-xs font-bold text-[#24211d] truncate">{chapterItem.title}</strong>
+								{!chapterItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
 							</Link>
 						))}
 					</div>
 					{sortedItems.length > 120 && (
 						<p className="text-xs text-[#877d70] text-center mt-3 border-t border-slate-100 pt-3">
-							Showing first 120 units. Use the search box above to locate specific numbers.
+							Showing first 120 chapters. Use the search box above to locate specific numbers.
 						</p>
 					)}
 				</>
@@ -613,22 +613,22 @@ function TableOfContents({ book, units, sortedItems, unitSearch, unitSort, onSea
 // --- Raw Table of Contents ---
 interface RawTOCProps {
 	book: Book;
-	rawUnits: Omit<BookContent, "content">[];
+	rawChapters: Omit<ChapterContent, "content">[];
 	sortedRawItems: CatalogItem[];
-	unitSearch: string;
-	unitSort: "asc" | "desc";
-	firstReadableRawUnit: number;
+	chapterSearch: string;
+	chapterSort: "asc" | "desc";
+	firstReadableRawChapter: number;
 	onSearchChange: (val: string) => void;
 	onSortToggle: () => void;
 }
 
 function RawTableOfContents({
 	book,
-	rawUnits,
+	rawChapters,
 	sortedRawItems,
-	unitSearch,
-	unitSort,
-	firstReadableRawUnit,
+	chapterSearch,
+	chapterSort,
+	firstReadableRawChapter,
 	onSearchChange,
 	onSortToggle,
 }: RawTOCProps) {
@@ -638,7 +638,7 @@ function RawTableOfContents({
 				<div>
 					<h2 className="text-base font-bold text-[#24211d]">Raw Table of Contents</h2>
 					<p className="text-xs text-[#5f584f] mt-0.5">
-						Archived raw: {rawUnits.length} / {book.rawUnitsTotal || sortedRawItems.length} units.
+						Archived raw: {rawChapters.length} / {book.rawChaptersTotal || sortedRawItems.length} chapters.
 					</p>
 				</div>
 				<div className="flex gap-2 items-center flex-wrap">
@@ -647,7 +647,7 @@ function RawTableOfContents({
 							<input
 								type="text"
 								placeholder="Search raw..."
-								value={unitSearch}
+								value={chapterSearch}
 								onChange={(e) => onSearchChange(e.target.value)}
 								className="w-40 h-8 bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-2.5 text-xs outline-none transition-all duration-150 focus:bg-white focus:border-[#405f8f] focus:ring-4 focus:ring-[#405f8f]/10"
 							/>
@@ -657,13 +657,13 @@ function RawTableOfContents({
 								onClick={onSortToggle}
 								className="h-8 text-xs font-semibold px-2.5 border-[#dfd6c8] hover:bg-slate-50"
 							>
-								{unitSort === "asc" ? "oldest" : "newest"}
+								{chapterSort === "asc" ? "oldest" : "newest"}
 							</Button>
 						</>
 					)}
 					{sortedRawItems.length > 0 && (
 						<Button asChild variant="secondary" size="sm" className="h-8 text-xs font-semibold">
-							<Link href={`/books/${book._id}/reader/${firstReadableRawUnit}?source=raw`}>Open Raw Reader</Link>
+							<Link href={`/books/${book._id}/reader/${firstReadableRawChapter}?source=raw`}>Open Raw Reader</Link>
 						</Button>
 					)}
 				</div>
@@ -671,30 +671,30 @@ function RawTableOfContents({
 
 			{sortedRawItems.length === 0 ? (
 				<p className="text-sm text-[#5f584f] mt-2">
-					{sortedRawItems.length === 0 ? "No raw units have been indexed yet." : "No raw units match your search."}
+					{sortedRawItems.length === 0 ? "No raw chapters have been indexed yet." : "No raw chapters match your search."}
 				</p>
 			) : (
 				<>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[520px] overflow-y-auto pr-1">
-						{sortedRawItems.slice(0, 120).map((unitItem) => (
+						{sortedRawItems.slice(0, 120).map((chapterItem) => (
 							<Link
-								key={unitItem.unitNumber}
-								href={`/books/${book._id}/reader/${unitItem.unitNumber}?source=raw`}
+								key={chapterItem.chapterNumber}
+								href={`/books/${book._id}/reader/${chapterItem.chapterNumber}?source=raw`}
 								className={`grid gap-1 p-3 border border-[#dfd6c8] rounded-md transition-all duration-150 ${
-									unitItem.archived
+									chapterItem.archived
 										? "bg-[#f8f5ee] hover:bg-white hover:border-[#b9aa95]"
 										: "bg-[#ece5d8]/40 hover:bg-[#f8f5ee] opacity-75 hover:opacity-100"
 								}`}
 							>
-								<span className="text-[10px] font-black text-[#877d70] uppercase">Raw {unitItem.unitNumber}</span>
-								<strong className="text-xs font-bold text-[#24211d] truncate">{unitItem.title}</strong>
-								{!unitItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
+								<span className="text-[10px] font-black text-[#877d70] uppercase">Raw {chapterItem.chapterNumber}</span>
+								<strong className="text-xs font-bold text-[#24211d] truncate">{chapterItem.title}</strong>
+								{!chapterItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
 							</Link>
 						))}
 					</div>
 					{sortedRawItems.length > 120 && (
 						<p className="text-xs text-[#877d70] text-center mt-3 border-t border-slate-100 pt-3">
-							Showing first 120 raw units. Use the search box to locate specific numbers.
+							Showing first 120 raw chapters. Use the search box to locate specific numbers.
 						</p>
 					)}
 				</>
@@ -706,11 +706,11 @@ function RawTableOfContents({
 // --- Sidebar detailing metadata and other genres ---
 interface SidebarProps {
 	book: Book;
-	unitsCount: number;
+	chaptersCount: number;
 	sortedItemsCount: number;
 }
 
-function DetailsSidebar({ book, unitsCount, sortedItemsCount }: SidebarProps) {
+function DetailsSidebar({ book, chaptersCount, sortedItemsCount }: SidebarProps) {
 	const { user } = useAuth();
 	const { showToast } = useToast();
 	const [reportReason, setReportReason] = useState("inappropriate_content");
@@ -765,9 +765,9 @@ function DetailsSidebar({ book, unitsCount, sortedItemsCount }: SidebarProps) {
 						<dd className="text-xs font-bold text-[#24211d]">{book.rawOriginalLanguage || "Translated"}</dd>
 					</div>
 					<div className="grid gap-0.5">
-						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Archived units</dt>
+						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Archived chapters</dt>
 						<dd className="text-xs font-bold text-[#24211d]">
-							{unitsCount} / {book.translatedUnitsTotal || sortedItemsCount || "?"}
+							{chaptersCount} / {book.translatedChaptersTotal || sortedItemsCount || "?"}
 						</dd>
 					</div>
 					{book.alternativeNames && book.alternativeNames.length > 0 && (
@@ -849,8 +849,8 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 
 	// Page & Core UI Data States
 	const [book, setBook] = useState<Book | null>(null);
-	const [units, setUnits] = useState<Omit<BookContent, "content">[]>([]);
-	const [rawUnits, setRawUnits] = useState<Omit<BookContent, "content">[]>([]);
+	const [chapters, setChapters] = useState<Omit<ChapterContent, "content">[]>([]);
+	const [rawChapters, setRawChapters] = useState<Omit<ChapterContent, "content">[]>([]);
 	const [authorBooks, setAuthorBooks] = useState<Book[]>([]);
 	const [jobs, setJobs] = useState<BackgroundJob[]>([]);
 	const [reviews, setReviews] = useState<BookReview[]>([]);
@@ -893,8 +893,8 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 
 	// Client View Configurations
 	const [activeTab, setActiveTab] = useState<"read" | "admin" | "library">("read");
-	const [unitSearch, setUnitSearch] = useState("");
-	const [unitSort, setUnitSort] = useState<"asc" | "desc">("asc");
+	const [chapterSearch, setChapterSearch] = useState("");
+	const [chapterSort, setChapterSort] = useState<"asc" | "desc">("asc");
 
 	const fetchBookJobs = async () => {
 		if (!hasCapability(CAPABILITY.JOBS_LIST)) return;
@@ -909,10 +909,10 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 		}
 	};
 
-	const refreshUnitLists = async () => {
-		const [unitData, rawUnitData] = await Promise.all([api.getPublicUnits(id).catch(() => []), api.getPublicRawUnits(id).catch(() => [])]);
-		setUnits(unitData);
-		setRawUnits(rawUnitData);
+	const refreshChapterLists = async () => {
+		const [chapterData, rawChapterData] = await Promise.all([api.getPublicChapters(id).catch(() => []), api.getPublicRawChapters(id).catch(() => [])]);
+		setChapters(chapterData);
+		setRawChapters(rawChapterData);
 	};
 
 	// --- Primary Data Fetch ---
@@ -926,8 +926,8 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 					try {
 						bookData = await api.getBook(id);
 						userBook = true;
-					} catch (err: any) {
-						if (err.status === 404) {
+					} catch (err) {
+						if (err instanceof ApiError && err.status === 404) {
 							bookData = await api.getPublicBook(id);
 						} else {
 							throw err;
@@ -936,17 +936,17 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 				} else {
 					bookData = await api.getPublicBook(id);
 				}
-				const [unitData, rawUnitData, authorData, reviewsData] = await Promise.all([
-					api.getPublicUnits(id).catch(() => []),
-					api.getPublicRawUnits(id).catch(() => []),
+				const [chapterData, rawChapterData, authorData, reviewsData] = await Promise.all([
+					api.getPublicChapters(id).catch(() => []),
+					api.getPublicRawChapters(id).catch(() => []),
 					bookData.authorId ? api.getPublicAuthor(bookData.authorId).catch(() => null) : Promise.resolve(null),
 					api.getBookReviews(id).catch(() => ({ reviews: [], pagination: { page: 1, limit: 20, total: 0, pages: 0 } })),
 				]);
 				setBook(bookData);
 				setIsUserBook(userBook);
 				setVoted(bookData.userVoted || false);
-				setUnits(unitData);
-				setRawUnits(rawUnitData);
+				setChapters(chapterData);
+				setRawChapters(rawChapterData);
 				setAuthorBooks((authorData?.books || []).filter((item) => item._id !== bookData._id).slice(0, 6));
 				setReviews(reviewsData.reviews || []);
 			} catch (err) {
@@ -998,13 +998,13 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 		};
 	}, [id, user?.capabilities, hasCapability]);
 
-	const firstReadableUnit = useMemo(() => units[0]?.unitNumber || 1, [units]);
+	const firstReadableChapter = useMemo(() => chapters[0]?.chapterNumber || 1, [chapters]);
 
-	const continueUnit = useMemo(() => {
+	const continueChapter = useMemo(() => {
 		if (!isUserBook || !book) return 0;
-		const last = book.lastVisitedUnitNumber;
+		const last = book.lastVisitedChapterNumber;
 		if (last && last > 0) return last;
-		const read = book.unitsRead;
+		const read = book.chaptersRead;
 		if (read && read > 0) return read;
 		return 0;
 	}, [isUserBook, book]);
@@ -1012,102 +1012,102 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 	// Catalog items builders
 	const rawCatalogItems = useMemo(() => {
 		if (!book) return [];
-		const archivedByNumber = new Map(rawUnits.map((unit) => [unit.unitNumber, unit]));
+		const archivedByNumber = new Map(rawChapters.map((chapter) => [chapter.chapterNumber, chapter]));
 		const seen = new Set<number>();
 		const indexedItems: CatalogItem[] = [];
-		for (const unit of book.rawUnitsList || []) {
-			if (!Number.isFinite(unit.unitNumber) || seen.has(unit.unitNumber)) continue;
-			seen.add(unit.unitNumber);
-			const archived = archivedByNumber.get(unit.unitNumber);
+		for (const chapter of book.rawChaptersList || []) {
+			if (!Number.isFinite(chapter.chapterNumber) || seen.has(chapter.chapterNumber)) continue;
+			seen.add(chapter.chapterNumber);
+			const archived = archivedByNumber.get(chapter.chapterNumber);
 			const archivedTitle = archived?.title?.trim() || "";
-			const indexedTitle = unit.title?.trim() || "";
+			const indexedTitle = chapter.title?.trim() || "";
 			indexedItems.push({
-				unitNumber: unit.unitNumber,
+				chapterNumber: chapter.chapterNumber,
 				title:
-					archivedTitle && !isGenericUnitTitle(archivedTitle, book.title, unit.unitNumber)
+					archivedTitle && !isGenericChapterTitle(archivedTitle, book.title, chapter.chapterNumber)
 						? archivedTitle
-						: indexedTitle || archivedTitle || `Raw Unit ${unit.unitNumber}`,
+						: indexedTitle || archivedTitle || `Raw Chapter ${chapter.chapterNumber}`,
 				archived: Boolean(archived),
-				sourceUrl: archived?.sourceUrl || unit.url,
+				sourceUrl: archived?.sourceUrl || chapter.url,
 				scrapedAt: archived?.scrapedAt,
 			});
 		}
 
 		const archivedOnlyItems = Array.from(archivedByNumber.values())
-			.filter((unit) => !seen.has(unit.unitNumber))
-			.map((unit) => ({
-				unitNumber: unit.unitNumber,
-				title: unit.title || `Raw Unit ${unit.unitNumber}`,
+			.filter((chapter) => !seen.has(chapter.chapterNumber))
+			.map((chapter) => ({
+				chapterNumber: chapter.chapterNumber,
+				title: chapter.title || `Raw Chapter ${chapter.chapterNumber}`,
 				archived: true,
-				sourceUrl: unit.sourceUrl,
-				scrapedAt: unit.scrapedAt,
+				sourceUrl: chapter.sourceUrl,
+				scrapedAt: chapter.scrapedAt,
 			}));
 
-		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.unitNumber - b.unitNumber);
-	}, [book, rawUnits]);
+		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.chapterNumber - b.chapterNumber);
+	}, [book, rawChapters]);
 
 	const translatedCatalogItems = useMemo(() => {
 		if (!book) return [];
-		const archivedByNumber = new Map(units.map((unit) => [unit.unitNumber, unit]));
+		const archivedByNumber = new Map(chapters.map((chapter) => [chapter.chapterNumber, chapter]));
 		const seen = new Set<number>();
 		const indexedItems: CatalogItem[] = [];
-		for (const unit of book.translatedUnitsList || []) {
-			if (!Number.isFinite(unit.unitNumber) || seen.has(unit.unitNumber)) continue;
-			seen.add(unit.unitNumber);
-			const archived = archivedByNumber.get(unit.unitNumber);
+		for (const chapter of book.translatedChaptersList || []) {
+			if (!Number.isFinite(chapter.chapterNumber) || seen.has(chapter.chapterNumber)) continue;
+			seen.add(chapter.chapterNumber);
+			const archived = archivedByNumber.get(chapter.chapterNumber);
 			const archivedTitle = archived?.title?.trim() || "";
-			const indexedTitle = unit.title?.trim() || "";
+			const indexedTitle = chapter.title?.trim() || "";
 			indexedItems.push({
-				unitNumber: unit.unitNumber,
+				chapterNumber: chapter.chapterNumber,
 				title:
-					archivedTitle && !isGenericUnitTitle(archivedTitle, book.title, unit.unitNumber)
+					archivedTitle && !isGenericChapterTitle(archivedTitle, book.title, chapter.chapterNumber)
 						? archivedTitle
-						: indexedTitle || archivedTitle || `Unit ${unit.unitNumber}`,
+						: indexedTitle || archivedTitle || `Chapter ${chapter.chapterNumber}`,
 				archived: Boolean(archived),
-				sourceUrl: archived?.sourceUrl || unit.url,
+				sourceUrl: archived?.sourceUrl || chapter.url,
 				scrapedAt: archived?.scrapedAt,
 			});
 		}
 
 		const archivedOnlyItems = Array.from(archivedByNumber.values())
-			.filter((unit) => !seen.has(unit.unitNumber))
-			.map((unit) => ({
-				unitNumber: unit.unitNumber,
-				title: unit.title || `Unit ${unit.unitNumber}`,
+			.filter((chapter) => !seen.has(chapter.chapterNumber))
+			.map((chapter) => ({
+				chapterNumber: chapter.chapterNumber,
+				title: chapter.title || `Chapter ${chapter.chapterNumber}`,
 				archived: true,
-				sourceUrl: unit.sourceUrl,
-				scrapedAt: unit.scrapedAt,
+				sourceUrl: chapter.sourceUrl,
+				scrapedAt: chapter.scrapedAt,
 			}));
 
-		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.unitNumber - b.unitNumber);
-	}, [book, units]);
+		return [...indexedItems, ...archivedOnlyItems].sort((a, b) => a.chapterNumber - b.chapterNumber);
+	}, [book, chapters]);
 
-	const firstReadableRawUnit = useMemo(() => rawCatalogItems[0]?.unitNumber || rawUnits[0]?.unitNumber || 1, [rawCatalogItems, rawUnits]);
+	const firstReadableRawChapter = useMemo(() => rawCatalogItems[0]?.chapterNumber || rawChapters[0]?.chapterNumber || 1, [rawCatalogItems, rawChapters]);
 
 	// Sorting and filtering datasets
 	const sortedTranslatedItems = useMemo(() => {
 		let items = [...translatedCatalogItems];
-		if (unitSearch.trim()) {
-			const searchLower = unitSearch.toLowerCase();
-			items = items.filter((item) => item.unitNumber.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
+		if (chapterSearch.trim()) {
+			const searchLower = chapterSearch.toLowerCase();
+			items = items.filter((item) => item.chapterNumber.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
 		}
-		if (unitSort === "desc") {
+		if (chapterSort === "desc") {
 			items.reverse();
 		}
 		return items;
-	}, [translatedCatalogItems, unitSearch, unitSort]);
+	}, [translatedCatalogItems, chapterSearch, chapterSort]);
 
 	const sortedRawItems = useMemo(() => {
 		let items = [...rawCatalogItems];
-		if (unitSearch.trim()) {
-			const searchLower = unitSearch.toLowerCase();
-			items = items.filter((item) => item.unitNumber.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
+		if (chapterSearch.trim()) {
+			const searchLower = chapterSearch.toLowerCase();
+			items = items.filter((item) => item.chapterNumber.toString().includes(searchLower) || item.title.toLowerCase().includes(searchLower));
 		}
-		if (unitSort === "desc") {
+		if (chapterSort === "desc") {
 			items.reverse();
 		}
 		return items;
-	}, [rawCatalogItems, unitSearch, unitSort]);
+	}, [rawCatalogItems, chapterSearch, chapterSort]);
 
 	const coverSrc = book ? getBookCoverUrl(book) : "";
 	const canManageCatalog = hasCapability(CAPABILITY.BOOKS_MANAGE) || hasCapability(CAPABILITY.BOOKS_CREATE) || hasCapability(CAPABILITY.BOOKS_UPDATE);
@@ -1117,8 +1117,8 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 	const canAdmin = canManageCatalog || canReadJobs || canScrape || canImport;
 	const activeJobTypes = useMemo(() => new Set(jobs.filter((job) => job.status === "pending" || job.status === "processing").map((job) => job.type)), [jobs]);
 	const processingJobCount = jobs.filter((job) => job.status === "pending" || job.status === "processing").length;
-	const translatedUnitTotal = book?.translatedUnitsTotal || translatedCatalogItems.length || 0;
-	const translatedArchivePercent = translatedUnitTotal ? Math.min(100, Math.round((units.length / translatedUnitTotal) * 100)) : 0;
+	const translatedChapterTotal = book?.translatedChaptersTotal || translatedCatalogItems.length || 0;
+	const translatedArchivePercent = translatedChapterTotal ? Math.min(100, Math.round((chapters.length / translatedChapterTotal) * 100)) : 0;
 
 	const translatedPipelineSections = canScrape || canImport ? [
 		{
@@ -1148,20 +1148,20 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 			title: "Archiving",
 			actions: [
 				{
-					key: "scrape_units-queue",
+					key: "scrape_chapters-queue",
 					label: "Queue translated archive",
 					tone: "translated",
-					disabled: !canScrape || !(book?.translatedUnitsList || []).length || Boolean(queueing) || activeJobTypes.has("scrape_units"),
-					busy: queueing === "scrape_units",
-					onClick: () => handleTriggerScrape("scrape_units"),
+					disabled: !canScrape || !(book?.translatedChaptersList || []).length || Boolean(queueing) || activeJobTypes.has("scrape_chapters"),
+					busy: queueing === "scrape_chapters",
+					onClick: () => handleTriggerScrape("scrape_chapters"),
 				},
 				{
-					key: "scrape_units-now",
+					key: "scrape_chapters-now",
 					label: "Archive next 5 translated",
 					tone: "success",
 					disabled: !canScrape || translatedCatalogItems.length === 0 || Boolean(runningNow),
-					busy: runningNow === "scrape_units",
-					onClick: () => handleRunScrapeNow("scrape_units"),
+					busy: runningNow === "scrape_chapters",
+					onClick: () => handleRunScrapeNow("scrape_chapters"),
 				},
 			],
 		},
@@ -1209,20 +1209,20 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 			title: "Archiving",
 			actions: [
 				{
-					key: "scrape_raw_units-queue",
+					key: "scrape_raw_chapters-queue",
 					label: "Queue raw archive",
 					tone: "raw",
-					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(queueing) || activeJobTypes.has("scrape_raw_units"),
-					busy: queueing === "scrape_raw_units",
-					onClick: () => handleTriggerScrape("scrape_raw_units"),
+					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(queueing) || activeJobTypes.has("scrape_raw_chapters"),
+					busy: queueing === "scrape_raw_chapters",
+					onClick: () => handleTriggerScrape("scrape_raw_chapters"),
 				},
 				{
-					key: "scrape_raw_units-now",
+					key: "scrape_raw_chapters-now",
 					label: "Archive next 5 raw",
 					tone: "success",
 					disabled: !canScrape || rawCatalogItems.length === 0 || Boolean(runningNow),
-					busy: runningNow === "scrape_raw_units",
-					onClick: () => handleRunScrapeNow("scrape_raw_units"),
+					busy: runningNow === "scrape_raw_chapters",
+					onClick: () => handleRunScrapeNow("scrape_raw_chapters"),
 				},
 			],
 		},
@@ -1331,7 +1331,7 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 		try {
 			const result = await api.runScrapeNow(book._id, type, { limit: 5 });
 			setBook(result.book);
-			await refreshUnitLists();
+			await refreshChapterLists();
 			setAdminMessage(result.message || "Direct scraper run completed.");
 			await fetchBookJobs();
 		} catch (err: unknown) {
@@ -1362,7 +1362,7 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 				pageUrl: indexHtmlPageUrl || (indexHtmlSourceKind === "raw" ? book.rawSourceUrl : book.sourceUrl),
 			});
 			setBook(result.book);
-			await refreshUnitLists();
+			await refreshChapterLists();
 			setAdminMessage(result.message);
 			setIsIndexHtmlModalOpen(false);
 			setIndexHtmlContent("");
@@ -1403,16 +1403,16 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 			{/* Book Hero block */}
 			<BookHero
 				book={book}
-				unitsCount={units.length}
+				chaptersCount={chapters.length}
 				rawCatalogCount={rawCatalogItems.length}
 				coverSrc={coverSrc}
 				user={user}
 				isUserBook={isUserBook}
 				adding={adding}
 				addMessage={addMessage}
-				firstReadableUnit={firstReadableUnit}
-				continueUnit={continueUnit}
-				firstReadableRawUnit={firstReadableRawUnit}
+				firstReadableChapter={firstReadableChapter}
+				continueChapter={continueChapter}
+				firstReadableRawChapter={firstReadableRawChapter}
 				onAddToLibrary={handleAddToLibrary}
 				voting={voting}
 				voted={voted}
@@ -1479,7 +1479,7 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 				<BookLibraryPanel
 					bookId={id}
 					book={book}
-					units={units}
+					chapters={chapters}
 					onUpdate={(updated) => setBook(updated)}
 				/>
 			)}
@@ -1535,7 +1535,7 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 
 													{/* Metadata Sub-row */}
 													<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5f584f]">
-														<span className="font-semibold text-[#b65f3d]">{item.translatedUnitsTotal || 0} units</span>
+														<span className="font-semibold text-[#b65f3d]">{item.translatedChaptersTotal || 0} chapters</span>
 
 														{item.publicationStatus && (
 															<>
@@ -1584,31 +1584,31 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 						{/* Translated TOC card */}
 						<TableOfContents
 							book={book}
-							units={units}
+							chapters={chapters}
 							sortedItems={sortedTranslatedItems}
-							unitSearch={unitSearch}
-							unitSort={unitSort}
-							onSearchChange={setUnitSearch}
-							onSortToggle={() => setUnitSort((prev) => (prev === "asc" ? "desc" : "asc"))}
+							chapterSearch={chapterSearch}
+							chapterSort={chapterSort}
+							onSearchChange={setChapterSearch}
+							onSortToggle={() => setChapterSort((prev) => (prev === "asc" ? "desc" : "asc"))}
 						/>
 
 						{/* Raw TOC card */}
-						{(book.rawUnitsTotal > 0 || rawCatalogItems.length > 0) && (
+						{(book.rawChaptersTotal > 0 || rawCatalogItems.length > 0) && (
 							<RawTableOfContents
 								book={book}
-								rawUnits={rawUnits}
+								rawChapters={rawChapters}
 								sortedRawItems={sortedRawItems}
-								unitSearch={unitSearch}
-								unitSort={unitSort}
-								firstReadableRawUnit={firstReadableRawUnit}
-								onSearchChange={setUnitSearch}
-								onSortToggle={() => setUnitSort((prev) => (prev === "asc" ? "desc" : "asc"))}
+								chapterSearch={chapterSearch}
+								chapterSort={chapterSort}
+								firstReadableRawChapter={firstReadableRawChapter}
+								onSearchChange={setChapterSearch}
+								onSortToggle={() => setChapterSort((prev) => (prev === "asc" ? "desc" : "asc"))}
 							/>
 						)}
 					</main>
 
 					{/* Metadata layout sidebar */}
-					<DetailsSidebar book={book} unitsCount={units.length} sortedItemsCount={translatedCatalogItems.length} />
+					<DetailsSidebar book={book} chaptersCount={chapters.length} sortedItemsCount={translatedCatalogItems.length} />
 				</div>
 			)}
 

@@ -84,8 +84,8 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 							<option value="createdAt">Added</option>
 							<option value="title">Title</option>
 							<option value="author">Author</option>
-							<option value="translatedUnitsTotal">Units</option>
-							<option value="rawUnitsTotal">Raw units</option>
+							<option value="translatedChaptersTotal">Chapters</option>
+							<option value="rawChaptersTotal">Raw chapters</option>
 							<option value="rating">Rating</option>
 							<option value="publicationStatus">Publication status</option>
 							<option value="originalSource">Source</option>

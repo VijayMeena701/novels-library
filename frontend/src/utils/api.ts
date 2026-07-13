@@ -157,11 +157,11 @@ export interface UpdateUserSettingsPayload {
 
 export type BookStatus = "reading" | "completed" | "on_hold" | "dropped" | "planning";
 
-export interface UnitIndex {
+export interface ChapterIndex {
 	title: string;
 	url: string;
-	unitNumber: number;
-	unitType?: string;
+	chapterNumber: number;
+	chapterType?: string;
 }
 
 export interface BookReview {
@@ -227,11 +227,11 @@ export interface Book {
 	sourceUrl: string;
 	rawSourceUrl: string;
 	rawOriginalLanguage: string;
-	rawUnitsTotal: number;
-	rawUnitsList: UnitIndex[];
+	rawChaptersTotal: number;
+	rawChaptersList: ChapterIndex[];
 	status: BookStatus;
-	translatedUnitsTotal: number;
-	unitsRead: number;
+	translatedChaptersTotal: number;
+	chaptersRead: number;
 	rating: number;
 	review: string;
 	personalNotes: string;
@@ -241,8 +241,8 @@ export interface Book {
 	personalTags: string[];
 	personalTagKeys: string[];
 	completedAt?: string | null;
-	translatedUnitsList: UnitIndex[];
-	lastVisitedUnitNumber?: number;
+	translatedChaptersList: ChapterIndex[];
+	lastVisitedChapterNumber?: number;
 	lastVisitedAt?: string;
 	ratingAverage?: number;
 	ratingCount?: number;
@@ -258,7 +258,7 @@ export interface Book {
 
 export interface HomeStats {
 	totalBooks: number;
-	totalUnits: number;
+	totalChapters: number;
 }
 
 export interface HomePersonalStats {
@@ -267,7 +267,7 @@ export interface HomePersonalStats {
 	planning: number;
 	onHold: number;
 	dropped: number;
-	totalUnitsRead: number;
+	totalChaptersRead: number;
 }
 
 export interface HomeResponse {
@@ -278,7 +278,7 @@ export interface HomeResponse {
 	mostVisited: Book[];
 	topVoted: Book[];
 	continueReading: Book[];
-	activities: { _id: string; bookId: Book | string; activityType: string; unitNumber?: number; unitTitle?: string; createdAt: string }[];
+	activities: { _id: string; bookId: Book | string; activityType: string; chapterNumber?: number; chapterTitle?: string; createdAt: string }[];
 }
 
 export interface HistoryPagination {
@@ -296,7 +296,7 @@ export interface Pagination {
 }
 
 export interface HistoryResponse {
-	visits: BookVisit[];
+	visits: ChapterVisit[];
 	pagination: HistoryPagination;
 }
 
@@ -312,7 +312,7 @@ export interface CatalogBookFilters extends BookListFilters {
 	search?: string;
 	minRating?: number;
 	maxRating?: number;
-	sort?: "updatedAt" | "title" | "translatedUnitsTotal" | "rawUnitsTotal" | "rating" | "publicationStatus" | "createdAt" | "author" | "originalSource";
+	sort?: "updatedAt" | "title" | "translatedChaptersTotal" | "rawChaptersTotal" | "rating" | "publicationStatus" | "createdAt" | "author" | "originalSource";
 	sortDir?: "asc" | "desc";
 	page?: number;
 	pageSize?: number;
@@ -400,7 +400,7 @@ export interface ReadingSession {
 	bookId: string;
 	startDate: string;
 	endDate?: string;
-	unitsRead: number;
+	chaptersRead: number;
 	notes: string;
 	completed: boolean;
 }
@@ -420,11 +420,11 @@ export interface Author {
 	updatedAt: string;
 }
 
-export interface BookContent {
+export interface ChapterContent {
 	_id: string;
 	bookId: string;
-	unitNumber: number;
-	unitType?: string;
+	chapterNumber: number;
+	chapterType?: string;
 	title: string;
 	content: string;
 	sourceUrl: string;
@@ -432,21 +432,21 @@ export interface BookContent {
 	scrapedAt: string;
 }
 
-export interface BookVisit {
+export interface ChapterVisit {
 	_id: string;
 	bookId: string | Book;
 	userId: string;
 	sessionId?: string;
-	unitNumber: number;
-	unitTitle: string;
-	unitType?: string;
+	chapterNumber: number;
+	chapterTitle: string;
+	chapterType?: string;
 	sourceUrl: string;
 	openedAt: string;
 	createdAt: string;
 	updatedAt: string;
 }
 
-export type JobType = "scrape_metadata" | "scrape_units" | "scrape_raw_metadata" | "scrape_raw_units";
+export type JobType = "scrape_metadata" | "scrape_chapters" | "scrape_raw_metadata" | "scrape_raw_chapters";
 export type JobStatus = "pending" | "processing" | "completed" | "failed" | "requires_manual_intervention";
 export type SourceKind = "translated" | "raw";
 
@@ -465,7 +465,7 @@ export interface BackgroundJob {
 		stack?: string;
 		code?: string;
 		url?: string;
-		unitNumber?: number;
+		chapterNumber?: number;
 		sourceKind?: "translated" | "raw";
 	};
 	retryCount: number;
@@ -891,14 +891,14 @@ class ApiClient {
 		return this.request<ReadingSession[]>(`/books/${bookId}/re-read`);
 	}
 
-	async startSession(bookId: string, data: { notes?: string; unitsRead?: number }): Promise<ReadingSession> {
+	async startSession(bookId: string, data: { notes?: string; chaptersRead?: number }): Promise<ReadingSession> {
 		return this.request<ReadingSession>(`/books/${bookId}/re-read`, {
 			method: "POST",
 			body: JSON.stringify(data),
 		});
 	}
 
-	async updateSession(bookId: string, sessionId: string, data: { notes?: string; unitsRead?: number; completed?: boolean }): Promise<ReadingSession> {
+	async updateSession(bookId: string, sessionId: string, data: { notes?: string; chaptersRead?: number; completed?: boolean }): Promise<ReadingSession> {
 		return this.request<ReadingSession>(`/books/${bookId}/re-read/${sessionId}`, {
 			method: "PUT",
 			body: JSON.stringify(data),
@@ -930,30 +930,30 @@ class ApiClient {
 		});
 	}
 
-	// Units Methods
-	async getUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
-		return this.request<Omit<BookContent, "content">[]>(`/books/${bookId}/units`);
+	// Chapters Methods
+	async getChapters(bookId: string): Promise<Omit<ChapterContent, "content">[]> {
+		return this.request<Omit<ChapterContent, "content">[]>(`/books/${bookId}/chapters`);
 	}
 
-	async getUnit(bookId: string, unitNumber: number): Promise<BookContent> {
-		return this.request<BookContent>(`/books/${bookId}/units/${unitNumber}`);
+	async getChapter(bookId: string, chapterNumber: number): Promise<ChapterContent> {
+		return this.request<ChapterContent>(`/books/${bookId}/chapters/${chapterNumber}`);
 	}
 
-	async getRawUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
-		return this.request<Omit<BookContent, "content">[]>(`/books/${bookId}/raw-units`);
+	async getRawChapters(bookId: string): Promise<Omit<ChapterContent, "content">[]> {
+		return this.request<Omit<ChapterContent, "content">[]>(`/books/${bookId}/raw-chapters`);
 	}
 
-	async getRawUnit(bookId: string, unitNumber: number): Promise<BookContent> {
-		return this.request<BookContent>(`/books/${bookId}/raw-units/${unitNumber}`);
+	async getRawChapter(bookId: string, chapterNumber: number): Promise<ChapterContent> {
+		return this.request<ChapterContent>(`/books/${bookId}/raw-chapters/${chapterNumber}`);
 	}
 
-	async translateRawUnit(
+	async translateRawChapter(
 		bookId: string,
-		unitNumber: number,
+		chapterNumber: number,
 		data: { targetLanguage?: string; overwrite?: boolean } = {},
-	): Promise<{ success: boolean; message: string; unit: BookContent; model?: string; reusedExisting: boolean }> {
-		return this.request<{ success: boolean; message: string; unit: BookContent; model?: string; reusedExisting: boolean }>(
-			`/books/${bookId}/raw-units/${unitNumber}/translate`,
+	): Promise<{ success: boolean; message: string; chapter: ChapterContent; model?: string; reusedExisting: boolean }> {
+		return this.request<{ success: boolean; message: string; chapter: ChapterContent; model?: string; reusedExisting: boolean }>(
+			`/books/${bookId}/raw-chapters/${chapterNumber}/translate`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -962,29 +962,29 @@ class ApiClient {
 		);
 	}
 
-	async getPublicUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
-		return this.request<Omit<BookContent, "content">[]>(`/public/books/${bookId}/units`);
+	async getPublicChapters(bookId: string): Promise<Omit<ChapterContent, "content">[]> {
+		return this.request<Omit<ChapterContent, "content">[]>(`/public/books/${bookId}/chapters`);
 	}
 
-	async getPublicUnit(bookId: string, unitNumber: number): Promise<BookContent> {
-		return this.request<BookContent>(`/public/books/${bookId}/units/${unitNumber}`);
+	async getPublicChapter(bookId: string, chapterNumber: number): Promise<ChapterContent> {
+		return this.request<ChapterContent>(`/public/books/${bookId}/chapters/${chapterNumber}`);
 	}
 
-	async getPublicRawUnits(bookId: string): Promise<Omit<BookContent, "content">[]> {
-		return this.request<Omit<BookContent, "content">[]>(`/public/books/${bookId}/raw-units`);
+	async getPublicRawChapters(bookId: string): Promise<Omit<ChapterContent, "content">[]> {
+		return this.request<Omit<ChapterContent, "content">[]>(`/public/books/${bookId}/raw-chapters`);
 	}
 
-	async getPublicRawUnit(bookId: string, unitNumber: number): Promise<BookContent> {
-		return this.request<BookContent>(`/public/books/${bookId}/raw-units/${unitNumber}`);
+	async getPublicRawChapter(bookId: string, chapterNumber: number): Promise<ChapterContent> {
+		return this.request<ChapterContent>(`/public/books/${bookId}/raw-chapters/${chapterNumber}`);
 	}
 
-	async getBookVisits(bookId: string, limit = 100): Promise<BookVisit[]> {
+	async getChapterVisits(bookId: string, limit = 100): Promise<ChapterVisit[]> {
 		const query = new URLSearchParams({ limit: String(limit) });
-		return this.request<BookVisit[]>(`/books/${bookId}/visits?${query.toString()}`);
+		return this.request<ChapterVisit[]>(`/books/${bookId}/visits?${query.toString()}`);
 	}
 
-	async recordBookVisit(bookId: string, unitNumber: number): Promise<BookVisit> {
-		return this.request<BookVisit>(`/books/${bookId}/units/${unitNumber}/visits`, {
+	async recordChapterVisit(bookId: string, chapterNumber: number): Promise<ChapterVisit> {
+		return this.request<ChapterVisit>(`/books/${bookId}/chapters/${chapterNumber}/visits`, {
 			method: "POST",
 		});
 	}
@@ -1013,8 +1013,8 @@ class ApiClient {
 	async importRawHtmlIndex(
 		bookId: string,
 		data: { html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; unitsFound: number; book: Book; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; unitsFound: number; book: Book; job: BackgroundJob }>(
+	): Promise<{ success: boolean; message: string; chaptersFound: number; book: Book; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; chaptersFound: number; book: Book; job: BackgroundJob }>(
 			`/jobs/book/${bookId}/import-raw-html`,
 			{
 				method: "POST",
@@ -1026,8 +1026,8 @@ class ApiClient {
 	async importHtmlIndex(
 		bookId: string,
 		data: { sourceKind: SourceKind; html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; unitsFound: number; book: Book; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; unitsFound: number; book: Book; job: BackgroundJob }>(
+	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; chaptersFound: number; book: Book; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; chaptersFound: number; book: Book; job: BackgroundJob }>(
 			`/jobs/book/${bookId}/import-html-index`,
 			{
 				method: "POST",
@@ -1036,12 +1036,12 @@ class ApiClient {
 		);
 	}
 
-	async importFailedUnitHtml(
+	async importFailedChapterHtml(
 		jobId: string,
 		data: { html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; unitNumber: number; title: string; sourceUrl: string; job: BackgroundJob }> {
-		return this.request<{ success: boolean; message: string; unitNumber: number; title: string; sourceUrl: string; job: BackgroundJob }>(
-			`/jobs/${jobId}/import-unit-html`,
+	): Promise<{ success: boolean; message: string; chapterNumber: number; title: string; sourceUrl: string; job: BackgroundJob }> {
+		return this.request<{ success: boolean; message: string; chapterNumber: number; title: string; sourceUrl: string; job: BackgroundJob }>(
+			`/jobs/${jobId}/import-chapter-html`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -1049,12 +1049,12 @@ class ApiClient {
 		);
 	}
 
-	async importUnitHtml(
+	async importChapterHtml(
 		bookId: string,
-		data: { sourceKind: SourceKind; unitNumber: number; html: string; pageUrl?: string },
-	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; unitNumber: number; title: string; sourceUrl: string }> {
-		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; unitNumber: number; title: string; sourceUrl: string }>(
-			`/jobs/book/${bookId}/import-unit-html`,
+		data: { sourceKind: SourceKind; chapterNumber: number; html: string; pageUrl?: string },
+	): Promise<{ success: boolean; message: string; sourceKind: SourceKind; chapterNumber: number; title: string; sourceUrl: string }> {
+		return this.request<{ success: boolean; message: string; sourceKind: SourceKind; chapterNumber: number; title: string; sourceUrl: string }>(
+			`/jobs/book/${bookId}/import-chapter-html`,
 			{
 				method: "POST",
 				body: JSON.stringify(data),
@@ -1072,7 +1072,7 @@ class ApiClient {
 	async runScrapeNow(
 		bookId: string,
 		type: JobType,
-		data: { limit?: number; unitNumber?: number } = {},
+		data: { limit?: number; chapterNumber?: number } = {},
 	): Promise<{ success: boolean; message: string; result: unknown; book: Book; job: BackgroundJob }> {
 		return this.request<{ success: boolean; message: string; result: unknown; book: Book; job: BackgroundJob }>(`/jobs/book/${bookId}/scrape-now`, {
 			method: "POST",

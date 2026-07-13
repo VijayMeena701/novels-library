@@ -53,8 +53,8 @@ export function BookCard({
 }) {
   const coverSrc = getBookCoverUrl(book);
   const authorName = book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
-  const progress = book.translatedUnitsTotal > 0
-    ? Math.min(100, Math.round((book.unitsRead / book.translatedUnitsTotal) * 100))
+  const progress = book.translatedChaptersTotal > 0
+    ? Math.min(100, Math.round((book.chaptersRead / book.translatedChaptersTotal) * 100))
     : 0;
   const isCatalog = mode === 'catalog';
 
@@ -99,14 +99,14 @@ export function BookCard({
 
           {isCatalog ? (
             <div className="mt-auto flex justify-between gap-2 text-xs text-copy">
-              <span>{book.translatedUnitsTotal || book.translatedUnitsList?.length || '?'} units</span>
+              <span>{book.translatedChaptersTotal || book.translatedChaptersList?.length || '?'} chapters</span>
               <span className="truncate">{book.originalSource || 'Translated'}</span>
             </div>
           ) : (
             <div>
               <div className="mb-1 flex justify-between gap-2 text-xs text-copy">
                 <span>Progress</span>
-                <span>{book.unitsRead} / {book.translatedUnitsTotal || '?'} ch</span>
+                <span>{book.chaptersRead} / {book.translatedChaptersTotal || '?'} ch</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[#e8dfd1]">
                 <div
@@ -122,7 +122,7 @@ export function BookCard({
 
       <CardFooter className="mt-auto px-4 py-3">
         <span>
-          {book.rawUnitsTotal > 0 ? `${book.rawUnitsTotal} raw indexed` : `Updated ${new Date(book.updatedAt).toLocaleDateString()}`}
+          {book.rawChaptersTotal > 0 ? `${book.rawChaptersTotal} raw indexed` : `Updated ${new Date(book.updatedAt).toLocaleDateString()}`}
         </span>
         {action}
       </CardFooter>

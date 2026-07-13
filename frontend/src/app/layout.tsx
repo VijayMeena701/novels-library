@@ -7,7 +7,7 @@ import Header from '../components/Header';
 
 export const metadata: Metadata = {
   title: 'Books Library',
-  description: 'Track, read, and archive web books. A personal library with a clean reader, TTS, and automatic unit archiving.',
+  description: 'Track, read, and archive web books. A personal library with a clean reader, TTS, and automatic chapter archiving.',
 };
 
 export const viewport: Viewport = {

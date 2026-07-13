@@ -19,12 +19,12 @@ export const CAPABILITY = {
   LIBRARY_DELETE: "library:delete",
   LIBRARY_MANAGE: "library:manage",
 
-  UNITS_LIST: "units:list",
-  UNITS_READ: "units:read",
-  UNITS_READ_RAW: "units:read_raw",
-  UNITS_TRANSLATE: "units:translate",
-  UNITS_VISIT: "units:visit",
-  UNITS_MANAGE: "units:manage",
+  CHAPTERS_LIST: "chapters:list",
+  CHAPTERS_READ: "chapters:read",
+  CHAPTERS_READ_RAW: "chapters:read_raw",
+  CHAPTERS_TRANSLATE: "chapters:translate",
+  CHAPTERS_VISIT: "chapters:visit",
+  CHAPTERS_MANAGE: "chapters:manage",
 
   AUTHORS_LIST: "authors:list",
   AUTHORS_READ: "authors:read",

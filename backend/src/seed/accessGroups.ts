@@ -14,8 +14,8 @@ export const ACCESS_GROUPS: AccessGroupDefinition[] = [
     description: 'Public read-only access.',
     capabilityKeys: [
       'books:read',
-      'units:read',
-      'units:read_raw',
+      'chapters:read',
+      'chapters:read_raw',
       'authors:read',
       'genres:read',
       'publication_statuses:read',
@@ -29,9 +29,9 @@ export const ACCESS_GROUPS: AccessGroupDefinition[] = [
     resourceKey: 'books',
     capabilityKeys: [
       'books:read',
-      'units:read',
-      'units:read_raw',
-      'units:visit',
+      'chapters:read',
+      'chapters:read_raw',
+      'chapters:visit',
       'authors:read',
       'genres:read',
       'publication_statuses:read',
@@ -81,7 +81,7 @@ export const ACCESS_GROUPS: AccessGroupDefinition[] = [
   {
     key: 'user:translation',
     name: 'User Translation',
-    description: 'Translate raw units.',
+    description: 'Translate raw chapters.',
     resourceKey: 'translation',
     capabilityKeys: ['translation:execute'],
     isSystem: true,
@@ -92,7 +92,7 @@ export const ACCESS_GROUPS: AccessGroupDefinition[] = [
     description: 'Manage catalog content, jobs, taxonomy, and cover.',
     capabilityKeys: [
       'books:manage',
-      'units:manage',
+      'chapters:manage',
       'library:manage',
       'jobs:manage',
       'authors:manage',

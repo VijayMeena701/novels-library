@@ -13,10 +13,10 @@ export interface ScrapedMetadata {
   publicationStatus: string;
   description: string;
   coverUrl: string;
-  units: { title: string; url: string; number: number }[];
+  chapters: { title: string; url: string; number: number }[];
 }
 
-export interface ScrapedUnit {
+export interface ScrapedChapter {
   title: string;
   content: string;
 }
@@ -30,8 +30,8 @@ export class ManualInterventionRequiredError extends Error {
   }
 }
 
-type UnitIndex = ScrapedMetadata['units'][number];
-type UnitCandidate = Omit<UnitIndex, 'number'> & {
+type ChapterIndex = ScrapedMetadata['chapters'][number];
+type ChapterCandidate = Omit<ChapterIndex, 'number'> & {
   number: number | null;
   sourceOrder: number;
 };
@@ -213,7 +213,7 @@ const CJK_DIGITS: Record<string, number> = {
   '捌': 8,
   '玖': 9,
 };
-const CJK_UNITS: Record<string, number> = {
+const CJK_CHAPTERS: Record<string, number> = {
   '十': 10,
   '拾': 10,
   '百': 100,
@@ -765,7 +765,7 @@ function normalizeNumberToken(value: string): string {
 
 function parseCjkNumber(value: string): number | null {
   const chars = Array.from(value.trim());
-  if (chars.length === 0 || !chars.every((char) => CJK_DIGITS[char] !== undefined || CJK_UNITS[char] !== undefined)) {
+  if (chars.length === 0 || !chars.every((char) => CJK_DIGITS[char] !== undefined || CJK_CHAPTERS[char] !== undefined)) {
     return null;
   }
 
@@ -784,16 +784,16 @@ function parseCjkNumber(value: string): number | null {
       continue;
     }
 
-    const unit = CJK_UNITS[char];
-    if (unit === 10000) {
+    const chapter = CJK_CHAPTERS[char];
+    if (chapter === 10000) {
       section += number;
-      total += (section || 1) * unit;
+      total += (section || 1) * chapter;
       section = 0;
       number = 0;
       continue;
     }
 
-    section += (number || 1) * unit;
+    section += (number || 1) * chapter;
     number = 0;
   }
 
@@ -966,7 +966,7 @@ function collectChapterLinks(
   $: cheerio.CheerioAPI,
   pageUrl: string,
   sourceUrl: string,
-  chaptersByUrl: Map<string, UnitCandidate>,
+  chaptersByUrl: Map<string, ChapterCandidate>,
   orderState: { next: number }
 ) {
   const { anchors, isScopedToChapterList } = getChapterAnchors($);
@@ -1007,7 +1007,7 @@ function collectChapterLinks(
   });
 }
 
-function orderUnitCandidates(candidates: UnitCandidate[]): UnitCandidate[] {
+function orderChapterCandidates(candidates: ChapterCandidate[]): ChapterCandidate[] {
   const sourceOrdered = candidates.slice().sort((a, b) => a.sourceOrder - b.sourceOrder);
   const numbered = sourceOrdered.filter((chapter) => chapter.number !== null);
 
@@ -1033,7 +1033,7 @@ function orderUnitCandidates(candidates: UnitCandidate[]): UnitCandidate[] {
   return sourceOrdered;
 }
 
-function finalizeChapters(chaptersByUrl: Map<string, UnitCandidate>): UnitIndex[] {
+function finalizeChapters(chaptersByUrl: Map<string, ChapterCandidate>): ChapterIndex[] {
   const candidates = Array.from(chaptersByUrl.values());
   const hasMissingNumbers = candidates.some((chapter) => chapter.number === null);
 
@@ -1047,9 +1047,9 @@ function finalizeChapters(chaptersByUrl: Map<string, UnitCandidate>): UnitIndex[
       .sort((a, b) => a.number - b.number);
   }
 
-  const ordered = orderUnitCandidates(candidates);
+  const ordered = orderChapterCandidates(candidates);
   const usedNumbers = new Set<number>();
-  const finalized: UnitIndex[] = [];
+  const finalized: ChapterIndex[] = [];
 
   for (let index = 0; index < ordered.length; index++) {
     const chapter = ordered[index];
@@ -1534,7 +1534,7 @@ export class ScraperService {
     }
 
     // 5. Extract Chapters, including paginated chapter lists
-    const chaptersByUrl = new Map<string, UnitCandidate>();
+    const chaptersByUrl = new Map<string, ChapterCandidate>();
     const chapterOrderState = { next: 0 };
     const visitedListPages = new Set<string>();
     const normalizedSourceUrl = normalizeUrl(url);
@@ -1595,7 +1595,7 @@ export class ScraperService {
       }
     }
 
-    const units = finalizeChapters(chaptersByUrl);
+    const chapters = finalizeChapters(chaptersByUrl);
 
     return {
       title,
@@ -1608,23 +1608,23 @@ export class ScraperService {
       publicationStatus,
       description,
       coverUrl,
-      units,
+      chapters,
     };
   }
 
   /**
    * Scrapes a single chapter's content
    */
-  static async scrapeUnit(url: string): Promise<ScrapedUnit> {
+  static async scrapeChapter(url: string): Promise<ScrapedChapter> {
     const data = await fetchHtml(url);
-    return this.scrapeUnitFromHtml(data, url);
+    return this.scrapeChapterFromHtml(data, url);
   }
 
-  static async scrapeUnitFromHtml(html: string, url: string): Promise<ScrapedUnit> {
-    return this.parseUnitHtml(html, url);
+  static async scrapeChapterFromHtml(html: string, url: string): Promise<ScrapedChapter> {
+    return this.parseChapterHtml(html, url);
   }
 
-  private static parseUnitHtml(data: string, _url: string): ScrapedUnit {
+  private static parseChapterHtml(data: string, _url: string): ScrapedChapter {
     const $ = cheerio.load(data);
     const title = extractChapterTitleFromHtml($, data);
     const contentHtml = extractChapterContentHtml($, title);

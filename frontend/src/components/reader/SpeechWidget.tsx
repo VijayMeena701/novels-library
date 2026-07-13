@@ -23,10 +23,10 @@ export interface SpeechWidgetProps {
 	onPlay: () => void;
 	onPause: () => void;
 	onStop: () => void;
-	onPrevUnit: () => void;
-	onNextUnit: () => void;
-	hasPrevUnit: boolean;
-	hasNextUnit: boolean;
+	onPrevChapter: () => void;
+	onNextChapter: () => void;
+	hasPrevChapter: boolean;
+	hasNextChapter: boolean;
 
 	voices: SpeechSynthesisVoice[];
 	voiceURI: string;
@@ -66,10 +66,10 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 		onPlay,
 		onPause,
 		onStop,
-		onPrevUnit,
-		onNextUnit,
-		hasPrevUnit,
-		hasNextUnit,
+		onPrevChapter,
+		onNextChapter,
+		hasPrevChapter,
+		hasNextChapter,
 		voices,
 		voiceURI,
 		onVoiceChange,
@@ -312,7 +312,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 
 					{/* Controller Action Row */}
 					<div className="grid grid-cols-5 gap-1.5">
-						<IconButton onClick={onPrevUnit} disabled={!hasPrevUnit} icon={<SkipBack className="size-4" />} aria-label="Previous unit" title="Previous unit" />
+						<IconButton onClick={onPrevChapter} disabled={!hasPrevChapter} icon={<SkipBack className="size-4" />} aria-label="Previous chapter" title="Previous chapter" />
 						<IconButton
 							onClick={onPlay}
 							disabled={!supported}
@@ -323,7 +323,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 						/>
 						<IconButton onClick={onPause} disabled={!isPlaying} icon={<Pause className="size-4" />} aria-label="Pause" title="Pause" />
 						<IconButton onClick={onStop} disabled={status === "idle"} icon={<Square className="size-3.5 fill-current" />} aria-label="Stop" title="Stop" />
-						<IconButton onClick={onNextUnit} disabled={!hasNextUnit} icon={<SkipForward className="size-4" />} aria-label="Next unit" title="Next unit" />
+						<IconButton onClick={onNextChapter} disabled={!hasNextChapter} icon={<SkipForward className="size-4" />} aria-label="Next chapter" title="Next chapter" />
 					</div>
 				</div>
 			)}

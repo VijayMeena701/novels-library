@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Clock } from 'lucide-react';
-import { api, getBookCoverUrl, type Book, type BookVisit, type HistoryPagination } from '../../utils/api';
+import { api, getBookCoverUrl, type Book, type ChapterVisit, type HistoryPagination } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -24,7 +24,7 @@ function formatDate(value: string) {
 
 export default function HistoryPage() {
   const { user } = useAuth();
-  const [visits, setVisits] = useState<BookVisit[]>([]);
+  const [visits, setVisits] = useState<ChapterVisit[]>([]);
   const [pagination, setPagination] = useState<HistoryPagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -32,9 +32,9 @@ export default function HistoryPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    setLoading(true);
 
     async function loadHistory() {
+      setLoading(true);
       try {
         const data = await api.getHistory(page, 50);
         if (!cancelled) {
@@ -53,7 +53,7 @@ export default function HistoryPage() {
   }, [user, page]);
 
   const books = useMemo(() => {
-    const map = new Map<string, { book: Book; latestVisit: BookVisit }>();
+    const map = new Map<string, { book: Book; latestVisit: ChapterVisit }>();
     for (const visit of visits) {
       const book = isBook(visit.bookId) ? visit.bookId : null;
       if (!book) continue;
@@ -136,8 +136,8 @@ export default function HistoryPage() {
                     <div className="flex items-center gap-2 text-sm text-muted-copy">
                       <Clock className="size-3.5" />
                       <span>
-                        Latest: Unit {latestVisit.unitNumber}
-                        {latestVisit.unitTitle ? ` - ${latestVisit.unitTitle}` : ''} · {formatDate(latestVisit.openedAt)}
+                        Latest: Chapter {latestVisit.chapterNumber}
+                        {latestVisit.chapterTitle ? ` - ${latestVisit.chapterTitle}` : ''} · {formatDate(latestVisit.openedAt)}
                       </span>
                     </div>
                   </div>

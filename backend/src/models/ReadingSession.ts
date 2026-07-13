@@ -5,7 +5,7 @@ export interface IReadingSession extends Document {
   userId: mongoose.Types.ObjectId;
   startDate: Date;
   endDate?: Date;
-  unitsRead: number;
+  chaptersRead: number;
   notes: string;
   completed: boolean;
   createdAt: Date;
@@ -17,7 +17,7 @@ const ReadingSessionSchema = new Schema<IReadingSession>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   startDate: { type: Date, default: Date.now },
   endDate: { type: Date },
-  unitsRead: { type: Number, default: 0 },
+  chaptersRead: { type: Number, default: 0 },
   notes: { type: String, default: '' },
   completed: { type: Boolean, default: false },
 }, { timestamps: true });

@@ -18,9 +18,9 @@ async function runTest() {
     console.log(`- Cover:  "${meta.coverUrl}"`);
     console.log(`- Genres: "${meta.genres.join(', ')}"`);
     console.log(`- Status: "${meta.publicationStatus}"`);
-    console.log(`- Units found: ${meta.units.length}`);
-    if (meta.units.length > 0) {
-      console.log('  First Unit Link:', meta.units[0]);
+    console.log(`- Chapters found: ${meta.chapters.length}`);
+    if (meta.chapters.length > 0) {
+      console.log('  First Chapter Link:', meta.chapters[0]);
     }
 
     // Verify assertions
@@ -32,52 +32,52 @@ async function runTest() {
     if (meta.genres.length !== 2 || meta.genres[0] !== 'Fantasy') throw new Error('Metadata genres parsing failed!');
     if (meta.originalSource !== 'Gravity Tales') throw new Error('Metadata source parsing failed!');
     if (meta.publicationStatus !== 'Completed') throw new Error('Metadata publication status parsing failed!');
-    if (meta.units.length !== 11) throw new Error('Metadata paginated units parsing failed!');
-    if (meta.units[5]?.title !== 'Interlude: The Quiet Room' || meta.units[5]?.number !== 6) {
-      throw new Error('Numberless unit ordering failed!');
+    if (meta.chapters.length !== 11) throw new Error('Metadata paginated chapters parsing failed!');
+    if (meta.chapters[5]?.title !== 'Interlude: The Quiet Room' || meta.chapters[5]?.number !== 6) {
+      throw new Error('Numberless chapter ordering failed!');
     }
-    if (!meta.units[10]?.title.includes('第十章') || meta.units[10]?.number !== 11) {
-      throw new Error('Ordered multilingual unit parsing failed!');
+    if (!meta.chapters[10]?.title.includes('第十章') || meta.chapters[10]?.number !== 11) {
+      throw new Error('Ordered multilingual chapter parsing failed!');
     }
     console.log('✅ Metadata extraction test passed.');
 
     const catalogOnlyUrl = 'https://benign-novel-site.local/book/azure-sky';
     console.log(`\nTesting full catalogue discovery for: ${catalogOnlyUrl}`);
     const catalogMeta = await ScraperService.scrapeMetadata(catalogOnlyUrl);
-    console.log(`- Catalogue units found: ${catalogMeta.units.length}`);
-    if (catalogMeta.units.length !== 7) throw new Error('Full catalogue discovery failed!');
-    if (catalogMeta.units[0]?.number !== 1 || !catalogMeta.units[0]?.title.includes('第1章')) {
-      throw new Error('Chinese catalogue first unit parsing failed!');
+    console.log(`- Catalogue chapters found: ${catalogMeta.chapters.length}`);
+    if (catalogMeta.chapters.length !== 7) throw new Error('Full catalogue discovery failed!');
+    if (catalogMeta.chapters[0]?.number !== 1 || !catalogMeta.chapters[0]?.title.includes('第1章')) {
+      throw new Error('Chinese catalogue first chapter parsing failed!');
     }
-    if (catalogMeta.units[5]?.number !== 6 || catalogMeta.units[5]?.title !== '今晚请个假') {
+    if (catalogMeta.chapters[5]?.number !== 6 || catalogMeta.chapters[5]?.title !== '今晚请个假') {
       throw new Error('Numberless catalogue entry inference failed!');
     }
-    if (catalogMeta.units[6]?.number !== 7 || !catalogMeta.units[6]?.title.includes('第7章')) {
-      throw new Error('Known unit numbers were not preserved around numberless entries!');
+    if (catalogMeta.chapters[6]?.number !== 7 || !catalogMeta.chapters[6]?.title.includes('第7章')) {
+      throw new Error('Known chapter numbers were not preserved around numberless entries!');
     }
     console.log('✅ Full catalogue discovery test passed.');
 
     const jsCatalogUrl = 'https://benign-novel-site.local/book/js-catalog/9000.html';
     console.log(`\nTesting JavaScript catalogue button discovery for: ${jsCatalogUrl}`);
     const jsCatalogMeta = await ScraperService.scrapeMetadata(jsCatalogUrl);
-    console.log(`- JS catalogue units found: ${jsCatalogMeta.units.length}`);
-    if (jsCatalogMeta.units.length !== 4) throw new Error('JavaScript catalogue button discovery failed!');
-    if (jsCatalogMeta.units[3]?.number !== 4 || !jsCatalogMeta.units[3]?.title.includes('第4章')) {
-      throw new Error('JavaScript catalogue unit order failed!');
+    console.log(`- JS catalogue chapters found: ${jsCatalogMeta.chapters.length}`);
+    if (jsCatalogMeta.chapters.length !== 4) throw new Error('JavaScript catalogue button discovery failed!');
+    if (jsCatalogMeta.chapters[3]?.number !== 4 || !jsCatalogMeta.chapters[3]?.title.includes('第4章')) {
+      throw new Error('JavaScript catalogue chapter order failed!');
     }
     console.log('✅ JavaScript catalogue discovery test passed.');
 
-    const unitUrl = 'https://benign-novel-site.local/novels/test-story/chapters/1';
-    console.log(`\nTesting unit content scraper for: ${unitUrl}`);
-    const unit = await ScraperService.scrapeUnit(unitUrl);
-    console.log('\n[Scraped Unit Result]:');
-    console.log(`- Unit Title: "${unit.title}"`);
-    console.log(`- Content sample (first 150 chars):\n  ${unit.content.substring(0, 150)}...`);
+    const chapterUrl = 'https://benign-novel-site.local/novels/test-story/chapters/1';
+    console.log(`\nTesting chapter content scraper for: ${chapterUrl}`);
+    const chapter = await ScraperService.scrapeChapter(chapterUrl);
+    console.log('\n[Scraped Chapter Result]:');
+    console.log(`- Chapter Title: "${chapter.title}"`);
+    console.log(`- Content sample (first 150 chars):\n  ${chapter.content.substring(0, 150)}...`);
 
     // Verify assertions
-    if (unit.title !== 'Chapter 1: The Awakening') throw new Error('Unit title parsing failed!');
-    if (!unit.content.includes('First paragraph of text.')) throw new Error('Unit content extraction failed!');
-    console.log('✅ Unit parsing test passed.');
+    if (chapter.title !== 'Chapter 1: The Awakening') throw new Error('Chapter title parsing failed!');
+    if (!chapter.content.includes('First paragraph of text.')) throw new Error('Chapter content extraction failed!');
+    console.log('✅ Chapter parsing test passed.');
     
     console.log('\n🎉 ALL SCRAPER TESTS COMPLETED SUCCESSFULLY!');
   } catch (err: any) {

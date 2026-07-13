@@ -2,7 +2,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import mongoose from "mongoose";
 import { Book } from "../models/Novel.js";
 import { UserBook } from "../models/UserNovel.js";
-import { BookVisit } from "../models/ChapterVisit.js";
+import { ChapterVisit } from "../models/ChapterVisit.js";
 import { BookStats } from "../models/BookStats.js";
 import { BookActivity } from "../models/BookActivity.js";
 
@@ -13,9 +13,9 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
   const userId = (request.user as any)?.id;
 
   try {
-    const [totalBooks, totalUnits] = await Promise.all([
+    const [totalBooks, totalChapters] = await Promise.all([
       Book.countDocuments(),
-      Book.aggregate([{ $group: { _id: null, total: { $sum: "$translatedUnitsTotal" } } }]).then((res) => res[0]?.total || 0),
+      Book.aggregate([{ $group: { _id: null, total: { $sum: "$translatedChaptersTotal" } } }]).then((res) => res[0]?.total || 0),
     ]);
 
     const recentlyUpdated = await Book.find()
@@ -58,12 +58,12 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
             planning: { $sum: { $cond: [{ $eq: ["$status", "planning"] }, 1, 0] } },
             onHold: { $sum: { $cond: [{ $eq: ["$status", "on_hold"] }, 1, 0] } },
             dropped: { $sum: { $cond: [{ $eq: ["$status", "dropped"] }, 1, 0] } },
-            totalUnitsRead: { $sum: "$unitsRead" },
+            totalChaptersRead: { $sum: "$chaptersRead" },
           },
         },
       ]);
 
-      personal.library = userStats[0] || { reading: 0, completed: 0, planning: 0, onHold: 0, dropped: 0, totalUnitsRead: 0 };
+      personal.library = userStats[0] || { reading: 0, completed: 0, planning: 0, onHold: 0, dropped: 0, totalChaptersRead: 0 };
 
       const continueReadingEntries = await UserBook.find({
         userId: userObjectId,
@@ -77,9 +77,9 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
       continueReading = continueReadingEntries.map((item: any) => ({
         ...(item.bookId || {}),
         status: item.status,
-        unitsRead: item.unitsRead,
+        chaptersRead: item.chaptersRead,
         rating: item.rating,
-        lastVisitedUnitNumber: item.lastVisitedUnitNumber,
+        lastVisitedChapterNumber: item.lastVisitedChapterNumber,
         lastVisitedAt: item.lastVisitedAt,
       }));
 
@@ -111,7 +111,7 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
     return reply.send({
       stats: {
         totalBooks,
-        totalUnits,
+        totalChapters,
       },
       personal,
       recentlyUpdated,

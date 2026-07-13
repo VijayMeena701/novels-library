@@ -1,13 +1,13 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import mongoose from "mongoose";
-import { BookVisit } from "../models/ChapterVisit.js";
+import { ChapterVisit } from "../models/ChapterVisit.js";
 import { UserBook } from "../models/UserNovel.js";
 
 const DEFAULT_HISTORY_LIMIT = 50;
 
 const PERSONAL_LIBRARY_FIELDS = [
 	"status",
-	"unitsRead",
+	"chaptersRead",
 	"rating",
 	"review",
 	"personalNotes",
@@ -16,7 +16,7 @@ const PERSONAL_LIBRARY_FIELDS = [
 	"relationshipNotes",
 	"personalTags",
 	"completedAt",
-	"lastVisitedUnitNumber",
+	"lastVisitedChapterNumber",
 	"lastVisitedAt",
 ] as const;
 
@@ -30,13 +30,13 @@ export async function getHistoryHandler(request: FastifyRequest, reply: FastifyR
 
   try {
     const [visits, total] = await Promise.all([
-      BookVisit.find({ userId: new mongoose.Types.ObjectId(userId) })
+      ChapterVisit.find({ userId: new mongoose.Types.ObjectId(userId) })
         .sort({ openedAt: -1 })
         .skip(skip)
         .limit(pageSize)
         .populate("bookId")
         .lean(),
-      BookVisit.countDocuments({ userId: new mongoose.Types.ObjectId(userId) }),
+      ChapterVisit.countDocuments({ userId: new mongoose.Types.ObjectId(userId) }),
     ]);
 
     const bookIds = visits
@@ -61,7 +61,7 @@ export async function getHistoryHandler(request: FastifyRequest, reply: FastifyR
         }
       } else {
         book.status = book.status ?? "planning";
-        book.unitsRead = book.unitsRead ?? 0;
+        book.chaptersRead = book.chaptersRead ?? 0;
       }
     }
 

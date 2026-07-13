@@ -16,9 +16,9 @@ export interface IBookActivity extends Document {
   userId?: mongoose.Types.ObjectId;
   sessionId?: mongoose.Types.ObjectId;
   activityType: BookActivityType;
-  unitType?: string;
-  unitNumber?: number;
-  unitTitle?: string;
+  chapterType?: string;
+  chapterNumber?: number;
+  chapterTitle?: string;
   sourceUrl?: string;
   metadata?: Record<string, any>;
   createdAt: Date;
@@ -30,9 +30,9 @@ const BookActivitySchema = new Schema<IBookActivity>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
   sessionId: { type: Schema.Types.ObjectId, ref: 'ReadingSession', index: true },
   activityType: { type: String, enum: ['visit', 'read', 'rate', 'review', 'vote', 'add_library', 'remove_library', 'update_library', 'share'], required: true, index: true },
-  unitType: { type: String, index: true },
-  unitNumber: { type: Number, index: true },
-  unitTitle: { type: String, default: '' },
+  chapterType: { type: String, index: true },
+  chapterNumber: { type: Number, index: true },
+  chapterTitle: { type: String, default: '' },
   sourceUrl: { type: String, default: '' },
   metadata: { type: Schema.Types.Mixed },
 }, { timestamps: true });

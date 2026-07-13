@@ -2,10 +2,10 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
 import { Book, BookStatus, normalizeFilterKey } from '../models/Novel.js';
 import { ReadingSession } from '../models/ReadingSession.js';
-import { BookContent } from '../models/ChapterContent.js';
-import { RawBookContent } from '../models/RawChapterContent.js';
+import { ChapterContent } from '../models/ChapterContent.js';
+import { RawChapterContent } from '../models/RawChapterContent.js';
 import { BackgroundJob } from '../models/BackgroundJob.js';
-import { BookVisit } from '../models/ChapterVisit.js';
+import { ChapterVisit } from '../models/ChapterVisit.js';
 import { UserBook } from '../models/UserNovel.js';
 import { BookStats } from '../models/BookStats.js';
 import { BookActivity } from '../models/BookActivity.js';
@@ -19,7 +19,7 @@ const VALID_BOOK_STATUSES = new Set<BookStatus>(['reading', 'completed', 'on_hol
 
 const PERSONAL_LIBRARY_FIELDS = [
   'status',
-  'unitsRead',
+  'chaptersRead',
   'rating',
   'review',
   'personalNotes',
@@ -28,7 +28,7 @@ const PERSONAL_LIBRARY_FIELDS = [
   'relationshipNotes',
   'personalTags',
   'completedAt',
-  'lastVisitedUnitNumber',
+  'lastVisitedChapterNumber',
   'lastVisitedAt',
 ];
 
@@ -317,7 +317,7 @@ export async function listCatalogBooksHandler(request: FastifyRequest, reply: Fa
     applySharedBookFilters(andFilters, query);
     const filter = andFilters.length > 0 ? { $and: andFilters } : {};
 
-    const allowedSortFields = ['updatedAt', 'title', 'translatedUnitsTotal', 'rawUnitsTotal', 'rating', 'publicationStatus', 'createdAt', 'author', 'originalSource'];
+    const allowedSortFields = ['updatedAt', 'title', 'translatedChaptersTotal', 'rawChaptersTotal', 'rating', 'publicationStatus', 'createdAt', 'author', 'originalSource'];
     const sortField = (allowedSortFields.includes(query.sort) ? query.sort : 'updatedAt') as string;
     const sortDir = query.sortDir === 'asc' ? 'asc' : 'desc';
     const sort: Record<string, 1 | -1> = { [sortField]: sortDir === 'asc' ? 1 : -1 };
@@ -467,7 +467,7 @@ export async function createBookHandler(request: FastifyRequest, reply: FastifyR
       sourceUrl: sourceUrl || '',
       rawSourceUrl: rawSourceUrl || '',
       rawOriginalLanguage: rawOriginalLanguage || '',
-      translatedUnitsList: []
+      translatedChaptersList: []
     });
 
     // If sourceUrl is provided, trigger a background metadata job
@@ -506,7 +506,7 @@ export async function addBookToLibraryHandler(request: FastifyRequest, reply: Fa
       {
         $setOnInsert: {
           status: 'planning',
-          unitsRead: 0,
+          chaptersRead: 0,
           rating: 0,
           review: '',
           personalNotes: '',
@@ -635,8 +635,8 @@ export async function updateBookHandler(request: FastifyRequest, reply: FastifyR
       await applySharedBookUpdates(book, sharedUpdates);
     }
 
-    // Auto-mark completed if unitsRead matches translatedUnitsTotal and translatedUnitsTotal > 0
-    if (book.translatedUnitsTotal > 0 && userBook.unitsRead >= book.translatedUnitsTotal && userBook.status !== 'completed') {
+    // Auto-mark completed if chaptersRead matches translatedChaptersTotal and translatedChaptersTotal > 0
+    if (book.translatedChaptersTotal > 0 && userBook.chaptersRead >= book.translatedChaptersTotal && userBook.status !== 'completed') {
       userBook.status = 'completed';
     }
 
@@ -887,7 +887,7 @@ export async function deleteBookHandler(request: FastifyRequest, reply: FastifyR
 
     await UserBook.deleteOne({ _id: userBook._id });
     await ReadingSession.deleteMany({ bookId: id, userId });
-    await BookVisit.deleteMany({ bookId: id, userId });
+    await ChapterVisit.deleteMany({ bookId: id, userId });
 
     return reply.send({ success: true, message: 'Book removed from your library.' });
   } catch (err: any) {
@@ -915,9 +915,9 @@ export async function deleteCatalogBookHandler(request: FastifyRequest, reply: F
 
     await UserBook.deleteMany({ bookId: id });
     await ReadingSession.deleteMany({ bookId: id });
-    await BookVisit.deleteMany({ bookId: id });
-    await BookContent.deleteMany({ bookId: id });
-    await RawBookContent.deleteMany({ bookId: id });
+    await ChapterVisit.deleteMany({ bookId: id });
+    await ChapterContent.deleteMany({ bookId: id });
+    await RawChapterContent.deleteMany({ bookId: id });
     await BackgroundJob.deleteMany({ bookId: id });
     await deleteCoverImageFile(book.coverImagePath);
     await Book.deleteOne({ _id: id });
@@ -946,7 +946,7 @@ export async function listReadingSessionsHandler(request: FastifyRequest, reply:
 export async function startReadingSessionHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
   const { id: bookId } = request.params as any;
-  const { notes, unitsRead } = request.body as any;
+  const { notes, chaptersRead } = request.body as any;
 
   try {
     const [book, userBook] = await Promise.all([
@@ -963,7 +963,7 @@ export async function startReadingSessionHandler(request: FastifyRequest, reply:
       userId: new mongoose.Types.ObjectId(userId),
       startDate: new Date(),
       notes: notes || 'Started re-reading.',
-      unitsRead: unitsRead || 0,
+      chaptersRead: chaptersRead || 0,
       completed: false
     });
 
@@ -977,7 +977,7 @@ export async function startReadingSessionHandler(request: FastifyRequest, reply:
 export async function updateReadingSessionHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
   const { id: bookId, sessionId } = request.params as any;
-  const { notes, unitsRead, completed } = request.body as any;
+  const { notes, chaptersRead, completed } = request.body as any;
 
   try {
     const session = await ReadingSession.findOne({ _id: sessionId, bookId, userId });
@@ -985,7 +985,7 @@ export async function updateReadingSessionHandler(request: FastifyRequest, reply
       return reply.status(404).send({ error: 'Reading session not found.' });
     }
 
-    if (unitsRead !== undefined) session.unitsRead = unitsRead;
+    if (chaptersRead !== undefined) session.chaptersRead = chaptersRead;
     if (notes !== undefined) session.notes = notes;
     
     if (completed !== undefined) {

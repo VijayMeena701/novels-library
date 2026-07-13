@@ -1,10 +1,13 @@
+/// <reference types="node" />
 import 'dotenv/config';
+import process from 'node:process';
 import mongoose from 'mongoose';
+import { renameChapterTerminology } from './migrate-chapters.js';
 import { Book, normalizeFilterKey } from './src/models/Novel.js';
 import { UserBook } from './src/models/UserNovel.js';
-import { BookContent } from './src/models/ChapterContent.js';
-import { RawBookContent } from './src/models/RawChapterContent.js';
-import { BookVisit } from './src/models/ChapterVisit.js';
+import { ChapterContent } from './src/models/ChapterContent.js';
+import { RawChapterContent } from './src/models/RawChapterContent.js';
+import { ChapterVisit } from './src/models/ChapterVisit.js';
 import { Author } from './src/models/Author.js';
 import { Genre } from './src/models/Genre.js';
 import { PublicationStatus } from './src/models/PublicationStatus.js';
@@ -135,12 +138,12 @@ async function getOrCreatePublicationStatus(name: string) {
   return { status, created: false };
 }
 
-function mapUnitList(list: any[] | undefined): { title: string; url: string; unitNumber: number; unitType: string }[] {
+function mapChapterList(list: any[] | undefined): { title: string; url: string; chapterNumber: number; chapterType: string }[] {
   return (list || []).map((c) => ({
     title: c.title || '',
     url: c.url || '',
-    unitNumber: c.number || 0,
-    unitType: 'chapter',
+    chapterNumber: c.number || 0,
+    chapterType: 'chapter',
   }));
 }
 
@@ -165,13 +168,13 @@ async function migrateLegacyBookUserIds(db: any) {
 
     const existingUserBook = await UserBook.findOne({ userId, bookId });
     if (!existingUserBook) {
-      const unitsRead = book.unitsRead ?? book.chaptersRead ?? 0;
+      const chaptersRead = book.chaptersRead ?? book.unitsRead ?? 0;
       const personalTags = Array.isArray(book.personalTags) ? book.personalTags : [];
       await UserBook.create({
         userId,
         bookId,
         status: book.status || 'planning',
-        unitsRead,
+        chaptersRead,
         rating: book.rating || 0,
         review: book.review || '',
         personalNotes: book.personalNotes || '',
@@ -193,8 +196,8 @@ async function migrateLegacyBookUserIds(db: any) {
         relationshipNotes: book.relationshipNotes || '',
         personalTags,
         completedAt: book.completedAt || null,
-        lastVisitedUnitNumber: unitsRead,
-        lastVisitedAt: unitsRead ? (book.updatedAt || new Date()) : null,
+        lastVisitedChapterNumber: chaptersRead,
+        lastVisitedAt: chaptersRead ? (book.updatedAt || new Date()) : null,
         createdAt: book.createdAt || new Date(),
         updatedAt: book.updatedAt || new Date(),
       });
@@ -226,8 +229,19 @@ async function dropLegacyCollections(db: any) {
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+  const mode = args.find((arg) => !arg.startsWith('--')) || 'legacy';
+  const dryRun = args.includes('--dry-run');
+  const force = args.includes('--force');
+
   await mongoose.connect(MONGODB_URI);
-  const db = mongoose.connection;
+  const db = mongoose.connection.db as any;
+
+  if (mode === 'rename') {
+    await renameChapterTerminology(db, dryRun, force);
+    await mongoose.disconnect();
+    return;
+  }
 
   const oldNovels = await db.collection('novels').find().toArray();
   const oldUserNovels = await db.collection('usernovels').find().toArray();
@@ -267,7 +281,7 @@ async function main() {
     books: 0,
     userBooks: 0,
     bookContents: 0,
-    rawBookContents: 0,
+    rawChapterContents: 0,
     bookVisits: 0,
     authors: 0,
     genres: 0,
@@ -320,10 +334,10 @@ async function main() {
       publicationStatusId = ps._id;
     }
 
-    const translatedUnitsList = mapUnitList(oldNovel.chaptersList);
-    const translatedUnitsTotal = oldNovel.chaptersTotal || translatedUnitsList.length;
-    const rawUnitsList = mapUnitList(oldNovel.rawChaptersList);
-    const rawUnitsTotal = oldNovel.rawChaptersTotal || rawUnitsList.length;
+    const translatedChaptersList = mapChapterList(oldNovel.chaptersList);
+    const translatedChaptersTotal = oldNovel.chaptersTotal || translatedChaptersList.length;
+    const rawChaptersList = mapChapterList(oldNovel.rawChaptersList);
+    const rawChaptersTotal = oldNovel.rawChaptersTotal || rawChaptersList.length;
 
     let book: any;
     if (existing) {
@@ -354,11 +368,11 @@ async function main() {
         sourceUrl: oldNovel.sourceUrl || '',
         rawSourceUrl: oldNovel.rawSourceUrl || '',
         rawOriginalLanguage: oldNovel.rawOriginalLanguage || '',
-        rawUnitsTotal,
-        rawUnitsList,
+        rawChaptersTotal,
+        rawChaptersList,
         status: oldNovel.status || 'planning',
-        translatedUnitsTotal,
-        translatedUnitsList,
+        translatedChaptersTotal,
+        translatedChaptersList,
         createdAt: oldNovel.createdAt,
         updatedAt: oldNovel.updatedAt,
       });
@@ -378,7 +392,7 @@ async function main() {
               userId: un.userId,
               bookId,
               status: un.status || 'planning',
-              unitsRead: un.chaptersRead || 0,
+              chaptersRead: un.chaptersRead ?? un.unitsRead ?? 0,
               rating: un.rating || 0,
               review: un.review || '',
               personalNotes: un.personalNotes || '',
@@ -388,7 +402,7 @@ async function main() {
               personalTags,
               personalTagKeys: personalTags.map((tag: string) => normalizeFilterKey(tag)).filter(Boolean),
               completedAt: un.completedAt || null,
-              lastVisitedUnitNumber: un.chaptersRead || 0,
+              lastVisitedChapterNumber: un.chaptersRead ?? un.unitsRead ?? 0,
               lastVisitedAt: un.chaptersRead ? un.updatedAt : null,
               createdAt: un.createdAt,
               updatedAt: un.updatedAt,
@@ -407,7 +421,7 @@ async function main() {
             userId: oldNovel.userId,
             bookId,
             status: oldNovel.status || 'planning',
-            unitsRead: oldNovel.chaptersRead || 0,
+            chaptersRead: oldNovel.chaptersRead ?? oldNovel.unitsRead ?? 0,
             rating: oldNovel.rating || 0,
             review: oldNovel.review || '',
             personalNotes: oldNovel.personalNotes || '',
@@ -426,7 +440,7 @@ async function main() {
             personalTags,
             personalTagKeys: personalTags.map((tag: string) => normalizeFilterKey(tag)).filter(Boolean),
             completedAt: oldNovel.completedAt || null,
-            lastVisitedUnitNumber: oldNovel.chaptersRead || 0,
+            lastVisitedChapterNumber: oldNovel.chaptersRead ?? oldNovel.unitsRead ?? 0,
             lastVisitedAt: oldNovel.chaptersRead ? oldNovel.updatedAt : null,
             createdAt: oldNovel.createdAt,
             updatedAt: oldNovel.updatedAt,
@@ -439,17 +453,17 @@ async function main() {
 
     const chapters = chaptersByNovel.get(String(oldNovel._id)) || [];
     const chapterOps = chapters.map((ch) => {
-      const unitNumber = ch.chapterNumber || 0;
-      const titleFromList = translatedUnitsList.find((u) => u.unitNumber === unitNumber)?.title || '';
+      const chapterNumber = ch.chapterNumber || 0;
+      const titleFromList = translatedChaptersList.find((u) => u.chapterNumber === chapterNumber)?.title || '';
       const title = titleFromList || ch.title || '';
       return {
         updateOne: {
-          filter: { bookId, unitNumber },
+          filter: { bookId, chapterNumber },
           update: {
             $set: {
               bookId,
-              unitNumber,
-              unitType: 'chapter',
+              chapterNumber,
+              chapterType: 'chapter',
               title,
               content: ch.content || '',
               sourceUrl: ch.sourceUrl || '',
@@ -461,23 +475,23 @@ async function main() {
       };
     });
     for (const batch of chunk(chapterOps, 1000)) {
-      await BookContent.bulkWrite(batch);
+      await ChapterContent.bulkWrite(batch);
     }
     stats.bookContents += chapters.length;
 
     const rawChapters = rawChaptersByNovel.get(String(oldNovel._id)) || [];
     const rawOps = rawChapters.map((ch) => {
-      const unitNumber = ch.chapterNumber || 0;
-      const titleFromList = rawUnitsList.find((u) => u.unitNumber === unitNumber)?.title || '';
+      const chapterNumber = ch.chapterNumber || 0;
+      const titleFromList = rawChaptersList.find((u) => u.chapterNumber === chapterNumber)?.title || '';
       const title = titleFromList || ch.title || '';
       return {
         updateOne: {
-          filter: { bookId, unitNumber },
+          filter: { bookId, chapterNumber },
           update: {
             $set: {
               bookId,
-              unitNumber,
-              unitType: 'chapter',
+              chapterNumber,
+              chapterType: 'chapter',
               title,
               content: ch.content || '',
               language: ch.language || '',
@@ -490,25 +504,25 @@ async function main() {
       };
     });
     for (const batch of chunk(rawOps, 1000)) {
-      await RawBookContent.bulkWrite(batch);
+      await RawChapterContent.bulkWrite(batch);
     }
-    stats.rawBookContents += rawChapters.length;
+    stats.rawChapterContents += rawChapters.length;
 
     const visits = visitsByNovel.get(String(oldNovel._id)) || [];
     const visitOps = visits.map((v) => {
-      const unitNumber = v.chapterNumber || 0;
-      const titleFromList = translatedUnitsList.find((u) => u.unitNumber === unitNumber)?.title || '';
-      const unitTitle = v.chapterTitle || titleFromList || '';
+      const chapterNumber = v.chapterNumber || 0;
+      const titleFromList = translatedChaptersList.find((u) => u.chapterNumber === chapterNumber)?.title || '';
+      const chapterTitle = v.chapterTitle || titleFromList || '';
       return {
         updateOne: {
-          filter: { bookId, userId: v.userId, unitNumber, openedAt: v.openedAt },
+          filter: { bookId, userId: v.userId, chapterNumber, openedAt: v.openedAt },
           update: {
             $setOnInsert: {
               bookId,
               userId: v.userId,
-              unitNumber,
-              unitType: 'chapter',
-              unitTitle,
+              chapterNumber,
+              chapterType: 'chapter',
+              chapterTitle,
               sourceUrl: v.sourceUrl || '',
               openedAt: v.openedAt || new Date(),
             },
@@ -518,7 +532,7 @@ async function main() {
       };
     });
     for (const batch of chunk(visitOps, 1000)) {
-      await BookVisit.bulkWrite(batch);
+      await ChapterVisit.bulkWrite(batch);
     }
     stats.bookVisits += visits.length;
 

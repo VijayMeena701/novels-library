@@ -17,9 +17,9 @@ function byNewest(a: Book, b: Book) {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 }
 
-function byUnitCount(a: Book, b: Book) {
-  const aTotal = a.translatedUnitsTotal || a.translatedUnitsList?.length || 0;
-  const bTotal = b.translatedUnitsTotal || b.translatedUnitsList?.length || 0;
+function byChapterCount(a: Book, b: Book) {
+  const aTotal = a.translatedChaptersTotal || a.translatedChaptersList?.length || 0;
+  const bTotal = b.translatedChaptersTotal || b.translatedChaptersList?.length || 0;
   return bTotal - aTotal;
 }
 
@@ -31,8 +31,8 @@ function getAuthor(book: Book): string {
   return book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
 }
 
-function getUnitCount(book: Book): number {
-  return book.translatedUnitsTotal || book.translatedUnitsList?.length || 0;
+function getChapterCount(book: Book): number {
+  return book.translatedChaptersTotal || book.translatedChaptersList?.length || 0;
 }
 
 function stableBookOrder(book: Book): number {
@@ -48,17 +48,17 @@ const FEATURES = [
   {
     icon: BookText,
     title: 'Clean Reader',
-    description: 'A distraction-free unit reader with custom fonts and themes.',
+    description: 'A distraction-free chapter reader with custom fonts and themes.',
   },
   {
     icon: Headphones,
     title: 'Text-to-Speech',
-    description: 'Listen to units with built-in TTS, pronunciation rules, and skip lists.',
+    description: 'Listen to chapters with built-in TTS, pronunciation rules, and skip lists.',
   },
   {
     icon: Library,
     title: 'Auto Archive',
-    description: 'Background jobs scrape and archive units so they are available offline.',
+    description: 'Background jobs scrape and archive chapters so they are available offline.',
   },
 ];
 
@@ -133,7 +133,7 @@ export default function PublicHomePage() {
   const sections = useMemo(() => {
     const newest = [...books].sort(byNewest);
     const ranked = [...books].sort(byRating);
-    const longReads = [...books].sort(byUnitCount);
+    const longReads = [...books].sort(byChapterCount);
     const completed = books.filter((book) => {
       const publicationStatusKey = (book.publicationStatus || '').toLowerCase().replace(/\s+/g, '_');
       return publicationStatusKey === 'completed' || (book.publicationStatus || '').toLowerCase() === 'completed';
@@ -141,7 +141,7 @@ export default function PublicHomePage() {
     const recent = newest.slice(0, 12);
     const random = [...books].sort((a, b) => stableBookOrder(a) - stableBookOrder(b));
     const genres = Array.from(new Set(books.flatMap((book) => book.genres || []).filter(Boolean)));
-    const totalUnits = books.reduce((sum, book) => sum + getUnitCount(book), 0);
+    const totalChapters = books.reduce((sum, book) => sum + getChapterCount(book), 0);
 
     return {
       newest: newest.slice(0, 6),
@@ -151,7 +151,7 @@ export default function PublicHomePage() {
       recent,
       random: random.slice(0, 5),
       genres: genres.slice(0, 12),
-      totalUnits,
+      totalChapters,
     };
   }, [books]);
 
@@ -163,7 +163,7 @@ export default function PublicHomePage() {
     const byUpdated = [...libraryBooks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     const byRating = [...libraryBooks].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     return {
-      continueReading: home?.continueReading.length ? home.continueReading : byUpdated.filter((n) => n.status === 'reading' && n.unitsRead > 0 && n.unitsRead < (n.translatedUnitsTotal || n.translatedUnitsList?.length || 0)).slice(0, 6),
+      continueReading: home?.continueReading.length ? home.continueReading : byUpdated.filter((n) => n.status === 'reading' && n.chaptersRead > 0 && n.chaptersRead < (n.translatedChaptersTotal || n.translatedChaptersList?.length || 0)).slice(0, 6),
       planning: byUpdated.filter((n) => n.status === 'planning').slice(0, 6),
       completed: byUpdated.filter((n) => n.status === 'completed').slice(0, 6),
       topRated: byRating.filter((n) => (n.rating || 0) > 0).slice(0, 6),
@@ -223,7 +223,7 @@ export default function PublicHomePage() {
               Read, track, and archive web books in one place.
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-copy">
-              Discover translated and raw web books, keep your reading progress, and let the background crawler archive units automatically.
+              Discover translated and raw web books, keep your reading progress, and let the background crawler archive chapters automatically.
             </p>
             <form className="flex w-full max-w-xl flex-col gap-2 sm:flex-row" onSubmit={handleSearch}>
               <Input
@@ -251,8 +251,8 @@ export default function PublicHomePage() {
                 <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Books</span>
               </div>
               <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
-                <strong className="block text-lg font-semibold leading-none text-foreground">{home?.stats.totalUnits ?? sections.totalUnits}</strong>
-                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Units</span>
+                <strong className="block text-lg font-semibold leading-none text-foreground">{home?.stats.totalChapters ?? sections.totalChapters}</strong>
+                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-copy">Chapters</span>
               </div>
               <div className="min-w-[80px] rounded-md border border-border bg-surface px-3 py-2 text-center">
                 <strong className="block text-lg font-semibold leading-none text-foreground">{sections.completed.length}</strong>
@@ -402,7 +402,7 @@ export default function PublicHomePage() {
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-xl font-medium text-foreground">Long Reads</h2>
-              <Link href="/books?sort=translatedUnitsTotal" className="text-sm font-semibold text-primary hover:underline">
+              <Link href="/books?sort=translatedChaptersTotal" className="text-sm font-semibold text-primary hover:underline">
                 View all <ArrowRight className="inline size-4" />
               </Link>
             </div>
@@ -460,7 +460,7 @@ export default function PublicHomePage() {
                   </div>
                   <div className="flex shrink-0 items-center gap-4 text-xs text-muted-copy">
                     <span className="hidden sm:inline">{new Date(book.updatedAt).toLocaleDateString()}</span>
-                    <span>{getUnitCount(book)} units</span>
+                    <span>{getChapterCount(book)} chapters</span>
                   </div>
                 </Link>
               ))}
