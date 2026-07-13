@@ -9,18 +9,10 @@ async function backfillMissingBookAuthors() {
   const books = await Book.find({
     $and: [
       {
-        $or: [
-          { authorId: { $exists: false } },
-          { authorIds: { $exists: false } },
-          { authorIds: { $size: 0 } },
-        ],
+        $or: [{ authorId: { $exists: false } }, { authorIds: { $exists: false } }, { authorIds: { $size: 0 } }],
       },
       {
-        $or: [
-          { author: { $ne: '' } },
-          { authorPenName: { $ne: '' } },
-          { authorRealName: { $ne: '' } },
-        ],
+        $or: [{ author: { $ne: '' } }, { authorPenName: { $ne: '' } }, { authorRealName: { $ne: '' } }],
       },
     ],
   }).limit(500);
@@ -36,8 +28,9 @@ async function backfillMissingBookAuthors() {
     });
     if (author) {
       book.authorId = author._id;
-      book.authorIds = Array.from(new Set([...(book.authorIds || []), author._id].map((id) => id.toString())))
-        .map((id) => new mongoose.Types.ObjectId(id));
+      book.authorIds = Array.from(new Set([...(book.authorIds || []), author._id].map((id) => id.toString()))).map(
+        (id) => new mongoose.Types.ObjectId(id),
+      );
       await book.save();
     }
   }
@@ -54,11 +47,7 @@ export async function listAuthorsHandler(request: FastifyRequest, reply: Fastify
             $setUnion: [
               { $ifNull: ['$authorIds', []] },
               {
-                $cond: [
-                  { $ifNull: ['$authorId', false] },
-                  ['$authorId'],
-                  [],
-                ],
+                $cond: [{ $ifNull: ['$authorId', false] }, ['$authorId'], []],
               },
             ],
           },
@@ -69,10 +58,12 @@ export async function listAuthorsHandler(request: FastifyRequest, reply: Fastify
     ]);
     const countByAuthorId = new Map(counts.map((item) => [item._id.toString(), item.bookCount]));
 
-    return reply.send(authors.map((author) => ({
-      ...author.toObject(),
-      bookCount: countByAuthorId.get(author._id.toString()) || 0,
-    })));
+    return reply.send(
+      authors.map((author) => ({
+        ...author.toObject(),
+        bookCount: countByAuthorId.get(author._id.toString()) || 0,
+      })),
+    );
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing authors.' });
@@ -93,10 +84,7 @@ export async function getAuthorHandler(request: FastifyRequest, reply: FastifyRe
     }
 
     const books = await Book.find({
-      $or: [
-        { authorIds: author._id },
-        { authorId: author._id },
-      ],
+      $or: [{ authorIds: author._id }, { authorId: author._id }],
     }).sort({ updatedAt: -1 });
     return reply.send({
       author,
@@ -114,16 +102,8 @@ export async function upsertAuthorHandler(request: FastifyRequest, reply: Fastif
   }
 
   const { id } = request.params as any;
-  const {
-    displayName,
-    author,
-    penName,
-    realName,
-    alternativeNames,
-    originalLanguage,
-    officialUrls,
-    notes,
-  } = request.body as any;
+  const { displayName, author, penName, realName, alternativeNames, originalLanguage, officialUrls, notes } =
+    request.body as any;
 
   try {
     if (id && mongoose.Types.ObjectId.isValid(id)) {

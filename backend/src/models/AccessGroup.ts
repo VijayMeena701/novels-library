@@ -20,7 +20,7 @@ const AccessGroupSchema = new Schema<IAccessGroup>(
     capabilities: [{ type: Schema.Types.ObjectId, ref: 'Capability', index: true }],
     isSystem: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const AccessGroup = mongoose.model<IAccessGroup>('AccessGroup', AccessGroupSchema);

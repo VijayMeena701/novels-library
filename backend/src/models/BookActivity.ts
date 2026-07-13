@@ -25,17 +25,25 @@ export interface IBookActivity extends Document {
   updatedAt: Date;
 }
 
-const BookActivitySchema = new Schema<IBookActivity>({
-  bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
-  userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
-  sessionId: { type: Schema.Types.ObjectId, ref: 'ReadingSession', index: true },
-  activityType: { type: String, enum: ['visit', 'read', 'rate', 'review', 'vote', 'add_library', 'remove_library', 'update_library', 'share'], required: true, index: true },
-  chapterType: { type: String, index: true },
-  chapterNumber: { type: Number, index: true },
-  chapterTitle: { type: String, default: '' },
-  sourceUrl: { type: String, default: '' },
-  metadata: { type: Schema.Types.Mixed },
-}, { timestamps: true });
+const BookActivitySchema = new Schema<IBookActivity>(
+  {
+    bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    sessionId: { type: Schema.Types.ObjectId, ref: 'ReadingSession', index: true },
+    activityType: {
+      type: String,
+      enum: ['visit', 'read', 'rate', 'review', 'vote', 'add_library', 'remove_library', 'update_library', 'share'],
+      required: true,
+      index: true,
+    },
+    chapterType: { type: String, index: true },
+    chapterNumber: { type: Number, index: true },
+    chapterTitle: { type: String, default: '' },
+    sourceUrl: { type: String, default: '' },
+    metadata: { type: Schema.Types.Mixed },
+  },
+  { timestamps: true },
+);
 
 BookActivitySchema.index({ bookId: 1, activityType: 1, createdAt: -1 });
 BookActivitySchema.index({ userId: 1, createdAt: -1 });

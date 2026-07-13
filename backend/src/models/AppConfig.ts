@@ -14,7 +14,7 @@ const AppConfigSchema = new Schema<IAppConfig>(
     value: { type: Schema.Types.Mixed, default: null },
     description: { type: String, default: '' },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const AppConfig = mongoose.model<IAppConfig>('AppConfig', AppConfigSchema);

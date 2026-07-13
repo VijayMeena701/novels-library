@@ -36,7 +36,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
     metadata: { type: Schema.Types.Mixed },
     timestamp: { type: Date, default: Date.now, index: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 AuditLogSchema.index({ userId: 1, timestamp: -1 });

@@ -75,7 +75,12 @@ function isGenericChapterTitle(value: string, bookTitle: string, chapterNumber: 
   );
 }
 
-function selectChapterTitle(indexedTitle: string, scrapedTitle: string, bookTitle: string, chapterNumber: number): string {
+function selectChapterTitle(
+  indexedTitle: string,
+  scrapedTitle: string,
+  bookTitle: string,
+  chapterNumber: number,
+): string {
   const cleanIndexedTitle = indexedTitle?.replace(/\s+/g, ' ').trim() || '';
   const cleanScrapedTitle = scrapedTitle?.replace(/\s+/g, ' ').trim() || '';
 
@@ -119,7 +124,9 @@ function uniqueValidChapters(translatedChaptersList: ChapterIndex[], sourceKind:
     const chapterNumber = Number(chapter.number);
     if (!Number.isFinite(chapterNumber) || seenChapterNumbers.has(chapterNumber) || !isHttpUrl(chapter.url)) {
       if (chapter.url && !isHttpUrl(chapter.url)) {
-        console.warn(`[Archive] Skipping ${sourceLabel(sourceKind)} chapter ${chapter.number || '?'} with invalid URL: ${chapter.url}`);
+        console.warn(
+          `[Archive] Skipping ${sourceLabel(sourceKind)} chapter ${chapter.number || '?'} with invalid URL: ${chapter.url}`,
+        );
       }
       return false;
     }
@@ -144,7 +151,8 @@ function makeChapterScrapeError(
   };
 
   wrapped.stack = error.stack;
-  wrapped.code = error.code === 'MANUAL_INTERVENTION_REQUIRED' ? 'MANUAL_INTERVENTION_REQUIRED' : 'CHAPTER_SCRAPE_FAILED';
+  wrapped.code =
+    error.code === 'MANUAL_INTERVENTION_REQUIRED' ? 'MANUAL_INTERVENTION_REQUIRED' : 'CHAPTER_SCRAPE_FAILED';
   wrapped.url = chapter.url;
   wrapped.chapterNumber = Number(chapter.number);
   wrapped.sourceKind = sourceKind;
@@ -157,7 +165,9 @@ async function repairExistingChapterTitles(book: any, sourceKind: SourceKind, un
     bookId: book._id,
     chapterNumber: { $in: uniqueChapters.map((chapter) => chapter.number) },
   }).select('chapterNumber title');
-  const chapterIndexByNumber = new Map<number, ChapterIndex>(uniqueChapters.map((chapter) => [chapter.number, chapter]));
+  const chapterIndexByNumber = new Map<number, ChapterIndex>(
+    uniqueChapters.map((chapter) => [chapter.number, chapter]),
+  );
   const titleRepairOperations = existingChapters.flatMap((chapter: any) => {
     const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
     if (!indexedChapter) {
@@ -166,12 +176,14 @@ async function repairExistingChapterTitles(book: any, sourceKind: SourceKind, un
 
     const nextTitle = selectChapterTitle(indexedChapter.title, chapter.title, book.title, chapter.chapterNumber);
     if (nextTitle !== chapter.title && isGenericChapterTitle(chapter.title, book.title, chapter.chapterNumber)) {
-      return [{
-        updateOne: {
-          filter: { _id: chapter._id },
-          update: { $set: { title: nextTitle } },
+      return [
+        {
+          updateOne: {
+            filter: { _id: chapter._id },
+            update: { $set: { title: nextTitle } },
+          },
         },
-      }];
+      ];
     }
 
     return [];
@@ -179,7 +191,9 @@ async function repairExistingChapterTitles(book: any, sourceKind: SourceKind, un
 
   if (titleRepairOperations.length > 0) {
     await ContentModel.bulkWrite(titleRepairOperations);
-    console.log(`[Archive] Repaired ${titleRepairOperations.length} ${sourceLabel(sourceKind)} chapter title(s) from chapter index.`);
+    console.log(
+      `[Archive] Repaired ${titleRepairOperations.length} ${sourceLabel(sourceKind)} chapter title(s) from chapter index.`,
+    );
   }
 
   return existingChapters;
@@ -198,7 +212,9 @@ export class BookArchiveService {
   ): Promise<ArchiveMetadataResult> {
     const sourceUrl = getSourceUrl(book, sourceKind);
     if (!sourceUrl) {
-      throw new Error(`Book ${sourceKind === 'raw' ? 'rawSourceUrl' : 'sourceUrl'} is empty. Cannot scrape ${sourceLabel(sourceKind)} metadata.`);
+      throw new Error(
+        `Book ${sourceKind === 'raw' ? 'rawSourceUrl' : 'sourceUrl'} is empty. Cannot scrape ${sourceLabel(sourceKind)} metadata.`,
+      );
     }
 
     const scraped = await ScraperService.scrapeMetadata(sourceUrl);
@@ -344,7 +360,9 @@ export class BookArchiveService {
     const uniqueChapters = uniqueValidChapters(getChapterList(book, sourceKind), sourceKind);
     const totalChapters = uniqueChapters.length;
     if (totalChapters === 0) {
-      throw new Error(`No ${sourceLabel(sourceKind)} chapters listed on this book. Run ${sourceLabel(sourceKind)} metadata indexing first.`);
+      throw new Error(
+        `No ${sourceLabel(sourceKind)} chapters listed on this book. Run ${sourceLabel(sourceKind)} metadata indexing first.`,
+      );
     }
 
     const existingChapters = await repairExistingChapterTitles(book, sourceKind, uniqueChapters);
@@ -353,10 +371,18 @@ export class BookArchiveService {
     const selectedPendingChapters = options.chapterNumber
       ? pendingChapters.filter((chapter) => chapter.number === options.chapterNumber)
       : pendingChapters;
-    if (options.chapterNumber && selectedPendingChapters.length === 0 && !existingChapterNumbers.has(options.chapterNumber)) {
-      throw new Error(`${sourceKind === 'raw' ? 'Raw chapter' : 'Chapter'} ${options.chapterNumber} is not present in the indexed chapter list.`);
+    if (
+      options.chapterNumber &&
+      selectedPendingChapters.length === 0 &&
+      !existingChapterNumbers.has(options.chapterNumber)
+    ) {
+      throw new Error(
+        `${sourceKind === 'raw' ? 'Raw chapter' : 'Chapter'} ${options.chapterNumber} is not present in the indexed chapter list.`,
+      );
     }
-    const requestedLimit = Number.isFinite(options.limit) ? Math.max(1, Number(options.limit)) : selectedPendingChapters.length;
+    const requestedLimit = Number.isFinite(options.limit)
+      ? Math.max(1, Number(options.limit))
+      : selectedPendingChapters.length;
     const chaptersToArchive = selectedPendingChapters.slice(0, requestedLimit);
     const workerCount = Math.min(Math.max(1, options.concurrency || 1), chaptersToArchive.length || 1);
     const ContentModel = getContentModel(sourceKind);
@@ -425,7 +451,10 @@ export class BookArchiveService {
 
           await sleep(options.delayMs || 0);
         } catch (err: any) {
-          console.error(`[Archive] Error scraping ${sourceLabel(sourceKind)} chapter ${chapter.number} (${chapter.url}):`, err.message);
+          console.error(
+            `[Archive] Error scraping ${sourceLabel(sourceKind)} chapter ${chapter.number} (${chapter.url}):`,
+            err.message,
+          );
           firstError = makeChapterScrapeError(chapter, sourceKind, err);
           return;
         }
@@ -457,8 +486,7 @@ export class BookArchiveService {
   ): Promise<ImportedChapterResult> {
     const parsedPageUrl = new URL(pageUrl).toString();
     const scrapedChapter = await ScraperService.scrapeChapterFromHtml(html, parsedPageUrl);
-    const indexedChapter = getChapterList(book, sourceKind)
-      .find((chapter) => Number(chapter.number) === chapterNumber);
+    const indexedChapter = getChapterList(book, sourceKind).find((chapter) => Number(chapter.number) === chapterNumber);
     const chapterTitle = selectChapterTitle(
       indexedChapter?.title || '',
       scrapedChapter.title,

@@ -20,7 +20,7 @@ const TemplateSchema = new Schema<ITemplate>(
     type: { type: String, enum: ['email', 'sms', 'push', 'webhook'], default: 'email' },
     variables: { type: [String], default: [] },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Template = mongoose.model<ITemplate>('Template', TemplateSchema);

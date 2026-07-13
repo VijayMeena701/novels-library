@@ -13,16 +13,19 @@ export interface IChapterVisit extends Document {
   updatedAt: Date;
 }
 
-const ChapterVisitSchema = new Schema<IChapterVisit>({
-  bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  sessionId: { type: Schema.Types.ObjectId, ref: 'ReadingSession', index: true },
-  chapterNumber: { type: Number, required: true, index: true },
-  chapterType: { type: String, default: 'chapter' },
-  chapterTitle: { type: String, default: '' },
-  sourceUrl: { type: String, default: '' },
-  openedAt: { type: Date, default: Date.now, index: true },
-}, { timestamps: true });
+const ChapterVisitSchema = new Schema<IChapterVisit>(
+  {
+    bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    sessionId: { type: Schema.Types.ObjectId, ref: 'ReadingSession', index: true },
+    chapterNumber: { type: Number, required: true, index: true },
+    chapterType: { type: String, default: 'chapter' },
+    chapterTitle: { type: String, default: '' },
+    sourceUrl: { type: String, default: '' },
+    openedAt: { type: Date, default: Date.now, index: true },
+  },
+  { timestamps: true },
+);
 
 ChapterVisitSchema.index({ userId: 1, bookId: 1, openedAt: -1 });
 ChapterVisitSchema.index({ userId: 1, sessionId: 1, openedAt: -1 });

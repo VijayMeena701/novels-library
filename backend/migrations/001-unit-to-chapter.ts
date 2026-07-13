@@ -1,11 +1,6 @@
 /// <reference types="node" />
 import 'dotenv/config';
-import process from 'node:process';
-import { pathToFileURL } from 'node:url';
 import mongoose from 'mongoose';
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/novels-library';
-const MARKER_NAME = 'unit-to-chapter';
 
 type MongoDb = any;
 
@@ -23,8 +18,14 @@ async function countExists(db: MongoDb, collection: string, filter: any): Promis
 
 async function getOrphanCounts(db: MongoDb): Promise<Record<string, number>> {
   const [books, users] = await Promise.all([
-    db.collection('books').find({}, { projection: { _id: 1 } }).toArray(),
-    db.collection('users').find({}, { projection: { _id: 1 } }).toArray(),
+    db
+      .collection('books')
+      .find({}, { projection: { _id: 1 } })
+      .toArray(),
+    db
+      .collection('users')
+      .find({}, { projection: { _id: 1 } })
+      .toArray(),
   ]);
   const bookIds = new Set(books.map((b: any) => b._id.toString()));
   const userIds = new Set(users.map((u: any) => u._id.toString()));
@@ -88,7 +89,9 @@ async function preflightAndConflictCounts(db: MongoDb): Promise<MigrationCounts>
 
   // User progress
   before['userbooks.unitsRead'] = await countExists(db, 'userbooks', { unitsRead: { $exists: true } });
-  before['userbooks.lastVisitedUnitNumber'] = await countExists(db, 'userbooks', { lastVisitedUnitNumber: { $exists: true } });
+  before['userbooks.lastVisitedUnitNumber'] = await countExists(db, 'userbooks', {
+    lastVisitedUnitNumber: { $exists: true },
+  });
   conflicts['userbooks.unitsRead+chaptersRead'] = await countExists(db, 'userbooks', {
     unitsRead: { $exists: true },
     chaptersRead: { $exists: true },
@@ -186,8 +189,12 @@ async function preflightAndConflictCounts(db: MongoDb): Promise<MigrationCounts>
 
   // Background jobs
   before['backgroundjobs.type.scrape_units'] = await countExists(db, 'backgroundjobs', { type: 'scrape_units' });
-  before['backgroundjobs.type.scrape_raw_units'] = await countExists(db, 'backgroundjobs', { type: 'scrape_raw_units' });
-  before['backgroundjobs.error.unitNumber'] = await countExists(db, 'backgroundjobs', { 'error.unitNumber': { $exists: true } });
+  before['backgroundjobs.type.scrape_raw_units'] = await countExists(db, 'backgroundjobs', {
+    type: 'scrape_raw_units',
+  });
+  before['backgroundjobs.error.unitNumber'] = await countExists(db, 'backgroundjobs', {
+    'error.unitNumber': { $exists: true },
+  });
   conflicts['backgroundjobs.error.unitNumber+chapterNumber'] = await countExists(db, 'backgroundjobs', {
     'error.unitNumber': { $exists: true },
     'error.chapterNumber': { $exists: true },
@@ -202,7 +209,11 @@ async function preflightAndConflictCounts(db: MongoDb): Promise<MigrationCounts>
 async function ensureIndexes(db: MongoDb, dryRun: boolean): Promise<void> {
   const required: { collection: string; keys: any; options: any }[] = [
     { collection: 'bookcontents', keys: { bookId: 1, chapterNumber: 1 }, options: { unique: true, background: true } },
-    { collection: 'rawbookcontents', keys: { bookId: 1, chapterNumber: 1 }, options: { unique: true, background: true } },
+    {
+      collection: 'rawbookcontents',
+      keys: { bookId: 1, chapterNumber: 1 },
+      options: { unique: true, background: true },
+    },
   ];
 
   for (const { collection, keys, options } of required) {
@@ -243,7 +254,13 @@ async function dropOldUnitIndexes(db: MongoDb, dryRun: boolean): Promise<void> {
   }
 }
 
-async function renameScalarField(db: MongoDb, collection: string, oldField: string, newField: string, dryRun: boolean): Promise<void> {
+async function renameScalarField(
+  db: MongoDb,
+  collection: string,
+  oldField: string,
+  newField: string,
+  dryRun: boolean,
+): Promise<void> {
   const filter = { [oldField]: { $exists: true } };
   if (dryRun) {
     console.log(`[dry-run] would copy ${collection}.${oldField} -> ${collection}.${newField}`);
@@ -266,7 +283,12 @@ async function unsetScalarField(db: MongoDb, collection: string, oldField: strin
 async function renameBookLists(db: MongoDb, dryRun: boolean): Promise<void> {
   const listFields = [
     { oldList: 'rawUnitsList', oldTotal: 'rawUnitsTotal', newList: 'rawChaptersList', newTotal: 'rawChaptersTotal' },
-    { oldList: 'translatedUnitsList', oldTotal: 'translatedUnitsTotal', newList: 'translatedChaptersList', newTotal: 'translatedChaptersTotal' },
+    {
+      oldList: 'translatedUnitsList',
+      oldTotal: 'translatedUnitsTotal',
+      newList: 'translatedChaptersList',
+      newTotal: 'translatedChaptersTotal',
+    },
   ];
 
   for (const { oldList, oldTotal, newList, newTotal } of listFields) {
@@ -378,10 +400,28 @@ async function verifyCopy(db: MongoDb, before: Record<string, number>, after: Re
   const errors: string[] = [];
 
   const expectedAfter: Record<string, number> = {
-    'books.rawChaptersList': before['books.rawUnitsList'] + before['books.rawUnitsTotal'] - (await countExists(db, 'books', { rawUnitsList: { $exists: true }, rawUnitsTotal: { $exists: true } })),
-    'books.rawChaptersTotal': before['books.rawUnitsList'] + before['books.rawUnitsTotal'] - (await countExists(db, 'books', { rawUnitsList: { $exists: true }, rawUnitsTotal: { $exists: true } })),
-    'books.translatedChaptersList': before['books.translatedUnitsList'] + before['books.translatedUnitsTotal'] - (await countExists(db, 'books', { translatedUnitsList: { $exists: true }, translatedUnitsTotal: { $exists: true } })),
-    'books.translatedChaptersTotal': before['books.translatedUnitsList'] + before['books.translatedUnitsTotal'] - (await countExists(db, 'books', { translatedUnitsList: { $exists: true }, translatedUnitsTotal: { $exists: true } })),
+    'books.rawChaptersList':
+      before['books.rawUnitsList'] +
+      before['books.rawUnitsTotal'] -
+      (await countExists(db, 'books', { rawUnitsList: { $exists: true }, rawUnitsTotal: { $exists: true } })),
+    'books.rawChaptersTotal':
+      before['books.rawUnitsList'] +
+      before['books.rawUnitsTotal'] -
+      (await countExists(db, 'books', { rawUnitsList: { $exists: true }, rawUnitsTotal: { $exists: true } })),
+    'books.translatedChaptersList':
+      before['books.translatedUnitsList'] +
+      before['books.translatedUnitsTotal'] -
+      (await countExists(db, 'books', {
+        translatedUnitsList: { $exists: true },
+        translatedUnitsTotal: { $exists: true },
+      })),
+    'books.translatedChaptersTotal':
+      before['books.translatedUnitsList'] +
+      before['books.translatedUnitsTotal'] -
+      (await countExists(db, 'books', {
+        translatedUnitsList: { $exists: true },
+        translatedUnitsTotal: { $exists: true },
+      })),
   };
   // The counts above are approximate if both list and total exist for the same doc; if they do, the new list/total count is the number of docs in the OR filter.
   // For simplicity, the verification checks that the new fields exist on at least as many documents as the old field counts.
@@ -448,7 +488,11 @@ async function verifyUnset(db: MongoDb, before: Record<string, number>): Promise
   ];
 
   for (const { collection, field } of oldFields) {
-    const remaining = await countExists(db, collection, field.includes('.') ? { [field]: { $exists: true } } : { [field]: { $exists: true } });
+    const remaining = await countExists(
+      db,
+      collection,
+      field.includes('.') ? { [field]: { $exists: true } } : { [field]: { $exists: true } },
+    );
     if (remaining > 0) {
       errors.push(`${collection}.${field}: ${remaining} old field(s) remain`);
     }
@@ -464,14 +508,7 @@ async function verifyUnset(db: MongoDb, before: Record<string, number>): Promise
   }
 }
 
-export async function renameChapterTerminology(db: MongoDb, dryRun: boolean, force: boolean): Promise<void> {
-  const migrations = db.collection('migrations');
-  const marker = await migrations.findOne({ name: MARKER_NAME });
-
-  if (marker && !force) {
-    throw new Error(`Migration '${MARKER_NAME}' already completed at ${marker.completedAt}. Use --force to re-run.`);
-  }
-
+export async function renameChapterTerminology(db: MongoDb, dryRun: boolean): Promise<void> {
   const { before, conflicts, orphans } = await preflightAndConflictCounts(db);
   logCounts('Preflight counts', before);
   logCounts('Conflict counts', conflicts);
@@ -483,22 +520,14 @@ export async function renameChapterTerminology(db: MongoDb, dryRun: boolean, for
   }
 
   const totalOld = Object.values(before).reduce((a, b) => a + b, 0);
-  if (totalOld === 0 && !marker) {
+  if (totalOld === 0) {
     console.log('No old chapter terminology fields found. Nothing to migrate.');
-    if (!dryRun) {
-      await migrations.insertOne({ name: MARKER_NAME, completedAt: new Date(), dryRun: false });
-    }
     return;
   }
 
   if (dryRun) {
     console.log('\n[dry-run] No writes performed. Pass without --dry-run to execute.');
     return;
-  }
-
-  if (force && marker) {
-    await migrations.deleteOne({ name: MARKER_NAME });
-    console.log('Removed existing migration marker for forced re-run.');
   }
 
   // Step 1: Copy old data to new fields
@@ -528,23 +557,43 @@ export async function renameChapterTerminology(db: MongoDb, dryRun: boolean, for
   // For new fields, we query the new names directly.
   afterCopy['books.rawChaptersList'] = await countExists(db, 'books', { rawChaptersList: { $exists: true } });
   afterCopy['books.rawChaptersTotal'] = await countExists(db, 'books', { rawChaptersTotal: { $exists: true } });
-  afterCopy['books.translatedChaptersList'] = await countExists(db, 'books', { translatedChaptersList: { $exists: true } });
-  afterCopy['books.translatedChaptersTotal'] = await countExists(db, 'books', { translatedChaptersTotal: { $exists: true } });
+  afterCopy['books.translatedChaptersList'] = await countExists(db, 'books', {
+    translatedChaptersList: { $exists: true },
+  });
+  afterCopy['books.translatedChaptersTotal'] = await countExists(db, 'books', {
+    translatedChaptersTotal: { $exists: true },
+  });
   afterCopy['userbooks.chaptersRead'] = await countExists(db, 'userbooks', { chaptersRead: { $exists: true } });
-  afterCopy['userbooks.lastVisitedChapterNumber'] = await countExists(db, 'userbooks', { lastVisitedChapterNumber: { $exists: true } });
-  afterCopy['readingsessions.chaptersRead'] = await countExists(db, 'readingsessions', { chaptersRead: { $exists: true } });
-  afterCopy['bookstats.totalChaptersRead'] = await countExists(db, 'bookstats', { totalChaptersRead: { $exists: true } });
+  afterCopy['userbooks.lastVisitedChapterNumber'] = await countExists(db, 'userbooks', {
+    lastVisitedChapterNumber: { $exists: true },
+  });
+  afterCopy['readingsessions.chaptersRead'] = await countExists(db, 'readingsessions', {
+    chaptersRead: { $exists: true },
+  });
+  afterCopy['bookstats.totalChaptersRead'] = await countExists(db, 'bookstats', {
+    totalChaptersRead: { $exists: true },
+  });
   afterCopy['bookcontents.chapterNumber'] = await countExists(db, 'bookcontents', { chapterNumber: { $exists: true } });
   afterCopy['bookcontents.chapterType'] = await countExists(db, 'bookcontents', { chapterType: { $exists: true } });
-  afterCopy['rawbookcontents.chapterNumber'] = await countExists(db, 'rawbookcontents', { chapterNumber: { $exists: true } });
-  afterCopy['rawbookcontents.chapterType'] = await countExists(db, 'rawbookcontents', { chapterType: { $exists: true } });
+  afterCopy['rawbookcontents.chapterNumber'] = await countExists(db, 'rawbookcontents', {
+    chapterNumber: { $exists: true },
+  });
+  afterCopy['rawbookcontents.chapterType'] = await countExists(db, 'rawbookcontents', {
+    chapterType: { $exists: true },
+  });
   afterCopy['bookvisits.chapterNumber'] = await countExists(db, 'bookvisits', { chapterNumber: { $exists: true } });
   afterCopy['bookvisits.chapterType'] = await countExists(db, 'bookvisits', { chapterType: { $exists: true } });
   afterCopy['bookvisits.chapterTitle'] = await countExists(db, 'bookvisits', { chapterTitle: { $exists: true } });
   afterCopy['bookactivities.chapterType'] = await countExists(db, 'bookactivities', { chapterType: { $exists: true } });
-  afterCopy['bookactivities.chapterNumber'] = await countExists(db, 'bookactivities', { chapterNumber: { $exists: true } });
-  afterCopy['bookactivities.chapterTitle'] = await countExists(db, 'bookactivities', { chapterTitle: { $exists: true } });
-  afterCopy['backgroundjobs.error.chapterNumber'] = await countExists(db, 'backgroundjobs', { 'error.chapterNumber': { $exists: true } });
+  afterCopy['bookactivities.chapterNumber'] = await countExists(db, 'bookactivities', {
+    chapterNumber: { $exists: true },
+  });
+  afterCopy['bookactivities.chapterTitle'] = await countExists(db, 'bookactivities', {
+    chapterTitle: { $exists: true },
+  });
+  afterCopy['backgroundjobs.error.chapterNumber'] = await countExists(db, 'backgroundjobs', {
+    'error.chapterNumber': { $exists: true },
+  });
 
   await verifyCopy(db, before, afterCopy);
   logCounts('After-copy new-field counts', afterCopy);
@@ -577,29 +626,5 @@ export async function renameChapterTerminology(db: MongoDb, dryRun: boolean, for
   // Step 7: Ensure indexes on new chapter fields
   await ensureIndexes(db, dryRun);
 
-  // Step 8: Record marker
-  await migrations.insertOne({ name: MARKER_NAME, completedAt: new Date(), dryRun: false });
-  console.log(`Migration '${MARKER_NAME}' completed and recorded.`);
-}
-
-async function main() {
-  const dryRun = process.argv.includes('--dry-run');
-  const force = process.argv.includes('--force');
-
-  await mongoose.connect(MONGODB_URI);
-  const db = mongoose.connection.db;
-
-  try {
-    await renameChapterTerminology(db, dryRun, force);
-  } catch (err: any) {
-    console.error('Migration failed:', err.message);
-    process.exit(1);
-  } finally {
-    await mongoose.disconnect();
-  }
-  process.exit(0);
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
+  console.log('Unit-to-chapter migration completed.');
 }

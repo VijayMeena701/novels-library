@@ -33,7 +33,7 @@ const NotificationSchema = new Schema<INotification>(
     link: { type: String, default: '' },
     read: { type: Boolean, default: false, index: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 NotificationSchema.index({ userId: 1, read: 1, createdAt: -1 });

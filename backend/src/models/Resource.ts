@@ -22,7 +22,7 @@ const ResourceSchema = new Schema<IResource>(
     isSystem: { type: Boolean, default: false },
     category: { type: String, default: 'general' },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Resource = mongoose.model<IResource>('Resource', ResourceSchema);

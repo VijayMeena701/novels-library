@@ -4,6 +4,7 @@ import { AccessGroup } from '../models/AccessGroup.js';
 import { Capability } from '../models/Capability.js';
 import { Resource } from '../models/Resource.js';
 import { User } from '../models/User.js';
+import '../models/Action.js';
 
 const model = newModel(`
 [request_definition]

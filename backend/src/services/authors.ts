@@ -50,9 +50,7 @@ export async function findOrCreateAuthor(input: AuthorInput): Promise<IAuthor | 
     return null;
   }
 
-  const candidateKeys = [displayName, penName, realName, ...alternativeNames]
-    .map(normalizeFilterKey)
-    .filter(Boolean);
+  const candidateKeys = [displayName, penName, realName, ...alternativeNames].map(normalizeFilterKey).filter(Boolean);
 
   const existing = await Author.findOne({ nameKeys: { $in: candidateKeys } });
   if (existing) {
@@ -133,21 +131,21 @@ export async function resolveAuthorIds(input: ResolveAuthorsInput): Promise<mong
   ];
 
   const createdAuthors = await Promise.all(
-    splitAuthorNames(input.author || input.penName).map((name, index) => findOrCreateAuthor({
-      author: name,
-      penName: index === 0 ? input.penName || name : name,
-      realName: index === 0 ? input.realName : '',
-      alternativeNames: index === 0 ? input.alternativeNames : [],
-      originalLanguage: input.originalLanguage,
-      officialUrl: input.officialUrl,
-    }))
+    splitAuthorNames(input.author || input.penName).map((name, index) =>
+      findOrCreateAuthor({
+        author: name,
+        penName: index === 0 ? input.penName || name : name,
+        realName: index === 0 ? input.realName : '',
+        alternativeNames: index === 0 ? input.alternativeNames : [],
+        originalLanguage: input.originalLanguage,
+        officialUrl: input.officialUrl,
+      }),
+    ),
   );
 
   const createdIds = createdAuthors
     .filter((author): author is IAuthor => Boolean(author))
     .map((author) => author._id as mongoose.Types.ObjectId);
 
-  return Array.from(
-    new Map([...explicitIds, ...createdIds].map((id) => [id.toString(), id])).values()
-  );
+  return Array.from(new Map([...explicitIds, ...createdIds].map((id) => [id.toString(), id])).values());
 }

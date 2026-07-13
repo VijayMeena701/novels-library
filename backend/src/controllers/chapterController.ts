@@ -15,10 +15,12 @@ function normalizeTitle(value: string): string {
 
 function isGenericChapterTitle(value: string, bookTitle: string, chapterNumber: number): boolean {
   const normalized = normalizeTitle(value);
-  return !normalized ||
+  return (
+    !normalized ||
     normalized === normalizeTitle(bookTitle) ||
     normalized === `chapter ${chapterNumber}` ||
-    normalized === `ch ${chapterNumber}`;
+    normalized === `ch ${chapterNumber}`
+  );
 }
 
 function selectDisplayChapterTitle(
@@ -63,14 +65,23 @@ export async function listChaptersHandler(request: FastifyRequest, reply: Fastif
     const chapters = await ChapterContent.find({ bookId })
       .select('chapterNumber title sourceUrl scrapedAt')
       .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((book.translatedChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]));
+    const chapterIndexByNumber = new Map(
+      (book.translatedChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]),
+    );
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
-      return serialized;
-    }));
+    return reply.send(
+      chapters.map((chapter) => {
+        const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
+        const serialized = chapter.toObject();
+        serialized.title = selectDisplayChapterTitle(
+          indexedChapter?.title,
+          serialized.title,
+          book.title,
+          chapter.chapterNumber,
+        );
+        return serialized;
+      }),
+    );
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing archived chapters.' });
@@ -93,14 +104,23 @@ export async function listPublicChaptersHandler(request: FastifyRequest, reply: 
     const chapters = await ChapterContent.find({ bookId })
       .select('chapterNumber title sourceUrl scrapedAt')
       .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((book.translatedChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]));
+    const chapterIndexByNumber = new Map(
+      (book.translatedChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]),
+    );
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
-      return serialized;
-    }));
+    return reply.send(
+      chapters.map((chapter) => {
+        const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
+        const serialized = chapter.toObject();
+        serialized.title = selectDisplayChapterTitle(
+          indexedChapter?.title,
+          serialized.title,
+          book.title,
+          chapter.chapterNumber,
+        );
+        return serialized;
+      }),
+    );
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing public chapters.' });
@@ -132,9 +152,16 @@ export async function getChapterHandler(request: FastifyRequest, reply: FastifyR
       return reply.status(404).send({ error: `Chapter ${parsedChapterNumber} has not been scraped/archived yet.` });
     }
 
-    const indexedChapter = (book.translatedChaptersList || []).find((item) => item.chapterNumber === chapter.chapterNumber);
+    const indexedChapter = (book.translatedChaptersList || []).find(
+      (item) => item.chapterNumber === chapter.chapterNumber,
+    );
     const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
+    serialized.title = selectDisplayChapterTitle(
+      indexedChapter?.title,
+      serialized.title,
+      book.title,
+      chapter.chapterNumber,
+    );
 
     return reply.send(serialized);
   } catch (err: any) {
@@ -160,14 +187,23 @@ export async function listRawChaptersHandler(request: FastifyRequest, reply: Fas
     const chapters = await RawChapterContent.find({ bookId })
       .select('chapterNumber title sourceUrl language scrapedAt')
       .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((book.rawChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]));
+    const chapterIndexByNumber = new Map(
+      (book.rawChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]),
+    );
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
-      return serialized;
-    }));
+    return reply.send(
+      chapters.map((chapter) => {
+        const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
+        const serialized = chapter.toObject();
+        serialized.title = selectDisplayChapterTitle(
+          indexedChapter?.title,
+          serialized.title,
+          book.title,
+          chapter.chapterNumber,
+        );
+        return serialized;
+      }),
+    );
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing archived raw chapters.' });
@@ -190,14 +226,23 @@ export async function listPublicRawChaptersHandler(request: FastifyRequest, repl
     const chapters = await RawChapterContent.find({ bookId })
       .select('chapterNumber title sourceUrl language scrapedAt')
       .sort({ chapterNumber: 1 });
-    const chapterIndexByNumber = new Map((book.rawChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]));
+    const chapterIndexByNumber = new Map(
+      (book.rawChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]),
+    );
 
-    return reply.send(chapters.map((chapter) => {
-      const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
-      const serialized = chapter.toObject();
-      serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
-      return serialized;
-    }));
+    return reply.send(
+      chapters.map((chapter) => {
+        const indexedChapter = chapterIndexByNumber.get(chapter.chapterNumber);
+        const serialized = chapter.toObject();
+        serialized.title = selectDisplayChapterTitle(
+          indexedChapter?.title,
+          serialized.title,
+          book.title,
+          chapter.chapterNumber,
+        );
+        return serialized;
+      }),
+    );
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing public raw chapters.' });
@@ -230,7 +275,12 @@ export async function getRawChapterHandler(request: FastifyRequest, reply: Fasti
 
     const indexedChapter = (book.rawChaptersList || []).find((item) => item.chapterNumber === chapter.chapterNumber);
     const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
+    serialized.title = selectDisplayChapterTitle(
+      indexedChapter?.title,
+      serialized.title,
+      book.title,
+      chapter.chapterNumber,
+    );
 
     return reply.send(serialized);
   } catch (err: any) {
@@ -264,7 +314,12 @@ export async function getPublicRawChapterHandler(request: FastifyRequest, reply:
 
     const indexedChapter = (book.rawChaptersList || []).find((item) => item.chapterNumber === chapter.chapterNumber);
     const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
+    serialized.title = selectDisplayChapterTitle(
+      indexedChapter?.title,
+      serialized.title,
+      book.title,
+      chapter.chapterNumber,
+    );
 
     return reply.send(serialized);
   } catch (err: any) {
@@ -311,7 +366,9 @@ export async function translateRawChapterHandler(request: FastifyRequest, reply:
       });
     }
 
-    request.log.info(`[translateRawChapter] starting chapter ${parsedChapterNumber} for book ${bookId} targetLanguage=${targetLanguage || 'default'} overwrite=${Boolean(overwrite)}`);
+    request.log.info(
+      `[translateRawChapter] starting chapter ${parsedChapterNumber} for book ${bookId} targetLanguage=${targetLanguage || 'default'} overwrite=${Boolean(overwrite)}`,
+    );
 
     const translated = await translateChapterHtml({
       html: rawChapter.content,
@@ -321,7 +378,9 @@ export async function translateRawChapterHandler(request: FastifyRequest, reply:
       logger: request.log,
     });
 
-    request.log.info(`[translateRawChapter] completed chapter ${parsedChapterNumber} model=${translated.model} title="${translated.title}" contentLength=${translated.content.length}`);
+    request.log.info(
+      `[translateRawChapter] completed chapter ${parsedChapterNumber} model=${translated.model} title="${translated.title}" contentLength=${translated.content.length}`,
+    );
 
     const chapter = await ChapterContent.findOneAndUpdate(
       {
@@ -377,9 +436,16 @@ export async function getPublicChapterHandler(request: FastifyRequest, reply: Fa
       return reply.status(404).send({ error: `Chapter ${parsedChapterNumber} has not been archived yet.` });
     }
 
-    const indexedChapter = (book.translatedChaptersList || []).find((item) => item.chapterNumber === chapter.chapterNumber);
+    const indexedChapter = (book.translatedChaptersList || []).find(
+      (item) => item.chapterNumber === chapter.chapterNumber,
+    );
     const serialized = chapter.toObject();
-    serialized.title = selectDisplayChapterTitle(indexedChapter?.title, serialized.title, book.title, chapter.chapterNumber);
+    serialized.title = selectDisplayChapterTitle(
+      indexedChapter?.title,
+      serialized.title,
+      book.title,
+      chapter.chapterNumber,
+    );
 
     return reply.send(serialized);
   } catch (err: any) {
@@ -406,9 +472,7 @@ export async function listChapterVisitsHandler(request: FastifyRequest, reply: F
       return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    const visits = await ChapterVisit.find({ bookId, userId })
-      .sort({ openedAt: -1 })
-      .limit(safeLimit);
+    const visits = await ChapterVisit.find({ bookId, userId }).sort({ openedAt: -1 }).limit(safeLimit);
 
     return reply.send(visits);
   } catch (err: any) {
@@ -436,8 +500,9 @@ export async function recordChapterVisitHandler(request: FastifyRequest, reply: 
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const chapter = await ChapterContent.findOne({ bookId, chapterNumber: parsedChapterNumber })
-      .select('chapterNumber title sourceUrl');
+    const chapter = await ChapterContent.findOne({ bookId, chapterNumber: parsedChapterNumber }).select(
+      'chapterNumber title sourceUrl',
+    );
     if (!chapter) {
       return reply.status(404).send({ error: `Chapter ${parsedChapterNumber} has not been scraped/archived yet.` });
     }
@@ -474,7 +539,7 @@ export async function recordChapterVisitHandler(request: FastifyRequest, reply: 
           personalTags: [],
         },
       },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
 
     await UserBook.findOneAndUpdate(
@@ -483,7 +548,7 @@ export async function recordChapterVisitHandler(request: FastifyRequest, reply: 
         $max: { chaptersRead: parsedChapterNumber },
         $set: { lastVisitedChapterNumber: parsedChapterNumber, lastVisitedAt: new Date() },
       },
-      { new: true }
+      { new: true },
     );
 
     return reply.status(201).send(visit);

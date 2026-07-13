@@ -1,5 +1,5 @@
-import { notificationQueue, type NotificationJobData } from "./notificationQueue.js";
-import { EmailService } from "./email.js";
+import { notificationQueue, type NotificationJobData } from './notificationQueue.js';
+import { EmailService } from './email.js';
 
 export class NotificationService {
   static async enqueueJob(data: NotificationJobData): Promise<string | undefined> {
@@ -8,18 +8,18 @@ export class NotificationService {
       return job.id;
     }
 
-    if (data.type === "jobFailure") {
+    if (data.type === 'jobFailure') {
       await EmailService.sendJobFailureAlert(
-        data.jobId || "unknown",
-        data.bookTitle || "",
-        data.jobType || "",
-        data.errorMessage || "",
-        data.stackTrace
+        data.jobId || 'unknown',
+        data.bookTitle || '',
+        data.jobType || '',
+        data.errorMessage || '',
+        data.stackTrace,
       );
-    } else if (data.type === "email") {
+    } else if (data.type === 'email') {
       await EmailService.sendEmail({
-        to: data.to || "",
-        subject: data.subject || "",
+        to: data.to || '',
+        subject: data.subject || '',
         text: data.text,
         html: data.html,
       });
@@ -29,7 +29,7 @@ export class NotificationService {
 
   static async sendEmail(args: { to: string; subject: string; text?: string; html?: string }): Promise<boolean> {
     if (notificationQueue) {
-      await notificationQueue.add("email", { type: "email", ...args });
+      await notificationQueue.add('email', { type: 'email', ...args });
       return true;
     }
     return EmailService.sendEmail(args);
@@ -40,11 +40,11 @@ export class NotificationService {
     bookTitle: string,
     jobType: string,
     errorMessage: string,
-    stackTrace?: string
+    stackTrace?: string,
   ): Promise<boolean> {
     if (notificationQueue) {
-      await notificationQueue.add("jobFailure", {
-        type: "jobFailure",
+      await notificationQueue.add('jobFailure', {
+        type: 'jobFailure',
         jobId,
         bookTitle,
         jobType,

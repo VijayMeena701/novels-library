@@ -16,19 +16,22 @@ export interface IBookStats extends Document {
   updatedAt: Date;
 }
 
-const BookStatsSchema = new Schema<IBookStats>({
-  bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true, unique: true },
-  totalVisits: { type: Number, default: 0 },
-  totalUniqueVisitors: { type: Number, default: 0 },
-  totalReadingSessions: { type: Number, default: 0 },
-  totalChaptersRead: { type: Number, default: 0 },
-  totalVotes: { type: Number, default: 0 },
-  ratingCount: { type: Number, default: 0 },
-  ratingSum: { type: Number, default: 0 },
-  ratingAverage: { type: Number, default: 0 },
-  reviewCount: { type: Number, default: 0 },
-  lastUpdatedAt: { type: Date },
-}, { timestamps: true });
+const BookStatsSchema = new Schema<IBookStats>(
+  {
+    bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true, unique: true },
+    totalVisits: { type: Number, default: 0 },
+    totalUniqueVisitors: { type: Number, default: 0 },
+    totalReadingSessions: { type: Number, default: 0 },
+    totalChaptersRead: { type: Number, default: 0 },
+    totalVotes: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
+    ratingSum: { type: Number, default: 0 },
+    ratingAverage: { type: Number, default: 0 },
+    reviewCount: { type: Number, default: 0 },
+    lastUpdatedAt: { type: Date },
+  },
+  { timestamps: true },
+);
 
 BookStatsSchema.pre('save', function updateRatingAverage(next) {
   if (this.ratingCount > 0) {

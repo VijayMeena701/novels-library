@@ -32,16 +32,19 @@ function cleanStringList(values: string[]): string[] {
   return cleaned;
 }
 
-const AuthorSchema = new Schema<IAuthor>({
-  displayName: { type: String, required: true, index: true },
-  penName: { type: String, default: '' },
-  realName: { type: String, default: '' },
-  alternativeNames: { type: [String], default: [] },
-  nameKeys: { type: [String], default: [] },
-  originalLanguage: { type: String, default: '' },
-  officialUrls: { type: [String], default: [] },
-  notes: { type: String, default: '' },
-}, { timestamps: true });
+const AuthorSchema = new Schema<IAuthor>(
+  {
+    displayName: { type: String, required: true, index: true },
+    penName: { type: String, default: '' },
+    realName: { type: String, default: '' },
+    alternativeNames: { type: [String], default: [] },
+    nameKeys: { type: [String], default: [] },
+    originalLanguage: { type: String, default: '' },
+    officialUrls: { type: [String], default: [] },
+    notes: { type: String, default: '' },
+  },
+  { timestamps: true },
+);
 
 AuthorSchema.pre('validate', function normalizeAuthorFields(next) {
   this.displayName = this.displayName?.replace(/\s+/g, ' ').trim() || this.penName || this.realName || 'Unknown Author';
@@ -50,12 +53,9 @@ AuthorSchema.pre('validate', function normalizeAuthorFields(next) {
   this.alternativeNames = cleanStringList(this.alternativeNames);
   this.officialUrls = cleanStringList(this.officialUrls);
 
-  const keys = [
-    this.displayName,
-    this.penName,
-    this.realName,
-    ...this.alternativeNames,
-  ].map(normalizeFilterKey).filter(Boolean);
+  const keys = [this.displayName, this.penName, this.realName, ...this.alternativeNames]
+    .map(normalizeFilterKey)
+    .filter(Boolean);
   this.nameKeys = Array.from(new Set(keys));
 
   next();

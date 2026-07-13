@@ -24,4 +24,8 @@ const RawChapterContentSchema = new Schema<IRawChapterContent>({
 
 RawChapterContentSchema.index({ bookId: 1, chapterNumber: 1 }, { unique: true });
 
-export const RawChapterContent = mongoose.model<IRawChapterContent>('RawChapterContent', RawChapterContentSchema, 'rawbookcontents');
+export const RawChapterContent = mongoose.model<IRawChapterContent>(
+  'RawChapterContent',
+  RawChapterContentSchema,
+  'rawbookcontents',
+);

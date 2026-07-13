@@ -17,7 +17,7 @@ const ChapterContentSchema = new Schema<IChapterContent>({
   title: { type: String, default: '' },
   content: { type: String, required: true },
   sourceUrl: { type: String, default: '' },
-  scrapedAt: { type: Date, default: Date.now }
+  scrapedAt: { type: Date, default: Date.now },
 });
 
 // Ensure uniqueness of chapter number per book

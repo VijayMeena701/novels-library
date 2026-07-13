@@ -35,15 +35,18 @@ export async function listUsersHandler(request: FastifyRequest, reply: FastifyRe
     const filter: any = {};
     if (query.search) {
       const term = query.search.trim();
-      filter.$or = [
-        { username: { $regex: term, $options: 'i' } },
-        { email: { $regex: term, $options: 'i' } },
-      ];
+      filter.$or = [{ username: { $regex: term, $options: 'i' } }, { email: { $regex: term, $options: 'i' } }];
     }
     if (query.isDisabled !== undefined) filter.isDisabled = query.isDisabled === 'true';
     if (query.isLocked !== undefined) filter.isLocked = query.isLocked === 'true';
     const [users, total] = await Promise.all([
-      User.find(filter).select('-passwordHash').populate('roles', 'key name').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      User.find(filter)
+        .select('-passwordHash')
+        .populate('roles', 'key name')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       User.countDocuments(filter),
     ]);
     return reply.send({ users, total, page, limit, totalPages: Math.ceil(total / limit) || 1 });
@@ -88,7 +91,10 @@ export async function updateUserHandler(request: FastifyRequest, reply: FastifyR
       update.roles = roleIds;
     }
 
-    const updated = await User.findByIdAndUpdate(id, { $set: update }, { new: true }).select('-passwordHash').populate('roles', 'key name').lean();
+    const updated = await User.findByIdAndUpdate(id, { $set: update }, { new: true })
+      .select('-passwordHash')
+      .populate('roles', 'key name')
+      .lean();
 
     // Re-sync policies when user status or roles change
     if (Object.keys(update).some((k) => ['isDisabled', 'isLocked', 'isDeleted', 'isVerified', 'roles'].includes(k))) {
@@ -174,7 +180,9 @@ export async function updateRoleHandler(request: FastifyRequest, reply: FastifyR
     if (typeof body.description === 'string') update.description = body.description;
     if (Array.isArray(body.groupIds)) update.groups = body.groupIds.map((r: string) => new mongoose.Types.ObjectId(r));
     if (typeof body.isSuperuser === 'boolean') update.isSuperuser = body.isSuperuser;
-    const updated = await Role.findByIdAndUpdate(id, { $set: update }, { new: true }).populate('groups', 'key name').lean();
+    const updated = await Role.findByIdAndUpdate(id, { $set: update }, { new: true })
+      .populate('groups', 'key name')
+      .lean();
     await syncPolicies();
     return reply.send({ role: updated });
   } catch (err: any) {
@@ -211,7 +219,13 @@ export async function deleteRoleHandler(request: FastifyRequest, reply: FastifyR
 export async function listGroupsHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const groups = await AccessGroup.find()
-      .populate({ path: 'capabilities', populate: [{ path: 'resource', select: 'key name' }, { path: 'action', select: 'key name' }] })
+      .populate({
+        path: 'capabilities',
+        populate: [
+          { path: 'resource', select: 'key name' },
+          { path: 'action', select: 'key name' },
+        ],
+      })
       .populate('resource', 'key name')
       .sort({ key: 1 })
       .lean();
@@ -237,7 +251,13 @@ export async function createGroupHandler(request: FastifyRequest, reply: Fastify
       isSystem: false,
     });
     const created = await AccessGroup.findById(group._id)
-      .populate({ path: 'capabilities', populate: [{ path: 'resource', select: 'key name' }, { path: 'action', select: 'key name' }] })
+      .populate({
+        path: 'capabilities',
+        populate: [
+          { path: 'resource', select: 'key name' },
+          { path: 'action', select: 'key name' },
+        ],
+      })
       .populate('resource', 'key name')
       .lean();
     await syncPolicies();
@@ -258,9 +278,16 @@ export async function updateGroupHandler(request: FastifyRequest, reply: Fastify
     if (typeof body.name === 'string') update.name = body.name;
     if (typeof body.description === 'string') update.description = body.description;
     if (body.resourceId) update.resource = new mongoose.Types.ObjectId(body.resourceId);
-    if (Array.isArray(body.capabilityIds)) update.capabilities = body.capabilityIds.map((r: string) => new mongoose.Types.ObjectId(r));
+    if (Array.isArray(body.capabilityIds))
+      update.capabilities = body.capabilityIds.map((r: string) => new mongoose.Types.ObjectId(r));
     const updated = await AccessGroup.findByIdAndUpdate(id, { $set: update }, { new: true })
-      .populate({ path: 'capabilities', populate: [{ path: 'resource', select: 'key name' }, { path: 'action', select: 'key name' }] })
+      .populate({
+        path: 'capabilities',
+        populate: [
+          { path: 'resource', select: 'key name' },
+          { path: 'action', select: 'key name' },
+        ],
+      })
       .populate('resource', 'key name')
       .lean();
     await syncPolicies();

@@ -25,7 +25,7 @@ const BookRequestSchema = new Schema<IBookRequest>(
     },
     votes: { type: Number, default: 0 },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 BookRequestSchema.index({ status: 1, votes: -1, createdAt: -1 });

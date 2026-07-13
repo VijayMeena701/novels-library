@@ -5,10 +5,10 @@ setHtmlFetcherForTesting(mockFetchHtml);
 
 async function runTest() {
   console.log('--- STARTING SCRAPER HEURISTICS INTEGRATION TEST ---');
-  
+
   const novelUrl = 'https://benign-novel-site.local/novels/test-story';
   console.log(`Testing metadata scraper for: ${novelUrl}`);
-  
+
   try {
     const meta = await ScraperService.scrapeMetadata(novelUrl);
     console.log('\n[Scraped Metadata Result]:');
@@ -28,7 +28,8 @@ async function runTest() {
     if (meta.author !== 'Master Ink') throw new Error('Metadata author matching failed!');
     if (meta.authorPenName !== 'Master Ink') throw new Error('Metadata pen name matching failed!');
     if (meta.authorRealName !== 'Ink Masterson') throw new Error('Metadata real name matching failed!');
-    if (meta.alternativeNames.length !== 2 || meta.alternativeNames[0] !== 'MAG') throw new Error('Metadata alternative names parsing failed!');
+    if (meta.alternativeNames.length !== 2 || meta.alternativeNames[0] !== 'MAG')
+      throw new Error('Metadata alternative names parsing failed!');
     if (meta.genres.length !== 2 || meta.genres[0] !== 'Fantasy') throw new Error('Metadata genres parsing failed!');
     if (meta.originalSource !== 'Gravity Tales') throw new Error('Metadata source parsing failed!');
     if (meta.publicationStatus !== 'Completed') throw new Error('Metadata publication status parsing failed!');
@@ -78,7 +79,7 @@ async function runTest() {
     if (chapter.title !== 'Chapter 1: The Awakening') throw new Error('Chapter title parsing failed!');
     if (!chapter.content.includes('First paragraph of text.')) throw new Error('Chapter content extraction failed!');
     console.log('✅ Chapter parsing test passed.');
-    
+
     console.log('\n🎉 ALL SCRAPER TESTS COMPLETED SUCCESSFULLY!');
   } catch (err: any) {
     console.error('❌ TEST FAILED:', err.message);
@@ -87,8 +88,8 @@ async function runTest() {
 }
 
 function mockFetchHtml(url: string) {
-    if (url.includes('/txt/9000') || url.includes('/book/js-catalog/9000/catalog')) {
-      return Promise.resolve(`
+  if (url.includes('/txt/9000') || url.includes('/book/js-catalog/9000/catalog')) {
+    return Promise.resolve(`
           <!DOCTYPE html>
           <html>
             <head><title>JS目录</title></head>
@@ -102,8 +103,8 @@ function mockFetchHtml(url: string) {
             </body>
           </html>
         `);
-    } else if (url.includes('/book/js-catalog/9000')) {
-      return Promise.resolve(`
+  } else if (url.includes('/book/js-catalog/9000')) {
+    return Promise.resolve(`
           <!DOCTYPE html>
           <html>
             <head>
@@ -116,8 +117,8 @@ function mockFetchHtml(url: string) {
             </body>
           </html>
         `);
-    } else if (url.includes('/book/azure-sky/catalog')) {
-      return Promise.resolve(`
+  } else if (url.includes('/book/azure-sky/catalog')) {
+    return Promise.resolve(`
           <!DOCTYPE html>
           <html>
             <head>
@@ -136,8 +137,8 @@ function mockFetchHtml(url: string) {
             </body>
           </html>
         `);
-    } else if (url.includes('/book/azure-sky')) {
-      return Promise.resolve(`
+  } else if (url.includes('/book/azure-sky')) {
+    return Promise.resolve(`
           <!DOCTYPE html>
           <html>
             <head>
@@ -154,8 +155,8 @@ function mockFetchHtml(url: string) {
             </body>
           </html>
         `);
-    } else if (url.includes('chapters/1')) {
-      return Promise.resolve(`
+  } else if (url.includes('chapters/1')) {
+    return Promise.resolve(`
           <!DOCTYPE html>
           <html>
             <head>
@@ -173,8 +174,8 @@ function mockFetchHtml(url: string) {
             </body>
           </html>
         `);
-    } else if (url.includes('page=2')) {
-      return Promise.resolve(`
+  } else if (url.includes('page=2')) {
+    return Promise.resolve(`
           <!DOCTYPE html>
           <html>
             <head>
@@ -201,8 +202,8 @@ function mockFetchHtml(url: string) {
             </body>
           </html>
         `);
-    } else {
-      return Promise.resolve(`
+  } else {
+    return Promise.resolve(`
           <!DOCTYPE html>
           <html>
             <head>
@@ -235,7 +236,7 @@ function mockFetchHtml(url: string) {
             </body>
           </html>
         `);
-    }
+  }
 }
 
 runTest();

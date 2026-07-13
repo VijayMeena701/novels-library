@@ -8,17 +8,18 @@ const SMTP_FROM = process.env.SMTP_FROM || '"Book Library Alert" <noreply@books.
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
 
 export class EmailService {
-  private static transporter = (SMTP_HOST && SMTP_USER && SMTP_PASS)
-    ? nodemailer.createTransport({
-        host: SMTP_HOST,
-        port: SMTP_PORT,
-        secure: SMTP_PORT === 465,
-        auth: {
-          user: SMTP_USER,
-          pass: SMTP_PASS,
-        },
-      })
-    : null;
+  private static transporter =
+    SMTP_HOST && SMTP_USER && SMTP_PASS
+      ? nodemailer.createTransport({
+          host: SMTP_HOST,
+          port: SMTP_PORT,
+          secure: SMTP_PORT === 465,
+          auth: {
+            user: SMTP_USER,
+            pass: SMTP_PASS,
+          },
+        })
+      : null;
 
   /**
    * Sends an alert email to the admin or user when a background task fails
@@ -28,7 +29,7 @@ export class EmailService {
     bookTitle: string,
     jobType: string,
     errorMessage: string,
-    stackTrace?: string
+    stackTrace?: string,
   ): Promise<boolean> {
     const subject = `[Alert] Book Scraper Job Failed: ${bookTitle}`;
     const textContent = `
@@ -71,10 +72,14 @@ Please review the Scraper Logs in the dashboard to retry the job.
           </tr>
         </table>
         
-        ${stackTrace ? `
+        ${
+          stackTrace
+            ? `
           <h4 style="margin-bottom: 8px;">Stack Trace:</h4>
           <pre style="background-color: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; font-family: monospace;">${stackTrace}</pre>
-        ` : ''}
+        `
+            : ''
+        }
         
         <p style="margin-top: 20px; font-size: 13px; color: #666;">
           This is an automated system notification. Log into the Books Library to retry or adjust scraping settings.

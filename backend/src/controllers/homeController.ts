@@ -1,10 +1,10 @@
-import { FastifyRequest, FastifyReply } from "fastify";
-import mongoose from "mongoose";
-import { Book } from "../models/Novel.js";
-import { UserBook } from "../models/UserNovel.js";
-import { ChapterVisit } from "../models/ChapterVisit.js";
-import { BookStats } from "../models/BookStats.js";
-import { BookActivity } from "../models/BookActivity.js";
+import { FastifyRequest, FastifyReply } from 'fastify';
+import mongoose from 'mongoose';
+import { Book } from '../models/Novel.js';
+import { UserBook } from '../models/UserNovel.js';
+import { ChapterVisit } from '../models/ChapterVisit.js';
+import { BookStats } from '../models/BookStats.js';
+import { BookActivity } from '../models/BookActivity.js';
 
 const HOME_LIMIT = 6;
 const ACTIVITY_LIMIT = 10;
@@ -15,30 +15,29 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
   try {
     const [totalBooks, totalChapters] = await Promise.all([
       Book.countDocuments(),
-      Book.aggregate([{ $group: { _id: null, total: { $sum: "$translatedChaptersTotal" } } }]).then((res) => res[0]?.total || 0),
+      Book.aggregate([{ $group: { _id: null, total: { $sum: '$translatedChaptersTotal' } } }]).then(
+        (res) => res[0]?.total || 0,
+      ),
     ]);
 
-    const recentlyUpdated = await Book.find()
-      .sort({ updatedAt: -1 })
-      .limit(HOME_LIMIT)
-      .lean();
+    const recentlyUpdated = await Book.find().sort({ updatedAt: -1 }).limit(HOME_LIMIT).lean();
 
     const topRatedStats = await BookStats.find({ ratingCount: { $gt: 0 } })
       .sort({ ratingAverage: -1, ratingCount: -1 })
       .limit(HOME_LIMIT)
-      .populate("bookId")
+      .populate('bookId')
       .lean();
 
     const mostVisitedStats = await BookStats.find({ totalVisits: { $gt: 0 } })
       .sort({ totalVisits: -1 })
       .limit(HOME_LIMIT)
-      .populate("bookId")
+      .populate('bookId')
       .lean();
 
     const topVotedStats = await BookStats.find({ totalVotes: { $gt: 0 } })
       .sort({ totalVotes: -1, ratingAverage: -1 })
       .limit(HOME_LIMIT)
-      .populate("bookId")
+      .populate('bookId')
       .lean();
 
     const personal: any = {};
@@ -53,25 +52,32 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
         {
           $group: {
             _id: null,
-            reading: { $sum: { $cond: [{ $eq: ["$status", "reading"] }, 1, 0] } },
-            completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
-            planning: { $sum: { $cond: [{ $eq: ["$status", "planning"] }, 1, 0] } },
-            onHold: { $sum: { $cond: [{ $eq: ["$status", "on_hold"] }, 1, 0] } },
-            dropped: { $sum: { $cond: [{ $eq: ["$status", "dropped"] }, 1, 0] } },
-            totalChaptersRead: { $sum: "$chaptersRead" },
+            reading: { $sum: { $cond: [{ $eq: ['$status', 'reading'] }, 1, 0] } },
+            completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+            planning: { $sum: { $cond: [{ $eq: ['$status', 'planning'] }, 1, 0] } },
+            onHold: { $sum: { $cond: [{ $eq: ['$status', 'on_hold'] }, 1, 0] } },
+            dropped: { $sum: { $cond: [{ $eq: ['$status', 'dropped'] }, 1, 0] } },
+            totalChaptersRead: { $sum: '$chaptersRead' },
           },
         },
       ]);
 
-      personal.library = userStats[0] || { reading: 0, completed: 0, planning: 0, onHold: 0, dropped: 0, totalChaptersRead: 0 };
+      personal.library = userStats[0] || {
+        reading: 0,
+        completed: 0,
+        planning: 0,
+        onHold: 0,
+        dropped: 0,
+        totalChaptersRead: 0,
+      };
 
       const continueReadingEntries = await UserBook.find({
         userId: userObjectId,
-        status: { $in: ["reading", "on_hold"] },
+        status: { $in: ['reading', 'on_hold'] },
       })
         .sort({ lastVisitedAt: -1, updatedAt: -1 })
         .limit(HOME_LIMIT)
-        .populate("bookId")
+        .populate('bookId')
         .lean();
 
       continueReading = continueReadingEntries.map((item: any) => ({
@@ -86,7 +92,7 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
       activities = await BookActivity.find({ userId: userObjectId })
         .sort({ createdAt: -1 })
         .limit(ACTIVITY_LIMIT)
-        .populate("bookId")
+        .populate('bookId')
         .lean();
     }
 
@@ -123,6 +129,6 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
     });
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: "Server error loading home data." });
+    return reply.status(500).send({ error: 'Server error loading home data.' });
   }
 }

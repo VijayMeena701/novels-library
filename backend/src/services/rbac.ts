@@ -225,7 +225,7 @@ export async function hasCapability(request: FastifyRequest, capability: string)
 
 export function requireCapability(
   capability: string,
-  options: { allowAnonymous?: boolean; audit?: boolean } = {}
+  options: { allowAnonymous?: boolean; audit?: boolean } = {},
 ): (request: FastifyRequest, reply: FastifyReply) => Promise<void> {
   const { allowAnonymous = false, audit = true } = options;
   return async function rbacPreHandler(request: FastifyRequest, reply: FastifyReply) {
@@ -307,7 +307,12 @@ export function requireCapability(
 export function isAdminCapability(capability: string): boolean {
   const parsed = parseCapability(capability);
   if (!parsed) return false;
-  return parsed.resource === 'admin' || parsed.resource === 'users' || parsed.resource === 'roles' || parsed.resource === 'groups';
+  return (
+    parsed.resource === 'admin' ||
+    parsed.resource === 'users' ||
+    parsed.resource === 'roles' ||
+    parsed.resource === 'groups'
+  );
 }
 
 export async function canManageTarget(actor: any, target: any): Promise<boolean> {
@@ -367,4 +372,3 @@ export async function onResponseAuditLog(request: FastifyRequest, reply: Fastify
 }
 
 export { syncPolicies };
-

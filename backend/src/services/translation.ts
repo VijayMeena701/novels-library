@@ -190,7 +190,9 @@ export async function translateChapterHtml(input: {
   const start = Date.now();
   const { provider, url, apiKey, model, body } = getProviderConfig(prompt);
 
-  log.info(`[translation] provider=${provider} model=${model} target=${targetLanguage} promptChars=${prompt.length} timeoutMs=${TRANSLATION_TIMEOUT_MS} title="${title}"`);
+  log.info(
+    `[translation] provider=${provider} model=${model} target=${targetLanguage} promptChars=${prompt.length} timeoutMs=${TRANSLATION_TIMEOUT_MS} title="${title}"`,
+  );
 
   try {
     const response = await fetch(url, {
@@ -204,18 +206,24 @@ export async function translateChapterHtml(input: {
     });
 
     const duration = Date.now() - start;
-    log.info(`[translation] response received after ${duration}ms status=${response.status} provider=${provider} model=${model}`);
+    log.info(
+      `[translation] response received after ${duration}ms status=${response.status} provider=${provider} model=${model}`,
+    );
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
-      log.error(`[translation] provider=${provider} model=${model} status=${response.status} errorBody=${errorText || response.statusText}`);
+      log.error(
+        `[translation] provider=${provider} model=${model} status=${response.status} errorBody=${errorText || response.statusText}`,
+      );
       throw new Error(`AI translation request failed (${response.status}): ${errorText || response.statusText}`);
     }
 
     const data = await response.json();
     const outputText = stripCodeFence(extractResponseText(data, provider));
     if (!outputText) {
-      log.error(`[translation] provider=${provider} model=${model} empty outputText rawResponseKeys=${Object.keys(data).join(',')}`);
+      log.error(
+        `[translation] provider=${provider} model=${model} empty outputText rawResponseKeys=${Object.keys(data).join(',')}`,
+      );
       throw new Error('AI translation response did not include translated text.');
     }
 
@@ -223,7 +231,9 @@ export async function translateChapterHtml(input: {
 
     try {
       const parsed = JSON.parse(outputText);
-      log.info(`[translation] parsed JSON response title="${parsed.title || title}" provider=${provider} model=${model}`);
+      log.info(
+        `[translation] parsed JSON response title="${parsed.title || title}" provider=${provider} model=${model}`,
+      );
       return {
         title: String(parsed.title || title).trim(),
         content: normalizeHtmlFragment(String(parsed.html || '')),
@@ -240,8 +250,12 @@ export async function translateChapterHtml(input: {
   } catch (error: any) {
     const duration = Date.now() - start;
     if (error.name === 'AbortError') {
-      log.error(`[translation] provider=${provider} model=${model} timed out after ${duration}ms (timeoutMs=${TRANSLATION_TIMEOUT_MS})`);
-      throw new Error(`AI translation timed out after ${duration}ms (timeoutMs=${TRANSLATION_TIMEOUT_MS}). Increase AI_TRANSLATION_TIMEOUT_MS if needed.`);
+      log.error(
+        `[translation] provider=${provider} model=${model} timed out after ${duration}ms (timeoutMs=${TRANSLATION_TIMEOUT_MS})`,
+      );
+      throw new Error(
+        `AI translation timed out after ${duration}ms (timeoutMs=${TRANSLATION_TIMEOUT_MS}). Increase AI_TRANSLATION_TIMEOUT_MS if needed.`,
+      );
     }
 
     log.error(`[translation] provider=${provider} model=${model} failed after ${duration}ms: ${error.message}`);

@@ -24,7 +24,10 @@ export interface ScrapedChapter {
 export class ManualInterventionRequiredError extends Error {
   code = 'MANUAL_INTERVENTION_REQUIRED';
 
-  constructor(message: string, public url: string) {
+  constructor(
+    message: string,
+    public url: string,
+  ) {
     super(message);
     this.name = 'ManualInterventionRequiredError';
   }
@@ -37,7 +40,8 @@ type ChapterCandidate = Omit<ChapterIndex, 'number'> & {
 };
 type HtmlFetcher = (url: string) => Promise<string>;
 
-const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+const DEFAULT_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const PUPPETEER_NAVIGATION_TIMEOUT_MS = getNumberFromEnv('SCRAPER_NAVIGATION_TIMEOUT_MS', 30000, 5000, 120000);
 const PUPPETEER_RENDER_WAIT_MS = getNumberFromEnv('SCRAPER_RENDER_WAIT_MS', 750, 0, 30000);
 const PUPPETEER_CHALLENGE_WAIT_MS = getNumberFromEnv('SCRAPER_CHALLENGE_WAIT_MS', 15000, 1000, 120000);
@@ -61,11 +65,20 @@ const CHAPTER_LIST_CONTAINER_SELECTORS = [
   '.toc',
   '#toc',
 ];
-const CHAPTER_LIST_ANCHOR_SELECTOR = CHAPTER_LIST_CONTAINER_SELECTORS
-  .map((selector) => `${selector} a`)
-  .join(', ');
+const CHAPTER_LIST_ANCHOR_SELECTOR = CHAPTER_LIST_CONTAINER_SELECTORS.map((selector) => `${selector} a`).join(', ');
 const PAGINATION_PARAM_NAMES = ['page', 'p', 'pg', 'pagina', 'seite', 'halaman'];
-const PAGINATION_PATH_SEGMENTS = ['page', 'pagina', 'página', 'seite', 'halaman', 'sayfa', 'pagina', '페이지', '页', '頁'];
+const PAGINATION_PATH_SEGMENTS = [
+  'page',
+  'pagina',
+  'página',
+  'seite',
+  'halaman',
+  'sayfa',
+  'pagina',
+  '페이지',
+  '页',
+  '頁',
+];
 const TRACKING_PARAM_PATTERN = /^(utm_|fbclid$|gclid$|mc_cid$|mc_eid$)/i;
 const NUMBER_CHAR_CLASS = '0-9０-９٠-٩۰-۹०-९০-৯๐-๙';
 const CJK_NUMBER_CHAR_CLASS = '零〇一二三四五六七八九十百千万萬两兩壹贰貳叁參肆伍陆陸柒捌玖拾佰仟';
@@ -187,46 +200,50 @@ const LOCALIZED_DIGITS: Record<string, string> = {
   '๙': '9',
 };
 const CJK_DIGITS: Record<string, number> = {
-  '零': 0,
-  '〇': 0,
-  '一': 1,
-  '二': 2,
-  '两': 2,
-  '兩': 2,
-  '三': 3,
-  '四': 4,
-  '五': 5,
-  '六': 6,
-  '七': 7,
-  '八': 8,
-  '九': 9,
-  '壹': 1,
-  '贰': 2,
-  '貳': 2,
-  '叁': 3,
-  '參': 3,
-  '肆': 4,
-  '伍': 5,
-  '陆': 6,
-  '陸': 6,
-  '柒': 7,
-  '捌': 8,
-  '玖': 9,
+  零: 0,
+  〇: 0,
+  一: 1,
+  二: 2,
+  两: 2,
+  兩: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
+  壹: 1,
+  贰: 2,
+  貳: 2,
+  叁: 3,
+  參: 3,
+  肆: 4,
+  伍: 5,
+  陆: 6,
+  陸: 6,
+  柒: 7,
+  捌: 8,
+  玖: 9,
 };
 const CJK_CHAPTERS: Record<string, number> = {
-  '十': 10,
-  '拾': 10,
-  '百': 100,
-  '佰': 100,
-  '千': 1000,
-  '仟': 1000,
-  '万': 10000,
-  '萬': 10000,
+  十: 10,
+  拾: 10,
+  百: 100,
+  佰: 100,
+  千: 1000,
+  仟: 1000,
+  万: 10000,
+  萬: 10000,
 };
-const PAGINATION_TEXT_PATTERN = /^(first|last|next|previous|prev|siguiente|anterior|suivant|pr[ée]c[ée]dent|n[äa]chste|weiter|zur[üu]ck|vorige|volgende|prossima|precedente|pr[óo]xima|anterior|далее|назад|следующая|предыдущая|التالي|السابق|下一页|上一页|首页|末页|次へ|前へ|다음|이전|[<>]+|«|»)/iu;
-const CATALOG_LINK_TEXT_PATTERN = /(?:完整目录|全部目录|章节目录|章节列表|小说目录|书籍目录|作品目录|目录|全部章节|所有章节|查看全部|展开全部|more\s+chapters?|all\s+chapters?|full\s+(?:catalog(?:ue)?|contents?|list)|catalog(?:ue)?|table\s+of\s+contents?|contents?|chapter\s+list|episode\s+list|toc)/iu;
-const CATALOG_LINK_HREF_PATTERN = /(?:^|[/_.-])(?:catalog(?:ue)?|toc|contents?|chapters?|chapter-list|episode-list|list|index|all)(?:$|[/_.-])/iu;
-const NON_CATALOG_LINK_TEXT_PATTERN = /(?:首页|排行|排行榜|分类|书架|阅读记录|登录|注册|搜索|作者专区|热门标签|home|ranking|rank|category|login|register|search|library|bookshelf|history|profile)/iu;
+const PAGINATION_TEXT_PATTERN =
+  /^(first|last|next|previous|prev|siguiente|anterior|suivant|pr[ée]c[ée]dent|n[äa]chste|weiter|zur[üu]ck|vorige|volgende|prossima|precedente|pr[óo]xima|anterior|далее|назад|следующая|предыдущая|التالي|السابق|下一页|上一页|首页|末页|次へ|前へ|다음|이전|[<>]+|«|»)/iu;
+const CATALOG_LINK_TEXT_PATTERN =
+  /(?:完整目录|全部目录|章节目录|章节列表|小说目录|书籍目录|作品目录|目录|全部章节|所有章节|查看全部|展开全部|more\s+chapters?|all\s+chapters?|full\s+(?:catalog(?:ue)?|contents?|list)|catalog(?:ue)?|table\s+of\s+contents?|contents?|chapter\s+list|episode\s+list|toc)/iu;
+const CATALOG_LINK_HREF_PATTERN =
+  /(?:^|[/_.-])(?:catalog(?:ue)?|toc|contents?|chapters?|chapter-list|episode-list|list|index|all)(?:$|[/_.-])/iu;
+const NON_CATALOG_LINK_TEXT_PATTERN =
+  /(?:首页|排行|排行榜|分类|书架|阅读记录|登录|注册|搜索|作者专区|热门标签|home|ranking|rank|category|login|register|search|library|bookshelf|history|profile)/iu;
 const CHAPTER_CONTENT_SELECTORS = [
   '.chapter-content',
   '#chapter-content',
@@ -306,8 +323,10 @@ const CHAPTER_CONTENT_NOISE_SELECTOR = [
   '.toolbar',
   '.settings',
 ].join(', ');
-const CHAPTER_CONTENT_NOISE_ATTR_PATTERN = /(?:^|[-_\s])(ad|ads|advert|advertisement|banner|sponsor|sponsored|taboola|trc|tbl|share|social|comment|comments|recommend|related|footer|header|breadcrumb|pagination|nav|navigation|readpage|toolbar|setting|settings)(?:$|[-_\s])/iu;
-const CHAPTER_LINE_NOISE_PATTERN = /(?:loadAdv\s*\(|adsbygoogle|google_ad_|taboola|sponsored|copyright|版权所有|版權所有|www\.\w+|上一章|下一章|返回目录|章节目录|加入书架|投推荐票|报错|本章未完|点击下一页|请收藏|最新网址)/iu;
+const CHAPTER_CONTENT_NOISE_ATTR_PATTERN =
+  /(?:^|[-_\s])(ad|ads|advert|advertisement|banner|sponsor|sponsored|taboola|trc|tbl|share|social|comment|comments|recommend|related|footer|header|breadcrumb|pagination|nav|navigation|readpage|toolbar|setting|settings)(?:$|[-_\s])/iu;
+const CHAPTER_LINE_NOISE_PATTERN =
+  /(?:loadAdv\s*\(|adsbygoogle|google_ad_|taboola|sponsored|copyright|版权所有|版權所有|www\.\w+|上一章|下一章|返回目录|章节目录|加入书架|投推荐票|报错|本章未完|点击下一页|请收藏|最新网址)/iu;
 
 type MetadataFieldKey =
   | 'author'
@@ -319,18 +338,46 @@ type MetadataFieldKey =
   | 'publicationStatus';
 
 const METADATA_LABELS: { key: MetadataFieldKey; pattern: string }[] = [
-  { key: 'authorRealName', pattern: 'real\\s*name|birth\\s*name|legal\\s*name|nombre\\s+real|nom\\s+r[ée]el|nome\\s+real|echter\\s+name|t[êe]n\\s+thật|ten\\s+that|本名|真实姓名|真實姓名|실명|본명|настоящее\\s+имя|الاسم\\s+الحقيقي' },
-  { key: 'authorPenName', pattern: 'pen\\s*name|pseudonym|nom\\s+de\\s+plume|b[úu]t\\s+danh|but\\s+danh|笔名|筆名|필명|псевдоним|اسم\\s+مستعار' },
-  { key: 'alternativeNames', pattern: 'alternative\\s*names?|alternate\\s*names?|other\\s*names?|also\\s+known\\s+as|aliases?|synonyms?|native\\s+title|original\\s+title|t[êe]n\\s+kh[áa]c|ten\\s+khac|其他名称|其他名稱|别名|別名|異名|原名|원제|다른\\s+이름|альтернативные\\s+названия|другие\\s+названия|أسماء\\s+أخرى|الاسم\\s+البديل' },
-  { key: 'genres', pattern: 'genres?|tags?|categories|category|t[hc]ể\\s*loại|the\\s+loai|thể\\s*loại|体裁|類型|类型|ジャンル|장르|жанры?|تصنيف|التصنيف|النوع' },
-  { key: 'originalSource', pattern: 'original\\s*source|translation\\s*source|source|publisher|nguồn|nguon|来源|來源|出处|出處|출처|источник|مصدر|المصدر|fuente|quelle|fonte' },
-  { key: 'publicationStatus', pattern: 'publication\\s*status|publishing\\s*status|release\\s*status|novel\\s*status|status|estado|statut|estado\\s+de\\s+publicaci[oó]n|trạng\\s+thái|trang\\s+thai|状态|狀態|連載状況|连载状态|상태|статус|الحالة' },
-  { key: 'author', pattern: 'authors?|writers?|creator|autor|autores|auteur|escritor|penulis|yazar|t[áa]c\\s+giả|tac\\s+gia|作者|著者|作家|작가|автор|مؤلف|المؤلف|كاتب' },
+  {
+    key: 'authorRealName',
+    pattern:
+      'real\\s*name|birth\\s*name|legal\\s*name|nombre\\s+real|nom\\s+r[ée]el|nome\\s+real|echter\\s+name|t[êe]n\\s+thật|ten\\s+that|本名|真实姓名|真實姓名|실명|본명|настоящее\\s+имя|الاسم\\s+الحقيقي',
+  },
+  {
+    key: 'authorPenName',
+    pattern:
+      'pen\\s*name|pseudonym|nom\\s+de\\s+plume|b[úu]t\\s+danh|but\\s+danh|笔名|筆名|필명|псевдоним|اسم\\s+مستعار',
+  },
+  {
+    key: 'alternativeNames',
+    pattern:
+      'alternative\\s*names?|alternate\\s*names?|other\\s*names?|also\\s+known\\s+as|aliases?|synonyms?|native\\s+title|original\\s+title|t[êe]n\\s+kh[áa]c|ten\\s+khac|其他名称|其他名稱|别名|別名|異名|原名|원제|다른\\s+이름|альтернативные\\s+названия|другие\\s+названия|أسماء\\s+أخرى|الاسم\\s+البديل',
+  },
+  {
+    key: 'genres',
+    pattern:
+      'genres?|tags?|categories|category|t[hc]ể\\s*loại|the\\s+loai|thể\\s*loại|体裁|類型|类型|ジャンル|장르|жанры?|تصنيف|التصنيف|النوع',
+  },
+  {
+    key: 'originalSource',
+    pattern:
+      'original\\s*source|translation\\s*source|source|publisher|nguồn|nguon|来源|來源|出处|出處|출처|источник|مصدر|المصدر|fuente|quelle|fonte',
+  },
+  {
+    key: 'publicationStatus',
+    pattern:
+      'publication\\s*status|publishing\\s*status|release\\s*status|novel\\s*status|status|estado|statut|estado\\s+de\\s+publicaci[oó]n|trạng\\s+thái|trang\\s+thai|状态|狀態|連載状況|连载状态|상태|статус|الحالة',
+  },
+  {
+    key: 'author',
+    pattern:
+      'authors?|writers?|creator|autor|autores|auteur|escritor|penulis|yazar|t[áa]c\\s+giả|tac\\s+gia|作者|著者|作家|작가|автор|مؤلف|المؤلف|كاتب',
+  },
 ];
 const METADATA_LABEL_PATTERN_SOURCE = METADATA_LABELS.map((label) => label.pattern).join('|');
 const METADATA_FIELD_PATTERN = new RegExp(
   `(?:^|[\\s|•·])(${METADATA_LABEL_PATTERN_SOURCE})\\s*[:：-]\\s*(.*?)(?=\\s+(?:${METADATA_LABEL_PATTERN_SOURCE})\\s*[:：-]|$)`,
-  'giu'
+  'giu',
 );
 const BROWSER_CHALLENGE_PATTERNS = [
   /Just a moment\.\.\./iu,
@@ -463,7 +510,10 @@ function escapeRegExp(value: string): string {
 }
 
 function normalizeWhitespace(value: string): string {
-  return value.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function escapeHtml(value: string): string {
@@ -490,7 +540,9 @@ function extractChapterTitleFromHtml($: cheerio.CheerioAPI, html: string): strin
     return structuredTitle;
   }
 
-  const headingTitle = $('.chapter-title, .chapter-name, .chapter-heading, .entry-title, article h1, article h2, h1, h2')
+  const headingTitle = $(
+    '.chapter-title, .chapter-name, .chapter-heading, .entry-title, article h1, article h2, h1, h2',
+  )
     .map((_, el) => normalizeWhitespace($(el).text()))
     .get()
     .find(Boolean);
@@ -549,11 +601,19 @@ function isChapterLineNoise(line: string, title: string): boolean {
     return true;
   }
 
-  if (/^(作者|来源|來源|书页|收藏|目录|設置|设置|白天|黑夜|夜间|报错|報錯|首页|排行|分类|书架|阅读记录)[:：\s]*.*$/u.test(normalizedLine)) {
+  if (
+    /^(作者|来源|來源|书页|收藏|目录|設置|设置|白天|黑夜|夜间|报错|報錯|首页|排行|分类|书架|阅读记录)[:：\s]*.*$/u.test(
+      normalizedLine,
+    )
+  ) {
     return true;
   }
 
-  if (/^(next|previous|prev|index|contents?|table of contents|chapter list|next chapter|previous chapter|prev chapter|back to (?:catalogue|catalog|contents?))$/iu.test(normalizedLine)) {
+  if (
+    /^(next|previous|prev|index|contents?|table of contents|chapter list|next chapter|previous chapter|prev chapter|back to (?:catalogue|catalog|contents?))$/iu.test(
+      normalizedLine,
+    )
+  ) {
     return true;
   }
 
@@ -649,7 +709,9 @@ function extractChapterContentHtml($: cheerio.CheerioAPI, title: string): string
 
   const selectedCandidate = bestCandidate as ChapterContentExtraction | null;
   if (!selectedCandidate) {
-    throw new Error('Could not extract meaningful chapter content. Target element not found or only footer/ad/navigation text was detected.');
+    throw new Error(
+      'Could not extract meaningful chapter content. Target element not found or only footer/ad/navigation text was detected.',
+    );
   }
 
   return selectedCandidate.html;
@@ -666,7 +728,7 @@ function splitMetadataList(value: string): string[] {
   const seen = new Set<string>();
 
   return stripTrailingMetadataNoise(value)
-    .split(/[,;|\/、，；]+/u)
+    .split(/[,;|/、，；]+/u)
     .map((item) => normalizeWhitespace(item))
     .filter((item) => {
       const key = item.toLowerCase();
@@ -690,11 +752,7 @@ function getMetadataFieldKey(label: string): MetadataFieldKey | null {
   return null;
 }
 
-function addMetadataField(
-  fields: Partial<Record<MetadataFieldKey, string>>,
-  key: MetadataFieldKey,
-  value: string
-) {
+function addMetadataField(fields: Partial<Record<MetadataFieldKey, string>>, key: MetadataFieldKey, value: string) {
   const cleanValue = stripTrailingMetadataNoise(value);
   if (!cleanValue || fields[key]) {
     return;
@@ -765,7 +823,10 @@ function normalizeNumberToken(value: string): string {
 
 function parseCjkNumber(value: string): number | null {
   const chars = Array.from(value.trim());
-  if (chars.length === 0 || !chars.every((char) => CJK_DIGITS[char] !== undefined || CJK_CHAPTERS[char] !== undefined)) {
+  if (
+    chars.length === 0 ||
+    !chars.every((char) => CJK_DIGITS[char] !== undefined || CJK_CHAPTERS[char] !== undefined)
+  ) {
     return null;
   }
 
@@ -903,7 +964,7 @@ function isLikelyNumberlessChapterLink(
   href: string,
   absoluteUrl: string,
   text: string,
-  isScopedToChapterList: boolean
+  isScopedToChapterList: boolean,
 ): boolean {
   if (!text || hasPaginationSignal(href, new URL(absoluteUrl), text)) {
     return false;
@@ -915,8 +976,16 @@ function isLikelyNumberlessChapterLink(
 function getMeaningfulPathSegments(pathname: string): string[] {
   return pathname
     .split('/')
-    .map((segment) => safeDecodeURIComponent(segment).toLowerCase().replace(/\.html?$/i, ''))
-    .filter((segment) => segment && !/^(?:index|catalog(?:ue)?|toc|contents?|chapters?|list|all|page|read)\.?(?:html?)?$/iu.test(segment));
+    .map((segment) =>
+      safeDecodeURIComponent(segment)
+        .toLowerCase()
+        .replace(/\.html?$/i, ''),
+    )
+    .filter(
+      (segment) =>
+        segment &&
+        !/^(?:index|catalog(?:ue)?|toc|contents?|chapters?|list|all|page|read)\.?(?:html?)?$/iu.test(segment),
+    );
 }
 
 function sharesNovelPathSignal(candidateUrl: URL, sourceUrl: URL): boolean {
@@ -929,12 +998,7 @@ function sharesNovelPathSignal(candidateUrl: URL, sourceUrl: URL): boolean {
   return sourceSegments.some((segment) => candidateSegments.includes(segment));
 }
 
-function isLikelyCataloguePageUrl(
-  candidateUrl: URL,
-  sourceUrl: URL,
-  rawHref: string,
-  text: string
-): boolean {
+function isLikelyCataloguePageUrl(candidateUrl: URL, sourceUrl: URL, rawHref: string, text: string): boolean {
   if (candidateUrl.origin !== sourceUrl.origin) {
     return false;
   }
@@ -950,7 +1014,8 @@ function isLikelyCataloguePageUrl(
   const cleanText = normalizeWhitespace(text);
   const decodedHref = safeDecodeURIComponent(rawHref);
   const hasTextSignal = CATALOG_LINK_TEXT_PATTERN.test(cleanText);
-  const hasHrefSignal = CATALOG_LINK_HREF_PATTERN.test(decodedHref) || CATALOG_LINK_HREF_PATTERN.test(candidateUrl.pathname);
+  const hasHrefSignal =
+    CATALOG_LINK_HREF_PATTERN.test(decodedHref) || CATALOG_LINK_HREF_PATTERN.test(candidateUrl.pathname);
   if (!hasTextSignal && !hasHrefSignal) {
     return false;
   }
@@ -967,7 +1032,7 @@ function collectChapterLinks(
   pageUrl: string,
   sourceUrl: string,
   chaptersByUrl: Map<string, ChapterCandidate>,
-  orderState: { next: number }
+  orderState: { next: number },
 ) {
   const { anchors, isScopedToChapterList } = getChapterAnchors($);
   const parsedSourceUrl = new URL(sourceUrl);
@@ -1057,10 +1122,11 @@ function finalizeChapters(chaptersByUrl: Map<string, ChapterCandidate>): Chapter
 
     if (number === null || usedNumbers.has(number)) {
       const previousKnown = finalized.at(-1)?.number ?? 0;
-      const nextKnown = ordered
-        .slice(index + 1)
-        .find((candidate) => candidate.number !== null && !usedNumbers.has(candidate.number as number))
-        ?.number ?? null;
+      const nextKnown =
+        ordered
+          .slice(index + 1)
+          .find((candidate) => candidate.number !== null && !usedNumbers.has(candidate.number as number))?.number ??
+        null;
 
       if (nextKnown !== null && nextKnown > previousKnown + 1) {
         number = previousKnown + 1;
@@ -1094,7 +1160,10 @@ function extractPaginationPageNumber(pageUrl: URL, text: string): number | null 
   }
 
   const pathMatch = pageUrl.pathname.match(
-    new RegExp(`(?:^|/)(?:${PAGINATION_PATH_SEGMENTS.map(escapeRegExp).join('|')})/(${CHAPTER_NUMBER_TOKEN})(?:/|$)`, 'iu')
+    new RegExp(
+      `(?:^|/)(?:${PAGINATION_PATH_SEGMENTS.map(escapeRegExp).join('|')})/(${CHAPTER_NUMBER_TOKEN})(?:/|$)`,
+      'iu',
+    ),
   );
   if (pathMatch?.[1]) {
     return parsePositiveInt(pathMatch[1]);
@@ -1109,19 +1178,17 @@ function hasPaginationSignal(rawHref: string, candidateUrl: URL, text: string): 
 
   return (
     PAGINATION_PARAM_NAMES.some((name) => candidateUrl.searchParams.has(name)) ||
-    new RegExp(`(?:^|/)(?:${PAGINATION_PATH_SEGMENTS.map(escapeRegExp).join('|')})/${CHAPTER_NUMBER_TOKEN}(?:/|$)`, 'iu').test(candidateUrl.pathname) ||
+    new RegExp(
+      `(?:^|/)(?:${PAGINATION_PATH_SEGMENTS.map(escapeRegExp).join('|')})/${CHAPTER_NUMBER_TOKEN}(?:/|$)`,
+      'iu',
+    ).test(candidateUrl.pathname) ||
     /[?&](page|p|pg)=\d+/i.test(lowerHref) ||
     parsePositiveInt(text) !== null ||
     PAGINATION_TEXT_PATTERN.test(lowerText)
   );
 }
 
-function isLikelyChapterListPageUrl(
-  candidateUrl: URL,
-  sourceUrl: URL,
-  rawHref: string,
-  text: string
-): boolean {
+function isLikelyChapterListPageUrl(candidateUrl: URL, sourceUrl: URL, rawHref: string, text: string): boolean {
   if (candidateUrl.origin !== sourceUrl.origin) {
     return false;
   }
@@ -1167,11 +1234,7 @@ function getPaginationSortNumber(url: string): number {
   return extractPaginationPageNumber(new URL(url), '') ?? Number.MAX_SAFE_INTEGER;
 }
 
-function findChapterListPaginationUrls(
-  $: cheerio.CheerioAPI,
-  pageUrl: string,
-  sourceUrl: string
-): string[] {
+function findChapterListPaginationUrls($: cheerio.CheerioAPI, pageUrl: string, sourceUrl: string): string[] {
   const urls = new Set<string>();
   const generatedRanges = new Map<string, { sampleUrl: URL; maxPage: number }>();
   const source = new URL(sourceUrl);
@@ -1243,15 +1306,13 @@ function findChapterListPaginationUrls(
   });
 }
 
-function findCatalogueDiscoveryUrls(
-  $: cheerio.CheerioAPI,
-  pageUrl: string,
-  sourceUrl: string
-): string[] {
+function findCatalogueDiscoveryUrls($: cheerio.CheerioAPI, pageUrl: string, sourceUrl: string): string[] {
   const urls = new Set<string>();
   const source = new URL(sourceUrl);
 
-  $('a[href], button, [role="button"], [onclick], [data-href], [data-url], [data-link], [data-catalog], [data-catalogue], [data-toc]').each((_, el) => {
+  $(
+    'a[href], button, [role="button"], [onclick], [data-href], [data-url], [data-link], [data-catalog], [data-catalogue], [data-toc]',
+  ).each((_, el) => {
     const text = $(el).text().replace(/\s+/g, ' ').trim();
     const rawUrls = collectPotentialUrlsFromElement($, el);
 
@@ -1349,12 +1410,7 @@ export async function openManualBrowserSession(url: string): Promise<void> {
     manualBrowserInstance = await puppeteer.launch({
       headless: false,
       userDataDir: PUPPETEER_USER_DATA_DIR,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--window-size=1400,1000',
-      ],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--window-size=1400,1000'],
     });
   }
 
@@ -1403,30 +1459,34 @@ async function fetchHtml(url: string): Promise<string> {
       timeout: PUPPETEER_NAVIGATION_TIMEOUT_MS,
     });
 
-    await page.waitForSelector('body', { timeout: Math.min(5000, PUPPETEER_NAVIGATION_TIMEOUT_MS) }).catch(() => undefined);
+    await page
+      .waitForSelector('body', { timeout: Math.min(5000, PUPPETEER_NAVIGATION_TIMEOUT_MS) })
+      .catch(() => undefined);
     if (PUPPETEER_RENDER_WAIT_MS > 0) {
-      await new Promise(resolve => setTimeout(resolve, PUPPETEER_RENDER_WAIT_MS));
+      await new Promise((resolve) => setTimeout(resolve, PUPPETEER_RENDER_WAIT_MS));
     }
 
     // Check if still on a challenge page and wait longer if needed.
     const pageContent = await page.content();
     if (isBrowserChallengePage(pageContent)) {
       console.log(`[Scraper] Browser challenge detected at ${url}, waiting for clearance...`);
-      await page.waitForFunction(
-        (patterns: string[]) => {
-          const html = document.documentElement?.outerHTML || '';
-          return !patterns.some((pattern) => new RegExp(pattern, 'iu').test(html));
-        },
-        { timeout: PUPPETEER_CHALLENGE_WAIT_MS },
-        BROWSER_CHALLENGE_PATTERNS.map((pattern) => pattern.source)
-      ).catch(() => undefined);
+      await page
+        .waitForFunction(
+          (patterns: string[]) => {
+            const html = document.documentElement?.outerHTML || '';
+            return !patterns.some((pattern) => new RegExp(pattern, 'iu').test(html));
+          },
+          { timeout: PUPPETEER_CHALLENGE_WAIT_MS },
+          BROWSER_CHALLENGE_PATTERNS.map((pattern) => pattern.source),
+        )
+        .catch(() => undefined);
     }
 
     const html = await page.content();
     if (isBrowserChallengePage(html)) {
       throw new ManualInterventionRequiredError(
         `Browser challenge did not clear for ${url}. The site is returning an anti-bot/challenge page instead of readable novel HTML.`,
-        url
+        url,
       );
     }
     return html;
@@ -1483,7 +1543,7 @@ export class ScraperService {
   private static async parseMetadataHtml(
     data: string,
     url: string,
-    options: { discoverAdditionalPages: boolean }
+    options: { discoverAdditionalPages: boolean },
   ): Promise<ScrapedMetadata> {
     const $ = cheerio.load(data);
     const parsedUrl = new URL(url);
@@ -1491,31 +1551,40 @@ export class ScraperService {
     const labeledMetadata = collectLabeledMetadata($);
 
     // 1. Extract Title
-    let title = $('meta[property="og:title"]').attr('content') || 
-                $('h1').first().text().trim() || 
-                $('title').text().replace(/-.*/, '').trim() || 
-                'Unknown Novel';
+    const title =
+      $('meta[property="og:title"]').attr('content') ||
+      $('h1').first().text().trim() ||
+      $('title').text().replace(/-.*/, '').trim() ||
+      'Unknown Novel';
 
     // 2. Extract Author and source metadata fields
-    const rawAuthor = $('meta[property="book:author"]').attr('content') ||
-                      labeledMetadata.author ||
-                      $('.author').first().text().replace(/^(?:author|作者|著者|作家|작가|автор|مؤلف|المؤلف)\s*[:：]\s*/iu, '').trim() ||
-                      '';
+    const rawAuthor =
+      $('meta[property="book:author"]').attr('content') ||
+      labeledMetadata.author ||
+      $('.author')
+        .first()
+        .text()
+        .replace(/^(?:author|作者|著者|作家|작가|автор|مؤلف|المؤلف)\s*[:：]\s*/iu, '')
+        .trim() ||
+      '';
     const authorNames = splitMetadataList(rawAuthor);
     const authorPenName = labeledMetadata.authorPenName || authorNames[0] || '';
     const authorRealName = labeledMetadata.authorRealName || '';
     const author = authorPenName || rawAuthor || 'Unknown Author';
-    const alternativeNames = labeledMetadata.alternativeNames ? splitMetadataList(labeledMetadata.alternativeNames) : [];
+    const alternativeNames = labeledMetadata.alternativeNames
+      ? splitMetadataList(labeledMetadata.alternativeNames)
+      : [];
     const genres = labeledMetadata.genres ? splitMetadataList(labeledMetadata.genres) : [];
     const originalSource = labeledMetadata.originalSource || '';
     const publicationStatus = labeledMetadata.publicationStatus || '';
 
     // 3. Extract Description
-    let description = $('meta[property="og:description"]').attr('content') || 
-                      $('.description').first().text().trim() || 
-                      $('#description').text().trim() || 
-                      $('.synopsis').first().text().trim() || 
-                      '';
+    const description =
+      $('meta[property="og:description"]').attr('content') ||
+      $('.description').first().text().trim() ||
+      $('#description').text().trim() ||
+      $('.synopsis').first().text().trim() ||
+      '';
 
     // 4. Extract Cover URL
     let coverUrl = $('meta[property="og:image"]').attr('content') || '';
@@ -1569,22 +1638,21 @@ export class ScraperService {
         continue;
       }
 
-      const loadedPages = await Promise.all(batchUrls.map(async (pageUrl) => {
-        const pageData = pageHtmlCache.get(pageUrl) || await fetchHtml(pageUrl);
-        return {
-          pageUrl,
-          page$: pageUrl === normalizedSourceUrl ? $ : cheerio.load(pageData),
-        };
-      }));
+      const loadedPages = await Promise.all(
+        batchUrls.map(async (pageUrl) => {
+          const pageData = pageHtmlCache.get(pageUrl) || (await fetchHtml(pageUrl));
+          return {
+            pageUrl,
+            page$: pageUrl === normalizedSourceUrl ? $ : cheerio.load(pageData),
+          };
+        }),
+      );
 
       for (const { pageUrl, page$ } of loadedPages) {
         collectChapterLinks(page$, pageUrl, url, chaptersByUrl, chapterOrderState);
 
         const discoveredListUrls = options.discoverAdditionalPages
-          ? [
-              ...findCatalogueDiscoveryUrls(page$, pageUrl, url),
-              ...findChapterListPaginationUrls(page$, pageUrl, url),
-            ]
+          ? [...findCatalogueDiscoveryUrls(page$, pageUrl, url), ...findChapterListPaginationUrls(page$, pageUrl, url)]
           : [];
 
         for (const listPageUrl of discoveredListUrls) {

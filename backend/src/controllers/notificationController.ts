@@ -45,7 +45,7 @@ export async function markNotificationReadHandler(request: FastifyRequest, reply
     const notification = await Notification.findOneAndUpdate(
       { _id: id, userId: new mongoose.Types.ObjectId(userId) },
       { read: true },
-      { new: true }
+      { new: true },
     );
     if (!notification) {
       return reply.status(404).send({ error: 'Notification not found.' });
@@ -61,10 +61,7 @@ export async function markAllNotificationsReadHandler(request: FastifyRequest, r
   const userId = (request.user as any).id;
 
   try {
-    await Notification.updateMany(
-      { userId: new mongoose.Types.ObjectId(userId), read: false },
-      { read: true }
-    );
+    await Notification.updateMany({ userId: new mongoose.Types.ObjectId(userId), read: false }, { read: true });
     return reply.send({ success: true });
   } catch (err: any) {
     request.log.error(err);

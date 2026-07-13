@@ -39,23 +39,31 @@ function cleanStringList(values: string[]): string[] {
   return cleaned;
 }
 
-const UserBookSchema = new Schema<IUserBook>({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
-  status: { type: String, enum: ['reading', 'completed', 'on_hold', 'dropped', 'planning'], default: 'planning', index: true },
-  chaptersRead: { type: Number, default: 0 },
-  rating: { type: Number, default: 0 },
-  review: { type: String, default: '' },
-  personalNotes: { type: String, default: '' },
-  rawLegacyEntry: { type: String, default: '' },
-  characterNotes: { type: String, default: '' },
-  relationshipNotes: { type: String, default: '' },
-  personalTags: { type: [String], default: [], index: true },
-  personalTagKeys: { type: [String], default: [], index: true },
-  completedAt: { type: Date },
-  lastVisitedChapterNumber: { type: Number },
-  lastVisitedAt: { type: Date },
-}, { timestamps: true });
+const UserBookSchema = new Schema<IUserBook>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
+    status: {
+      type: String,
+      enum: ['reading', 'completed', 'on_hold', 'dropped', 'planning'],
+      default: 'planning',
+      index: true,
+    },
+    chaptersRead: { type: Number, default: 0 },
+    rating: { type: Number, default: 0 },
+    review: { type: String, default: '' },
+    personalNotes: { type: String, default: '' },
+    rawLegacyEntry: { type: String, default: '' },
+    characterNotes: { type: String, default: '' },
+    relationshipNotes: { type: String, default: '' },
+    personalTags: { type: [String], default: [], index: true },
+    personalTagKeys: { type: [String], default: [], index: true },
+    completedAt: { type: Date },
+    lastVisitedChapterNumber: { type: Number },
+    lastVisitedAt: { type: Date },
+  },
+  { timestamps: true },
+);
 
 UserBookSchema.pre('validate', function normalizeUserBookFields(next) {
   this.personalTags = cleanStringList(this.personalTags);

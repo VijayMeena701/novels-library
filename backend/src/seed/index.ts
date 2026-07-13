@@ -16,7 +16,7 @@ async function seedActions() {
     const doc = await Action.findOneAndUpdate(
       { key: def.key },
       { $set: { name: def.name, description: def.description, isSystem: def.isSystem ?? false } },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
     actionMap.set(def.key, doc._id.toString());
   }
@@ -26,9 +26,7 @@ async function seedActions() {
 async function seedResources(actionMap: Map<string, string>) {
   const resourceMap = new Map<string, string>();
   for (const def of RESOURCES) {
-    const actionIds = def.actions
-      .map((key) => actionMap.get(key))
-      .filter((id): id is string => !!id);
+    const actionIds = def.actions.map((key) => actionMap.get(key)).filter((id): id is string => !!id);
     const doc = await Resource.findOneAndUpdate(
       { key: def.key },
       {
@@ -41,7 +39,7 @@ async function seedResources(actionMap: Map<string, string>) {
           isSystem: def.isSystem ?? false,
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
     resourceMap.set(def.key, doc._id.toString());
   }
@@ -65,7 +63,7 @@ async function seedCapabilities(actionMap: Map<string, string>, resourceMap: Map
           isSystem: def.isSystem ?? false,
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
     capabilityMap.set(capabilityKey, doc._id.toString());
   }
@@ -75,9 +73,7 @@ async function seedCapabilities(actionMap: Map<string, string>, resourceMap: Map
 async function seedAccessGroups(capabilityMap: Map<string, string>, resourceMap: Map<string, string>) {
   const groupMap = new Map<string, string>();
   for (const def of ACCESS_GROUPS) {
-    const capabilityIds = def.capabilityKeys
-      .map((key) => capabilityMap.get(key))
-      .filter((id): id is string => !!id);
+    const capabilityIds = def.capabilityKeys.map((key) => capabilityMap.get(key)).filter((id): id is string => !!id);
     const resourceId = def.resourceKey ? resourceMap.get(def.resourceKey) : undefined;
     const doc = await AccessGroup.findOneAndUpdate(
       { key: def.key },
@@ -90,7 +86,7 @@ async function seedAccessGroups(capabilityMap: Map<string, string>, resourceMap:
           isSystem: def.isSystem ?? false,
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
     groupMap.set(def.key, doc._id.toString());
   }
@@ -100,9 +96,7 @@ async function seedAccessGroups(capabilityMap: Map<string, string>, resourceMap:
 async function seedRoles(groupMap: Map<string, string>) {
   const roleMap = new Map<string, string>();
   for (const def of ROLES) {
-    const groupIds = def.groupKeys
-      .map((key) => groupMap.get(key))
-      .filter((id): id is string => !!id);
+    const groupIds = def.groupKeys.map((key) => groupMap.get(key)).filter((id): id is string => !!id);
     const doc = await Role.findOneAndUpdate(
       { key: def.key },
       {
@@ -115,7 +109,7 @@ async function seedRoles(groupMap: Map<string, string>) {
           isDefault: def.isDefault ?? false,
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
     roleMap.set(def.key, doc._id.toString());
   }

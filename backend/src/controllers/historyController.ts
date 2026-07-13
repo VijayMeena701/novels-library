@@ -1,28 +1,28 @@
-import { FastifyRequest, FastifyReply } from "fastify";
-import mongoose from "mongoose";
-import { ChapterVisit } from "../models/ChapterVisit.js";
-import { UserBook } from "../models/UserNovel.js";
+import { FastifyRequest, FastifyReply } from 'fastify';
+import mongoose from 'mongoose';
+import { ChapterVisit } from '../models/ChapterVisit.js';
+import { UserBook } from '../models/UserNovel.js';
 
 const DEFAULT_HISTORY_LIMIT = 50;
 
 const PERSONAL_LIBRARY_FIELDS = [
-	"status",
-	"chaptersRead",
-	"rating",
-	"review",
-	"personalNotes",
-	"rawLegacyEntry",
-	"characterNotes",
-	"relationshipNotes",
-	"personalTags",
-	"completedAt",
-	"lastVisitedChapterNumber",
-	"lastVisitedAt",
+  'status',
+  'chaptersRead',
+  'rating',
+  'review',
+  'personalNotes',
+  'rawLegacyEntry',
+  'characterNotes',
+  'relationshipNotes',
+  'personalTags',
+  'completedAt',
+  'lastVisitedChapterNumber',
+  'lastVisitedAt',
 ] as const;
 
 export async function getHistoryHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
-  const { page = "1", limit = String(DEFAULT_HISTORY_LIMIT) } = request.query as any;
+  const { page = '1', limit = String(DEFAULT_HISTORY_LIMIT) } = request.query as any;
 
   const pageNumber = Math.max(1, Number.parseInt(page, 10) || 1);
   const pageSize = Math.max(1, Math.min(100, Number.parseInt(limit, 10) || DEFAULT_HISTORY_LIMIT));
@@ -34,7 +34,7 @@ export async function getHistoryHandler(request: FastifyRequest, reply: FastifyR
         .sort({ openedAt: -1 })
         .skip(skip)
         .limit(pageSize)
-        .populate("bookId")
+        .populate('bookId')
         .lean(),
       ChapterVisit.countDocuments({ userId: new mongoose.Types.ObjectId(userId) }),
     ]);
@@ -50,7 +50,7 @@ export async function getHistoryHandler(request: FastifyRequest, reply: FastifyR
 
     for (const visit of visits as any[]) {
       const book = visit.bookId;
-      if (!book || typeof book !== "object") continue;
+      if (!book || typeof book !== 'object') continue;
 
       const userBook = userBookByBookId.get(book._id?.toString());
       if (userBook) {
@@ -60,7 +60,7 @@ export async function getHistoryHandler(request: FastifyRequest, reply: FastifyR
           }
         }
       } else {
-        book.status = book.status ?? "planning";
+        book.status = book.status ?? 'planning';
         book.chaptersRead = book.chaptersRead ?? 0;
       }
     }
@@ -76,6 +76,6 @@ export async function getHistoryHandler(request: FastifyRequest, reply: FastifyR
     });
   } catch (err: any) {
     request.log.error(err);
-    return reply.status(500).send({ error: "Server error loading reading history." });
+    return reply.status(500).send({ error: 'Server error loading reading history.' });
   }
 }

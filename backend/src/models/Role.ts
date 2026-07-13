@@ -22,7 +22,7 @@ const RoleSchema = new Schema<IRole>(
     isSystem: { type: Boolean, default: false },
     isDefault: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Role = mongoose.model<IRole>('Role', RoleSchema);

@@ -16,7 +16,7 @@ const ActionSchema = new Schema<IAction>(
     description: { type: String, default: '' },
     isSystem: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Action = mongoose.model<IAction>('Action', ActionSchema);

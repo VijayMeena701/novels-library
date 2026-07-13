@@ -14,7 +14,12 @@ export const ACTIONS: ActionDefinition[] = [
   { key: 'manage', name: 'Manage', description: 'Full control over an item.', isSystem: true },
   { key: 'add', name: 'Add', description: 'Add an item to a collection.', isSystem: true },
   { key: 'retry', name: 'Retry', description: 'Retry a failed item.', isSystem: true },
-  { key: 'manual_intervention', name: 'Manual Intervention', description: 'Perform manual intervention on a job.', isSystem: true },
+  {
+    key: 'manual_intervention',
+    name: 'Manual Intervention',
+    description: 'Perform manual intervention on a job.',
+    isSystem: true,
+  },
   { key: 'import', name: 'Import', description: 'Import HTML data.', isSystem: true },
   { key: 'scrape', name: 'Scrape', description: 'Trigger a scraping action.', isSystem: true },
   { key: 'execute', name: 'Execute', description: 'Execute a one-off operation.', isSystem: true },

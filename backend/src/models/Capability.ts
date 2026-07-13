@@ -16,7 +16,7 @@ const CapabilitySchema = new Schema<ICapability>(
     category: { type: String, default: 'general' },
     isSystem: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 CapabilitySchema.index({ resource: 1, action: 1 }, { unique: true });

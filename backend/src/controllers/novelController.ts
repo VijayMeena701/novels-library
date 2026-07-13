@@ -172,9 +172,10 @@ function applySharedBookFilters(andFilters: any[], query: Record<string, any>) {
     pushFilter(andFilters, { originalSourceKey: { $in: sourceKeys } });
   }
 
-  const publicationStatusId = typeof query.publicationStatusId === 'string' && mongoose.Types.ObjectId.isValid(query.publicationStatusId)
-    ? new mongoose.Types.ObjectId(query.publicationStatusId)
-    : undefined;
+  const publicationStatusId =
+    typeof query.publicationStatusId === 'string' && mongoose.Types.ObjectId.isValid(query.publicationStatusId)
+      ? new mongoose.Types.ObjectId(query.publicationStatusId)
+      : undefined;
   const publicationStatusKeys = toFilterKeys(query.publicationStatus || query.catalogStatus);
   if (publicationStatusId) {
     pushFilter(andFilters, { publicationStatusId });
@@ -182,9 +183,13 @@ function applySharedBookFilters(andFilters: any[], query: Record<string, any>) {
     pushFilter(andFilters, { publicationStatusKey: { $in: publicationStatusKeys } });
   }
 
-  const statusValues = typeof query.status === 'string'
-    ? query.status.split(',').map((s: string) => s.trim()).filter((s: string) => VALID_BOOK_STATUSES.has(s as BookStatus))
-    : [];
+  const statusValues =
+    typeof query.status === 'string'
+      ? query.status
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter((s: string) => VALID_BOOK_STATUSES.has(s as BookStatus))
+      : [];
   if (statusValues.length > 0) {
     pushFilter(andFilters, { status: { $in: statusValues } });
   }
@@ -192,10 +197,7 @@ function applySharedBookFilters(andFilters: any[], query: Record<string, any>) {
   const authorIds = toObjectIds(query.authorId);
   if (authorIds.length > 0) {
     pushFilter(andFilters, {
-      $or: [
-        { authorIds: { $in: authorIds } },
-        { authorId: { $in: authorIds } },
-      ],
+      $or: [{ authorIds: { $in: authorIds } }, { authorId: { $in: authorIds } }],
     });
   }
 
@@ -222,7 +224,8 @@ async function applySharedBookUpdates(book: any, updates: Record<string, any>) {
   if (updates.coverUrl !== undefined) book.coverUrl = String(updates.coverUrl || '').trim();
   if (updates.sourceUrl !== undefined) book.sourceUrl = String(updates.sourceUrl || '').trim();
   if (updates.rawSourceUrl !== undefined) book.rawSourceUrl = String(updates.rawSourceUrl || '').trim();
-  if (updates.rawOriginalLanguage !== undefined) book.rawOriginalLanguage = String(updates.rawOriginalLanguage || '').trim();
+  if (updates.rawOriginalLanguage !== undefined)
+    book.rawOriginalLanguage = String(updates.rawOriginalLanguage || '').trim();
 
   if (
     updates.authorIds !== undefined ||
@@ -317,7 +320,17 @@ export async function listCatalogBooksHandler(request: FastifyRequest, reply: Fa
     applySharedBookFilters(andFilters, query);
     const filter = andFilters.length > 0 ? { $and: andFilters } : {};
 
-    const allowedSortFields = ['updatedAt', 'title', 'translatedChaptersTotal', 'rawChaptersTotal', 'rating', 'publicationStatus', 'createdAt', 'author', 'originalSource'];
+    const allowedSortFields = [
+      'updatedAt',
+      'title',
+      'translatedChaptersTotal',
+      'rawChaptersTotal',
+      'rating',
+      'publicationStatus',
+      'createdAt',
+      'author',
+      'originalSource',
+    ];
     const sortField = (allowedSortFields.includes(query.sort) ? query.sort : 'updatedAt') as string;
     const sortDir = query.sortDir === 'asc' ? 'asc' : 'desc';
     const sort: Record<string, 1 | -1> = { [sortField]: sortDir === 'asc' ? 1 : -1 };
@@ -467,7 +480,7 @@ export async function createBookHandler(request: FastifyRequest, reply: FastifyR
       sourceUrl: sourceUrl || '',
       rawSourceUrl: rawSourceUrl || '',
       rawOriginalLanguage: rawOriginalLanguage || '',
-      translatedChaptersList: []
+      translatedChaptersList: [],
     });
 
     // If sourceUrl is provided, trigger a background metadata job
@@ -516,7 +529,7 @@ export async function addBookToLibraryHandler(request: FastifyRequest, reply: Fa
           personalTags: [],
         },
       },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
 
     return reply.status(201).send(serializeBookForUser(book, userBook));
@@ -636,7 +649,11 @@ export async function updateBookHandler(request: FastifyRequest, reply: FastifyR
     }
 
     // Auto-mark completed if chaptersRead matches translatedChaptersTotal and translatedChaptersTotal > 0
-    if (book.translatedChaptersTotal > 0 && userBook.chaptersRead >= book.translatedChaptersTotal && userBook.status !== 'completed') {
+    if (
+      book.translatedChaptersTotal > 0 &&
+      userBook.chaptersRead >= book.translatedChaptersTotal &&
+      userBook.status !== 'completed'
+    ) {
       userBook.status = 'completed';
     }
 
@@ -664,7 +681,7 @@ async function syncBookStatsAndActivities(
   oldRating: number,
   newRating: number,
   oldReview: string,
-  newReview: string
+  newReview: string,
 ) {
   const bookId = book._id;
   let bookStats = await BookStats.findOne({ bookId });
@@ -701,20 +718,24 @@ async function syncBookStatsAndActivities(
 
   const activities: Promise<any>[] = [];
   if (oldRatingNum !== newRatingNum) {
-    activities.push(BookActivity.create({
-      bookId,
-      userId: new mongoose.Types.ObjectId(userId),
-      activityType: 'rate',
-      metadata: { rating: newRatingNum },
-    }));
+    activities.push(
+      BookActivity.create({
+        bookId,
+        userId: new mongoose.Types.ObjectId(userId),
+        activityType: 'rate',
+        metadata: { rating: newRatingNum },
+      }),
+    );
   }
   if (oldReview !== newReview && newHasReview) {
-    activities.push(BookActivity.create({
-      bookId,
-      userId: new mongoose.Types.ObjectId(userId),
-      activityType: 'review',
-      metadata: { review: newReview },
-    }));
+    activities.push(
+      BookActivity.create({
+        bookId,
+        userId: new mongoose.Types.ObjectId(userId),
+        activityType: 'review',
+        metadata: { review: newReview },
+      }),
+    );
   }
 
   if (activities.length > 0) {
@@ -788,7 +809,11 @@ export async function voteBookHandler(request: FastifyRequest, reply: FastifyRep
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const existingVote = await BookActivity.findOne({ bookId: id, userId: new mongoose.Types.ObjectId(userId), activityType: 'vote' });
+    const existingVote = await BookActivity.findOne({
+      bookId: id,
+      userId: new mongoose.Types.ObjectId(userId),
+      activityType: 'vote',
+    });
     let bookStats = await BookStats.findOne({ bookId: book._id });
     if (!bookStats) {
       bookStats = new BookStats({ bookId: book._id });
@@ -949,10 +974,7 @@ export async function startReadingSessionHandler(request: FastifyRequest, reply:
   const { notes, chaptersRead } = request.body as any;
 
   try {
-    const [book, userBook] = await Promise.all([
-      Book.findById(bookId),
-      UserBook.findOne({ bookId, userId }),
-    ]);
+    const [book, userBook] = await Promise.all([Book.findById(bookId), UserBook.findOne({ bookId, userId })]);
     if (!book || !userBook) {
       return reply.status(404).send({ error: 'Book not found.' });
     }
@@ -964,7 +986,7 @@ export async function startReadingSessionHandler(request: FastifyRequest, reply:
       startDate: new Date(),
       notes: notes || 'Started re-reading.',
       chaptersRead: chaptersRead || 0,
-      completed: false
+      completed: false,
     });
 
     return reply.status(201).send(session);
@@ -987,7 +1009,7 @@ export async function updateReadingSessionHandler(request: FastifyRequest, reply
 
     if (chaptersRead !== undefined) session.chaptersRead = chaptersRead;
     if (notes !== undefined) session.notes = notes;
-    
+
     if (completed !== undefined) {
       session.completed = completed;
       if (completed) {

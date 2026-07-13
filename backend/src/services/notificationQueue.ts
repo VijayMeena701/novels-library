@@ -1,8 +1,8 @@
-import { Queue, Worker } from "bullmq";
-import { redisClient, redisUrl } from "../config/redis.js";
-import { EmailService } from "./email.js";
+import { Queue, Worker } from 'bullmq';
+import { redisClient, redisUrl } from '../config/redis.js';
+import { EmailService } from './email.js';
 
-export type NotificationJobType = "email" | "jobFailure";
+export type NotificationJobType = 'email' | 'jobFailure';
 
 export interface NotificationJobData {
   type: NotificationJobType;
@@ -23,39 +23,39 @@ let notificationWorker: Worker<NotificationJobData, any, string> | null = null;
 if (redisClient) {
   const connection = { url: redisUrl };
 
-  notificationQueue = new Queue<NotificationJobData, any, string>("notifications", {
+  notificationQueue = new Queue<NotificationJobData, any, string>('notifications', {
     connection,
     defaultJobOptions: { removeOnComplete: 100, removeOnFail: 50 },
   });
 
   notificationWorker = new Worker<NotificationJobData, any, string>(
-    "notifications",
+    'notifications',
     async (job) => {
       const data = job.data;
-      if (data.type === "jobFailure") {
+      if (data.type === 'jobFailure') {
         return EmailService.sendJobFailureAlert(
-          data.jobId || job.id || "unknown",
-          data.bookTitle || "",
-          data.jobType || "",
-          data.errorMessage || "",
-          data.stackTrace
+          data.jobId || job.id || 'unknown',
+          data.bookTitle || '',
+          data.jobType || '',
+          data.errorMessage || '',
+          data.stackTrace,
         );
       }
-      if (data.type === "email") {
+      if (data.type === 'email') {
         return EmailService.sendEmail({
-          to: data.to || "",
-          subject: data.subject || "",
+          to: data.to || '',
+          subject: data.subject || '',
           text: data.text,
           html: data.html,
         });
       }
-      console.warn("[NotificationWorker] Unknown notification type:", data.type);
+      console.warn('[NotificationWorker] Unknown notification type:', data.type);
       return false;
     },
-    { connection }
+    { connection },
   );
 
-  notificationWorker.on("failed", (job, err) => {
+  notificationWorker.on('failed', (job, err) => {
     console.error(`[NotificationWorker] Job ${job?.id} failed:`, err);
   });
 }

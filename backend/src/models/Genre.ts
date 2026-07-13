@@ -35,12 +35,15 @@ function cleanStringList(values: unknown): string[] {
   return cleaned;
 }
 
-const GenreSchema = new Schema<IGenre>({
-  name: { type: String, required: true, index: true },
-  key: { type: String, required: true, unique: true, index: true },
-  aliases: { type: [String], default: [] },
-  description: { type: String, default: '' },
-}, { timestamps: true });
+const GenreSchema = new Schema<IGenre>(
+  {
+    name: { type: String, required: true, index: true },
+    key: { type: String, required: true, unique: true, index: true },
+    aliases: { type: [String], default: [] },
+    description: { type: String, default: '' },
+  },
+  { timestamps: true },
+);
 
 GenreSchema.pre('validate', function normalizeGenreFields(next) {
   this.name = cleanString(this.name);

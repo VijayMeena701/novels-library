@@ -36,13 +36,16 @@ function cleanStringList(values: unknown): string[] {
   return cleaned;
 }
 
-const PublicationStatusSchema = new Schema<IPublicationStatus>({
-  name: { type: String, required: true, index: true },
-  key: { type: String, required: true, unique: true, index: true },
-  aliases: { type: [String], default: [] },
-  color: { type: String, default: '#64748b' },
-  sortOrder: { type: Number, default: 100 },
-}, { timestamps: true });
+const PublicationStatusSchema = new Schema<IPublicationStatus>(
+  {
+    name: { type: String, required: true, index: true },
+    key: { type: String, required: true, unique: true, index: true },
+    aliases: { type: [String], default: [] },
+    color: { type: String, default: '#64748b' },
+    sortOrder: { type: Number, default: 100 },
+  },
+  { timestamps: true },
+);
 
 PublicationStatusSchema.pre('validate', function normalizePublicationStatusFields(next) {
   this.name = cleanString(this.name);

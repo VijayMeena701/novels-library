@@ -73,53 +73,56 @@ function cleanStringList(values: string[]): string[] {
   return cleaned;
 }
 
-const BookSchema = new Schema<IBook>({
-  addedByUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
-  mediaType: { type: String, default: 'novel' },
-  authorId: { type: Schema.Types.ObjectId, ref: 'Author', index: true },
-  authorIds: [{ type: Schema.Types.ObjectId, ref: 'Author', index: true }],
-  title: { type: String, required: true, index: true },
-  author: { type: String, default: '' },
-  authorPenName: { type: String, default: '' },
-  authorRealName: { type: String, default: '' },
-  alternativeNames: { type: [String], default: [] },
-  genreIds: [{ type: Schema.Types.ObjectId, ref: 'Genre', index: true }],
-  genres: { type: [String], default: [], index: true },
-  genreKeys: { type: [String], default: [], index: true },
-  originalSource: { type: String, default: '' },
-  originalSourceKey: { type: String, default: '', index: true },
-  publicationStatusId: { type: Schema.Types.ObjectId, ref: 'PublicationStatus', index: true },
-  publicationStatus: { type: String, default: '' },
-  publicationStatusKey: { type: String, default: '', index: true },
-  description: { type: String, default: '' },
-  coverUrl: { type: String, default: '' },
-  coverImagePath: { type: String, default: '' },
-  coverImageMimeType: { type: String, default: '' },
-  coverImageSize: { type: Number, default: 0 },
-  coverImageToken: { type: String, default: '', index: true },
-  coverImageSyncedAt: { type: Date },
-  sourceUrl: { type: String, default: '' },
-  rawSourceUrl: { type: String, default: '' },
-  rawOriginalLanguage: { type: String, default: '' },
-  rawChaptersTotal: { type: Number, default: 0 },
-  rawChaptersList: [
-    {
-      title: { type: String, required: true },
-      url: { type: String, required: true },
-      chapterNumber: { type: Number, required: true },
-      chapterType: { type: String, default: 'chapter' },
-    }
-  ],
-  translatedChaptersTotal: { type: Number, default: 0 },
-  translatedChaptersList: [
-    {
-      title: { type: String, required: true },
-      url: { type: String, required: true },
-      chapterNumber: { type: Number, required: true },
-      chapterType: { type: String, default: 'chapter' },
-    }
-  ],
-}, { timestamps: true });
+const BookSchema = new Schema<IBook>(
+  {
+    addedByUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    mediaType: { type: String, default: 'novel' },
+    authorId: { type: Schema.Types.ObjectId, ref: 'Author', index: true },
+    authorIds: [{ type: Schema.Types.ObjectId, ref: 'Author', index: true }],
+    title: { type: String, required: true, index: true },
+    author: { type: String, default: '' },
+    authorPenName: { type: String, default: '' },
+    authorRealName: { type: String, default: '' },
+    alternativeNames: { type: [String], default: [] },
+    genreIds: [{ type: Schema.Types.ObjectId, ref: 'Genre', index: true }],
+    genres: { type: [String], default: [], index: true },
+    genreKeys: { type: [String], default: [], index: true },
+    originalSource: { type: String, default: '' },
+    originalSourceKey: { type: String, default: '', index: true },
+    publicationStatusId: { type: Schema.Types.ObjectId, ref: 'PublicationStatus', index: true },
+    publicationStatus: { type: String, default: '' },
+    publicationStatusKey: { type: String, default: '', index: true },
+    description: { type: String, default: '' },
+    coverUrl: { type: String, default: '' },
+    coverImagePath: { type: String, default: '' },
+    coverImageMimeType: { type: String, default: '' },
+    coverImageSize: { type: Number, default: 0 },
+    coverImageToken: { type: String, default: '', index: true },
+    coverImageSyncedAt: { type: Date },
+    sourceUrl: { type: String, default: '' },
+    rawSourceUrl: { type: String, default: '' },
+    rawOriginalLanguage: { type: String, default: '' },
+    rawChaptersTotal: { type: Number, default: 0 },
+    rawChaptersList: [
+      {
+        title: { type: String, required: true },
+        url: { type: String, required: true },
+        chapterNumber: { type: Number, required: true },
+        chapterType: { type: String, default: 'chapter' },
+      },
+    ],
+    translatedChaptersTotal: { type: Number, default: 0 },
+    translatedChaptersList: [
+      {
+        title: { type: String, required: true },
+        url: { type: String, required: true },
+        chapterNumber: { type: Number, required: true },
+        chapterType: { type: String, default: 'chapter' },
+      },
+    ],
+  },
+  { timestamps: true },
+);
 
 BookSchema.pre('validate', function normalizeFilterFields(next) {
   if ((!this.authorIds || this.authorIds.length === 0) && this.authorId) {

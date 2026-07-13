@@ -7,7 +7,8 @@ const STORAGE_ROOT = path.resolve(process.env.COVER_STORAGE_DIR || path.join(pro
 const COVER_DIR = path.join(STORAGE_ROOT, 'covers');
 const COVER_DOWNLOAD_TIMEOUT_MS = getNumberFromEnv('COVER_DOWNLOAD_TIMEOUT_MS', 20000, 1000, 120000);
 const COVER_IMAGE_MAX_BYTES = getNumberFromEnv('COVER_IMAGE_MAX_BYTES', 10 * 1024 * 1024, 1024, 50 * 1024 * 1024);
-const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+const DEFAULT_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 const MIME_TO_EXTENSION: Record<string, string> = {
   'image/jpeg': 'jpg',

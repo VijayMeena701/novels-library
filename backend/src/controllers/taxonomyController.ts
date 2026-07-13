@@ -16,10 +16,12 @@ export async function listGenresHandler(request: FastifyRequest, reply: FastifyR
     ]);
     const countByGenreId = new Map(counts.map((item) => [item._id.toString(), item.bookCount]));
 
-    return reply.send(genres.map((genre) => ({
-      ...genre.toObject(),
-      bookCount: countByGenreId.get(genre._id.toString()) || 0,
-    })));
+    return reply.send(
+      genres.map((genre) => ({
+        ...genre.toObject(),
+        bookCount: countByGenreId.get(genre._id.toString()) || 0,
+      })),
+    );
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing genres.' });
@@ -39,10 +41,7 @@ export async function getGenreHandler(request: FastifyRequest, reply: FastifyRep
     }
 
     const books = await Book.find({
-      $or: [
-        { genreIds: genre._id },
-        { genreKeys: genre.key },
-      ],
+      $or: [{ genreIds: genre._id }, { genreKeys: genre.key }],
     }).sort({ updatedAt: -1 });
 
     return reply.send({ genre, books });
@@ -67,9 +66,10 @@ export async function upsertGenreHandler(request: FastifyRequest, reply: Fastify
   };
 
   try {
-    const genre = id && mongoose.Types.ObjectId.isValid(id)
-      ? await Genre.findByIdAndUpdate(id, patch, { new: true, runValidators: true })
-      : await Genre.create(patch);
+    const genre =
+      id && mongoose.Types.ObjectId.isValid(id)
+        ? await Genre.findByIdAndUpdate(id, patch, { new: true, runValidators: true })
+        : await Genre.create(patch);
 
     if (!genre) {
       return reply.status(404).send({ error: 'Genre not found.' });
@@ -92,10 +92,12 @@ export async function listPublicationStatusesHandler(request: FastifyRequest, re
     ]);
     const countByStatusId = new Map(counts.map((item) => [item._id.toString(), item.bookCount]));
 
-    return reply.send(statuses.map((status) => ({
-      ...status.toObject(),
-      bookCount: countByStatusId.get(status._id.toString()) || 0,
-    })));
+    return reply.send(
+      statuses.map((status) => ({
+        ...status.toObject(),
+        bookCount: countByStatusId.get(status._id.toString()) || 0,
+      })),
+    );
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing publication statuses.' });
@@ -115,10 +117,7 @@ export async function getPublicationStatusHandler(request: FastifyRequest, reply
     }
 
     const books = await Book.find({
-      $or: [
-        { publicationStatusId: status._id },
-        { publicationStatusKey: status.key },
-      ],
+      $or: [{ publicationStatusId: status._id }, { publicationStatusKey: status.key }],
     }).sort({ updatedAt: -1 });
 
     return reply.send({ status, books });
@@ -144,9 +143,10 @@ export async function upsertPublicationStatusHandler(request: FastifyRequest, re
   };
 
   try {
-    const status = id && mongoose.Types.ObjectId.isValid(id)
-      ? await PublicationStatus.findByIdAndUpdate(id, patch, { new: true, runValidators: true })
-      : await PublicationStatus.create(patch);
+    const status =
+      id && mongoose.Types.ObjectId.isValid(id)
+        ? await PublicationStatus.findByIdAndUpdate(id, patch, { new: true, runValidators: true })
+        : await PublicationStatus.create(patch);
 
     if (!status) {
       return reply.status(404).send({ error: 'Publication status not found.' });

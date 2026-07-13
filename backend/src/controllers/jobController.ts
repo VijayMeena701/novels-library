@@ -85,20 +85,24 @@ export async function retryJobHandler(request: FastifyRequest, reply: FastifyRep
 
     const job = await BackgroundJob.findOneAndUpdate(
       { _id: jobId, status: { $in: ['failed', 'requires_manual_intervention'] } },
-      { 
+      {
         status: 'pending',
         retryCount: 0,
         error: undefined,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
 
     if (!job) {
       return reply.status(404).send({ error: 'Job not found, not failed, or unauthorized.' });
     }
 
-    return reply.send({ success: true, message: 'Job status reset to pending. The worker will pick it up shortly.', job });
+    return reply.send({
+      success: true,
+      message: 'Job status reset to pending. The worker will pick it up shortly.',
+      job,
+    });
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error retrying job.' });
@@ -129,9 +133,7 @@ export async function openManualInterventionHandler(request: FastifyRequest, rep
 
     const targetUrl =
       job.error?.url ||
-      (job.type === 'scrape_raw_metadata' || job.type === 'scrape_raw_chapters'
-        ? book.rawSourceUrl
-        : book.sourceUrl);
+      (job.type === 'scrape_raw_metadata' || job.type === 'scrape_raw_chapters' ? book.rawSourceUrl : book.sourceUrl);
 
     if (!targetUrl) {
       return reply.status(400).send({ error: 'No source URL is available for this job.' });
@@ -321,8 +323,9 @@ export async function importChapterHtmlHandler(request: FastifyRequest, reply: F
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const indexedChapter = (sourceKind === 'raw' ? book.rawChaptersList : book.translatedChaptersList || [])
-      .find((chapter: any) => Number(chapter.number) === parsedChapterNumber);
+    const indexedChapter = (sourceKind === 'raw' ? book.rawChaptersList : book.translatedChaptersList || []).find(
+      (chapter: any) => Number(chapter.number) === parsedChapterNumber,
+    );
     const importUrl = String(pageUrl || indexedChapter?.url || '').trim();
     if (!importUrl) {
       return reply.status(400).send({ error: 'Provide the chapter URL that this HTML was saved from.' });
@@ -335,7 +338,13 @@ export async function importChapterHtmlHandler(request: FastifyRequest, reply: F
       return reply.status(400).send({ error: 'The chapter page URL must be a valid http(s) URL.' });
     }
 
-    const imported = await BookArchiveService.importChapterHtml(book, sourceKind, parsedChapterNumber, html, parsedPageUrl);
+    const imported = await BookArchiveService.importChapterHtml(
+      book,
+      sourceKind,
+      parsedChapterNumber,
+      html,
+      parsedPageUrl,
+    );
 
     return reply.send({
       success: true,
@@ -377,9 +386,8 @@ export async function runScrapeNowHandler(request: FastifyRequest, reply: Fastif
     const jobType = type as JobType;
     const sourceKind = jobTypeToSourceKind(jobType);
     const requestedChapterNumber = Number.parseInt(String(chapterNumber || ''), 10);
-    const safeChapterNumber = Number.isFinite(requestedChapterNumber) && requestedChapterNumber > 0
-      ? requestedChapterNumber
-      : undefined;
+    const safeChapterNumber =
+      Number.isFinite(requestedChapterNumber) && requestedChapterNumber > 0 ? requestedChapterNumber : undefined;
     if ((jobType === 'scrape_metadata' || jobType === 'scrape_chapters') && !book.sourceUrl) {
       return reply.status(400).send({ error: 'Add a translated source URL before running translated scraping.' });
     }
@@ -387,7 +395,9 @@ export async function runScrapeNowHandler(request: FastifyRequest, reply: Fastif
       return reply.status(400).send({ error: 'Add a raw source URL before running raw scraping.' });
     }
     if (jobType === 'scrape_chapters' && (!book.translatedChaptersList || book.translatedChaptersList.length === 0)) {
-      return reply.status(400).send({ error: 'Run translated metadata indexing before archiving translated chapters.' });
+      return reply
+        .status(400)
+        .send({ error: 'Run translated metadata indexing before archiving translated chapters.' });
     }
     if (jobType === 'scrape_raw_chapters' && (!book.rawChaptersList || book.rawChaptersList.length === 0)) {
       return reply.status(400).send({ error: 'Run raw metadata indexing before archiving raw chapters.' });
@@ -493,7 +503,9 @@ export async function triggerScrapeHandler(request: FastifyRequest, reply: Fasti
       return reply.status(400).send({ error: 'Add a raw source URL before triggering raw scraping.' });
     }
     if (type === 'scrape_chapters' && (!book.translatedChaptersList || book.translatedChaptersList.length === 0)) {
-      return reply.status(400).send({ error: 'Run translated metadata scraping before archiving translated chapters.' });
+      return reply
+        .status(400)
+        .send({ error: 'Run translated metadata scraping before archiving translated chapters.' });
     }
     if (type === 'scrape_raw_chapters' && (!book.rawChaptersList || book.rawChaptersList.length === 0)) {
       return reply.status(400).send({ error: 'Run raw metadata scraping before archiving raw chapters.' });
@@ -503,7 +515,7 @@ export async function triggerScrapeHandler(request: FastifyRequest, reply: Fasti
     const activeJob = await BackgroundJob.findOne({
       bookId,
       type,
-      status: { $in: ['pending', 'processing'] }
+      status: { $in: ['pending', 'processing'] },
     });
 
     if (activeJob) {

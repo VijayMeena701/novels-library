@@ -11,7 +11,7 @@ async function getDefaultRoleId(email: string): Promise<string | undefined> {
     (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
       .split(',')
       .map((item) => item.trim().toLowerCase())
-      .filter(Boolean)
+      .filter(Boolean),
   );
   const roleKey = adminEmails.has(email.toLowerCase()) ? 'superadmin' : 'user';
   const role = await Role.findOne({ key: roleKey }).lean();
@@ -145,7 +145,8 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
 function getGoogleAuthConfig(request: FastifyRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID || '';
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
-  const callbackUrl = process.env.GOOGLE_CALLBACK_URL || `${request.protocol}://${request.hostname}/api/auth/google/callback`;
+  const callbackUrl =
+    process.env.GOOGLE_CALLBACK_URL || `${request.protocol}://${request.hostname}/api/auth/google/callback`;
   const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
 
   return {
@@ -205,7 +206,7 @@ export async function googleCallbackHandler(request: FastifyRequest, reply: Fast
       throw new Error(`Google token exchange failed with HTTP ${tokenResponse.status}.`);
     }
 
-    const tokenData = await tokenResponse.json() as { access_token?: string };
+    const tokenData = (await tokenResponse.json()) as { access_token?: string };
     if (!tokenData.access_token) {
       throw new Error('Google token response did not include an access token.');
     }
@@ -217,7 +218,7 @@ export async function googleCallbackHandler(request: FastifyRequest, reply: Fast
       throw new Error(`Google profile fetch failed with HTTP ${profileResponse.status}.`);
     }
 
-    const profile = await profileResponse.json() as {
+    const profile = (await profileResponse.json()) as {
       sub: string;
       email: string;
       name?: string;

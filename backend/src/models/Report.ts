@@ -1,12 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export type ReportStatus = 'open' | 'under_review' | 'resolved' | 'dismissed';
-export type ReportReason =
-  | 'spam'
-  | 'inappropriate_content'
-  | 'copyright'
-  | 'incorrect_metadata'
-  | 'other';
+export type ReportReason = 'spam' | 'inappropriate_content' | 'copyright' | 'incorrect_metadata' | 'other';
 
 export interface IReport extends Document {
   bookId: mongoose.Types.ObjectId;
@@ -35,7 +30,7 @@ const ReportSchema = new Schema<IReport>(
       index: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 ReportSchema.index({ status: 1, createdAt: -1 });
