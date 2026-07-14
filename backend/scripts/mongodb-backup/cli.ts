@@ -13,15 +13,7 @@ import { dirname, join } from 'node:path';
 import { access, readdir, rm } from 'node:fs/promises';
 import readline from 'node:readline/promises';
 import { config } from '../../src/config/index';
-import {
-  ensureDir,
-  listDatabases,
-  listCollections,
-  resolveBinary,
-  binaryExists,
-  runCommand,
-  readJson,
-} from './common';
+import { ensureDir, listDatabases, listCollections, resolveBinary, binaryExists, runCommand, readJson } from './common';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const backupScript = join(__dirname, 'backup.ts');
