@@ -16,11 +16,29 @@ import { stopNotificationWorker } from './services/notificationQueue';
 import { closeBrowser } from './services/scraper';
 import { syncPolicies } from './services/casbin';
 
+const isProduction = config.nodeEnv === 'production';
+
+const loggerOptions: any = {
+  level: config.logLevel,
+  redact: ['req.headers.authorization', 'req.headers.cookie'],
+};
+
+if (!isProduction) {
+  loggerOptions.transport = {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      levelFirst: true,
+      translateTime: false,
+      singleLine: true,
+      messageFormat: '{msg}{if req.method} {req.method}{end}{if req.url} {req.url}{end}',
+      ignore: 'pid,hostname,req,res',
+    },
+  };
+}
+
 const app = Fastify({
-  logger: {
-    level: config.logLevel,
-    redact: ['req.headers.authorization', 'req.headers.cookie'],
-  },
+  logger: loggerOptions,
   forceCloseConnections: true,
   requestIdHeader: 'x-request-id',
   genReqId: () => crypto.randomUUID(),
@@ -70,8 +88,8 @@ await app.register(jwt, {
 
 // Security headers
 await app.register(helmet, {
-  contentSecurityPolicy: false,
-  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: true,
+  crossOriginResourcePolicy: true,
 });
 
 // Response compression

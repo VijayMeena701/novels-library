@@ -77,7 +77,7 @@ const schema = z.object({
   shutdownTimeoutMs: int(8000, 0, 300000),
 
   redisUrl: z.string().default('redis://127.0.0.1:6379'),
-  redisEnabled: bool(true),
+  redisEnabled: bool(false),
 
   adminEmails: csv([]),
 
