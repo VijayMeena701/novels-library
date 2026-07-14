@@ -1,4 +1,4 @@
-import { RESOURCES } from './resources.js';
+import { RESOURCES } from './resources';
 
 export interface CapabilityDefinition {
   resourceKey: string;

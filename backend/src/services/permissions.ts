@@ -1,5 +1,5 @@
 import { FastifyRequest } from 'fastify';
-import { User } from '../models/User.js';
+import { User } from '../models/User';
 
 function getAdminEmails(): Set<string> {
   return new Set(

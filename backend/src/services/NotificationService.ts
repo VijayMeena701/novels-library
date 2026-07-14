@@ -1,5 +1,5 @@
-import { notificationQueue, type NotificationJobData } from './notificationQueue.js';
-import { EmailService } from './email.js';
+import { notificationQueue, type NotificationJobData } from './notificationQueue';
+import { EmailService } from './email';
 
 export class NotificationService {
   static async enqueueJob(data: NotificationJobData): Promise<string | undefined> {

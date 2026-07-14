@@ -6,22 +6,25 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/app.ts",
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "node dist/app.js",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('./dist',{recursive:true,force:true});\"",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.all.json",
+    "lint": "tsc --noEmit -p tsconfig.all.json && eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "node --import tsx --test",
     "test:watch": "node --watch --import tsx --test",
     "test:coverage": "node --test --experimental-test-coverage --import tsx",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run format:check",
+    "check": "npm run lint && npm run test && npm run format:check",
     "ci": "npm run check",
     "migrate": "tsx migrate.ts",
     "migrate:list": "tsx migrate.ts --list",
-    "migrate:dry-run": "tsx migrate.ts --dry-run"
+    "migrate:dry-run": "tsx migrate.ts --dry-run",
+    "backup:cli": "tsx scripts/mongodb-backup/cli.ts",
+    "backup:export": "tsx scripts/mongodb-backup/backup.ts",
+    "backup:restore": "tsx scripts/mongodb-backup/restore.ts"
   },
   "dependencies": {
     "@fastify/compress": "^9.0.0",
@@ -39,17 +42,20 @@
     "ioredis": "^5.11.1",
     "mongoose": "^8.2.2",
     "nodemailer": "^9.0.3",
-    "puppeteer": "^25.1.0"
+    "puppeteer": "^25.1.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/js": "^9.7.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.11.28",
     "@types/nodemailer": "^6.4.14",
-    "eslint": "^9.7.0",
+    "eslint": "^9.18.0",
+    "jiti": "^2.0.0",
     "nodemon": "^3.1.0",
-    "prettier": "^3.3.3",
+    "prettier": "^3.5.0",
     "tsx": "^4.7.1",
+    "tsc-alias": "^1.8.10",
     "typescript": "^5.4.2",
     "typescript-eslint": "^8.64.0"
   }

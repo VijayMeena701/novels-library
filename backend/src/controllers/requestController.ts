@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { BookRequest } from '../models/BookRequest.js';
+import { BookRequest } from '../models/BookRequest';
 
 export async function createBookRequestHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;

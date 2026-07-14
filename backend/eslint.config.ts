@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
@@ -5,10 +7,17 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts', 'migrations/**/*.ts', 'migrate.ts'],
+    files: [
+      'src/**/*.ts',
+      'scripts/**/*.ts',
+      'migrations/**/*.ts',
+      'migrate.ts',
+      'eslint.config.ts',
+      'prettier.config.ts',
+    ],
     languageOptions: {
       parserOptions: {
-        project: './tsconfig.eslint.json',
+        project: './tsconfig.all.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -33,6 +42,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'coverage/', '**/*.js'],
+    ignores: ['dist/', 'node_modules/', 'coverage/', '**/*.js', 'scripts/build.ts'],
   },
 );

@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
+import { config } from './index';
 
 export async function connectDB() {
-  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/novels-library';
+  const MONGODB_URI = config.mongodbUri;
   try {
     // Note: Mongoose v6+ no longer requires useNewUrlParser or useUnifiedTopology flags
     await mongoose.connect(MONGODB_URI);

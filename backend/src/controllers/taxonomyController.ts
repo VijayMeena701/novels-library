@@ -1,10 +1,10 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
-import { Genre } from '../models/Genre.js';
-import { PublicationStatus } from '../models/PublicationStatus.js';
-import { Book, normalizeFilterKey } from '../models/Novel.js';
-import { backfillBookTaxonomy } from '../services/taxonomy.js';
-import { hasCapability, CAPABILITY } from '../services/rbac.js';
+import { Genre } from '../models/Genre';
+import { PublicationStatus } from '../models/PublicationStatus';
+import { Book, normalizeFilterKey } from '../models/Novel';
+import { backfillBookTaxonomy } from '../services/taxonomy';
+import { hasCapability, CAPABILITY } from '../services/rbac';
 
 export async function listGenresHandler(request: FastifyRequest, reply: FastifyReply) {
   try {

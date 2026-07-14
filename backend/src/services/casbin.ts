@@ -1,10 +1,10 @@
 import { newEnforcer, newModel, StringAdapter, Enforcer } from 'casbin';
-import { Role } from '../models/Role.js';
-import { AccessGroup } from '../models/AccessGroup.js';
-import { Capability } from '../models/Capability.js';
-import { Resource } from '../models/Resource.js';
-import { User } from '../models/User.js';
-import '../models/Action.js';
+import { Role } from '../models/Role';
+import { AccessGroup } from '../models/AccessGroup';
+import { Capability } from '../models/Capability';
+import { Resource } from '../models/Resource';
+import { User } from '../models/User';
+import '../models/Action';
 
 const model = newModel(`
 [request_definition]

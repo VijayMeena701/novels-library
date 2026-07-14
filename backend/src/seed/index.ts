@@ -1,14 +1,14 @@
-import { Action } from '../models/Action.js';
-import { Resource } from '../models/Resource.js';
-import { Capability } from '../models/Capability.js';
-import { AccessGroup } from '../models/AccessGroup.js';
-import { Role } from '../models/Role.js';
-import { syncPolicies } from '../services/casbin.js';
-import { ACTIONS } from './actions.js';
-import { RESOURCES } from './resources.js';
-import { CAPABILITIES } from './capabilities.js';
-import { ACCESS_GROUPS } from './accessGroups.js';
-import { ROLES } from './roles.js';
+import { Action } from '../models/Action';
+import { Resource } from '../models/Resource';
+import { Capability } from '../models/Capability';
+import { AccessGroup } from '../models/AccessGroup';
+import { Role } from '../models/Role';
+import { syncPolicies } from '../services/casbin';
+import { ACTIONS } from './actions';
+import { RESOURCES } from './resources';
+import { CAPABILITIES } from './capabilities';
+import { ACCESS_GROUPS } from './accessGroups';
+import { ROLES } from './roles';
 
 async function seedActions() {
   const actionMap = new Map<string, string>();

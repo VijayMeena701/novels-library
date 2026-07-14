@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { Notification } from '../models/Notification.js';
+import { Notification } from '../models/Notification';
 
 export async function getNotificationsHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;

@@ -8,7 +8,7 @@ import {
   ReaderTheme,
   ReaderWidth,
   UserSettings,
-} from '../models/UserSettings.js';
+} from '../models/UserSettings';
 
 const READER_THEMES: ReaderTheme[] = ['dark', 'light', 'sepia'];
 const READER_WIDTHS: ReaderWidth[] = ['narrow', 'medium', 'wide'];

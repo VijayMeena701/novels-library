@@ -1,13 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { Book } from '../models/Novel.js';
-import { ChapterContent } from '../models/ChapterContent.js';
-import { RawChapterContent } from '../models/RawChapterContent.js';
-import { ReadingSession } from '../models/ReadingSession.js';
-import { ChapterVisit } from '../models/ChapterVisit.js';
-import { UserBook } from '../models/UserNovel.js';
-import { translateChapterHtml } from '../services/translation.js';
-import { hasCapability, CAPABILITY } from '../services/rbac.js';
+import { Book } from '../models/Novel';
+import { ChapterContent } from '../models/ChapterContent';
+import { RawChapterContent } from '../models/RawChapterContent';
+import { ReadingSession } from '../models/ReadingSession';
+import { ChapterVisit } from '../models/ChapterVisit';
+import { UserBook } from '../models/UserNovel';
+import { translateChapterHtml } from '../services/translation';
+import { hasCapability, CAPABILITY } from '../services/rbac';
 
 function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();

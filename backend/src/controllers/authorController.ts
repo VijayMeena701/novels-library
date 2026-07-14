@@ -1,9 +1,9 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
-import { Author } from '../models/Author.js';
-import { Book } from '../models/Novel.js';
-import { findOrCreateAuthor } from '../services/authors.js';
-import { hasCapability, CAPABILITY } from '../services/rbac.js';
+import { Author } from '../models/Author';
+import { Book } from '../models/Novel';
+import { findOrCreateAuthor } from '../services/authors';
+import { hasCapability, CAPABILITY } from '../services/rbac';
 
 async function backfillMissingBookAuthors() {
   const books = await Book.find({

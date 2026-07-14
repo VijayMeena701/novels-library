@@ -1,13 +1,13 @@
 /// <reference types="node" />
-import 'dotenv/config';
 import process from 'node:process';
 import mongoose from 'mongoose';
-import { seedRbac } from './src/seed/index.js';
-import { runLegacyMigration } from './migrations/legacy.js';
-import { renameChapterTerminology } from './migrations/001-unit-to-chapter.js';
-import { renameRbacTerminology } from './migrations/002-rbac-unit-to-chapter.js';
+import { config } from './src/config/index';
+import { seedRbac } from './src/seed/index';
+import { runLegacyMigration } from './migrations/legacy';
+import { renameChapterTerminology } from './migrations/001-unit-to-chapter';
+import { renameRbacTerminology } from './migrations/002-rbac-unit-to-chapter';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/novels-library';
+const MONGODB_URI = config.mongodbUri;
 
 interface Migration {
   name: string;

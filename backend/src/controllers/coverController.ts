@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
-import { Book } from '../models/Novel.js';
-import { createCoverImageReadStream, getCoverImageSize, syncBookCoverImage } from '../services/coverImage.js';
-import { hasCapability, CAPABILITY } from '../services/rbac.js';
+import { Book } from '../models/Novel';
+import { createCoverImageReadStream, getCoverImageSize, syncBookCoverImage } from '../services/coverImage';
+import { hasCapability, CAPABILITY } from '../services/rbac';
 
 export async function getPublicBookCoverHandler(request: FastifyRequest, reply: FastifyReply) {
   const { id, token } = request.params as any;

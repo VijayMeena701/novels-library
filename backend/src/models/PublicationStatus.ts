@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { normalizeFilterKey } from './Novel.js';
+import { normalizeFilterKey } from './Novel';
 
 export interface IPublicationStatus extends Document {
   name: string;

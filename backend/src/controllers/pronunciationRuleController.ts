@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { Book } from '../models/Novel.js';
-import { PronunciationRule } from '../models/PronunciationRule.js';
+import { Book } from '../models/Novel';
+import { PronunciationRule } from '../models/PronunciationRule';
 
 interface PronunciationRulePatch {
   pattern?: string;

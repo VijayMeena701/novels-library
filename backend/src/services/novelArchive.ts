@@ -1,10 +1,10 @@
-import { BackgroundJob } from '../models/BackgroundJob.js';
-import { ChapterContent } from '../models/ChapterContent.js';
-import { RawChapterContent } from '../models/RawChapterContent.js';
-import { resolveAuthorIds } from './authors.js';
-import { syncBookCoverImage } from './coverImage.js';
-import { ManualInterventionRequiredError, ScrapedMetadata, ScraperService } from './scraper.js';
-import { resolveGenres, resolvePublicationStatus } from './taxonomy.js';
+import { BackgroundJob } from '../models/BackgroundJob';
+import { ChapterContent } from '../models/ChapterContent';
+import { RawChapterContent } from '../models/RawChapterContent';
+import { resolveAuthorIds } from './authors';
+import { syncBookCoverImage } from './coverImage';
+import { ManualInterventionRequiredError, ScrapedMetadata, ScraperService } from './scraper';
+import { resolveGenres, resolvePublicationStatus } from './taxonomy';
 
 export type SourceKind = 'translated' | 'raw';
 

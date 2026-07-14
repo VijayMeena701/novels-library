@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { normalizeFilterKey } from './Novel.js';
+import { normalizeFilterKey } from './Novel';
 
 export interface IAuthor extends Document {
   displayName: string;

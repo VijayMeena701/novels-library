@@ -1,8 +1,8 @@
-import { BackgroundJob, IBackgroundJob } from '../models/BackgroundJob.js';
-import { Book } from '../models/Novel.js';
-import { ManualInterventionRequiredError } from '../services/scraper.js';
-import { EmailService } from '../services/email.js';
-import { BookArchiveService } from '../services/novelArchive.js';
+import { BackgroundJob, IBackgroundJob } from '../models/BackgroundJob';
+import { Book } from '../models/Novel';
+import { ManualInterventionRequiredError } from '../services/scraper';
+import { EmailService } from '../services/email';
+import { BookArchiveService } from '../services/novelArchive';
 
 // Configuration
 const POLL_INTERVAL_MS = 5000;

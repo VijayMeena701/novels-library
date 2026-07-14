@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import { Genre, IGenre } from '../models/Genre.js';
-import { PublicationStatus, IPublicationStatus } from '../models/PublicationStatus.js';
-import { Book, normalizeFilterKey } from '../models/Novel.js';
+import { Genre, IGenre } from '../models/Genre';
+import { PublicationStatus, IPublicationStatus } from '../models/PublicationStatus';
+import { Book, normalizeFilterKey } from '../models/Novel';
 
 function cleanString(value: unknown): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';

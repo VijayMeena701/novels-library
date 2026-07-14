@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { Report } from '../models/Report.js';
-import { Book } from '../models/Novel.js';
-import { hasCapability, CAPABILITY } from '../services/rbac.js';
+import { Report } from '../models/Report';
+import { Book } from '../models/Novel';
+import { hasCapability, CAPABILITY } from '../services/rbac';
 
 const VALID_REASONS = ['spam', 'inappropriate_content', 'copyright', 'incorrect_metadata', 'other'];
 const VALID_STATUSES = ['open', 'under_review', 'resolved', 'dismissed'];

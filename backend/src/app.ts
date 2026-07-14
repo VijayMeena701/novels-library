@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import { config } from './config/index';
 import Fastify, { FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
@@ -8,17 +8,17 @@ import rateLimit from '@fastify/rate-limit';
 import underPressure from '@fastify/under-pressure';
 import { Socket } from 'net';
 import crypto from 'crypto';
-import { connectDB, disconnectDB } from './config/db.js';
-import { redisClient } from './config/redis.js';
-import { apiRoutes } from './routes/api.js';
-import { startWorker, stopWorker } from './worker/jobProcessor.js';
-import { stopNotificationWorker } from './services/notificationQueue.js';
-import { closeBrowser } from './services/scraper.js';
-import { syncPolicies } from './services/casbin.js';
+import { connectDB, disconnectDB } from './config/db';
+import { redisClient } from './config/redis';
+import { apiRoutes } from './routes/api';
+import { startWorker, stopWorker } from './worker/jobProcessor';
+import { stopNotificationWorker } from './services/notificationQueue';
+import { closeBrowser } from './services/scraper';
+import { syncPolicies } from './services/casbin';
 
 const app = Fastify({
   logger: {
-    level: process.env.LOG_LEVEL || 'info',
+    level: config.logLevel,
     redact: ['req.headers.authorization', 'req.headers.cookie'],
   },
   forceCloseConnections: true,
@@ -26,7 +26,7 @@ const app = Fastify({
   genReqId: () => crypto.randomUUID(),
 });
 const activeSockets = new Set<Socket>();
-const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '8000', 10);
+const SHUTDOWN_TIMEOUT_MS = config.shutdownTimeoutMs;
 let isShuttingDown = false;
 
 app.server.on('connection', (socket) => {
@@ -42,11 +42,7 @@ const defaultCorsOrigins = [
   'http://127.0.0.1:3001',
 ];
 
-const corsOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-const allowedCorsOrigins = new Set(corsOrigins.length > 0 ? corsOrigins : defaultCorsOrigins);
+const allowedCorsOrigins = new Set(config.corsOrigins.length > 0 ? config.corsOrigins : defaultCorsOrigins);
 const localDevOriginPattern = /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+$/;
 
 // Register CORS
@@ -64,13 +60,12 @@ await app.register(cors, {
 });
 
 // Register JWT plugin
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret && process.env.NODE_ENV === 'production') {
+if (!config.jwtSecret && config.nodeEnv === 'production') {
   throw new Error('JWT_SECRET must be configured in production.');
 }
 
 await app.register(jwt, {
-  secret: jwtSecret || 'super-secret-key-books-library-321!',
+  secret: config.jwtSecret || 'super-secret-key-books-library-321!',
 });
 
 // Security headers
@@ -134,8 +129,8 @@ const start = async () => {
     startWorker();
 
     // 4. Bind server port
-    const port = parseInt(process.env.PORT || '5050', 10);
-    const host = process.env.HOST || '0.0.0.0';
+    const port = config.port;
+    const host = config.host;
 
     await app.listen({ port, host });
     console.log(`[App] Server listening on http://${host}:${port}`);

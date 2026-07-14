@@ -1,10 +1,10 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
-import { User } from '../models/User.js';
-import { Role } from '../models/Role.js';
-import { getUserCapabilities } from '../services/rbac.js';
-import { syncPolicies } from '../services/casbin.js';
+import { User } from '../models/User';
+import { Role } from '../models/Role';
+import { getUserCapabilities } from '../services/rbac';
+import { syncPolicies } from '../services/casbin';
 
 async function getDefaultRoleId(email: string): Promise<string | undefined> {
   const adminEmails = new Set(

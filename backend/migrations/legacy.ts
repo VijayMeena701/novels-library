@@ -1,13 +1,13 @@
 /// <reference types="node" />
 import 'dotenv/config';
-import { Book, normalizeFilterKey } from '../src/models/Novel.js';
-import { UserBook } from '../src/models/UserNovel.js';
-import { ChapterContent } from '../src/models/ChapterContent.js';
-import { RawChapterContent } from '../src/models/RawChapterContent.js';
-import { ChapterVisit } from '../src/models/ChapterVisit.js';
-import { Author } from '../src/models/Author.js';
-import { Genre } from '../src/models/Genre.js';
-import { PublicationStatus } from '../src/models/PublicationStatus.js';
+import { Book, normalizeFilterKey } from '../src/models/Novel';
+import { UserBook } from '../src/models/UserNovel';
+import { ChapterContent } from '../src/models/ChapterContent';
+import { RawChapterContent } from '../src/models/RawChapterContent';
+import { ChapterVisit } from '../src/models/ChapterVisit';
+import { Author } from '../src/models/Author';
+import { Genre } from '../src/models/Genre';
+import { PublicationStatus } from '../src/models/PublicationStatus';
 
 interface ParsedAuthorBlob {
   authorNamesText: string;

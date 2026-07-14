@@ -1,13 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { User } from '../models/User.js';
-import { Role } from '../models/Role.js';
-import { AccessGroup } from '../models/AccessGroup.js';
-import { Capability } from '../models/Capability.js';
-import { Resource } from '../models/Resource.js';
-import { AuditLog } from '../models/AuditLog.js';
-import { canManageTarget } from '../services/rbac.js';
-import { syncPolicies } from '../services/casbin.js';
+import { User } from '../models/User';
+import { Role } from '../models/Role';
+import { AccessGroup } from '../models/AccessGroup';
+import { Capability } from '../models/Capability';
+import { Resource } from '../models/Resource';
+import { AuditLog } from '../models/AuditLog';
+import { canManageTarget } from '../services/rbac';
+import { syncPolicies } from '../services/casbin';
 
 export async function getAdminStatsHandler(request: FastifyRequest, reply: FastifyReply) {
   try {

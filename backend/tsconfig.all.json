@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "noImplicitAny": false
+  },
+  "include": [
+    "src/**/*",
+    "scripts/**/*.ts",
+    "migrations/**/*.ts",
+    "migrate.ts",
+    "eslint.config.ts",
+    "prettier.config.ts"
+  ],
+  "exclude": ["scripts/build.ts"]
+}

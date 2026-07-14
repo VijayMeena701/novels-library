@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { User } from '../models/User.js';
+import { User } from '@/models/User';
 import {
   registerHandler,
   loginHandler,
@@ -8,7 +8,7 @@ import {
   getCapabilitiesHandler,
   googleLoginHandler,
   googleCallbackHandler,
-} from '../controllers/authController.js';
+} from '@/controllers/authController';
 import {
   listBooksHandler,
   listCatalogBooksHandler,
@@ -26,8 +26,8 @@ import {
   startReadingSessionHandler,
   updateReadingSessionHandler,
   listBookSourcesHandler,
-} from '../controllers/novelController.js';
-import { listAuthorsHandler, getAuthorHandler, upsertAuthorHandler } from '../controllers/authorController.js';
+} from '@/controllers/novelController';
+import { listAuthorsHandler, getAuthorHandler, upsertAuthorHandler } from '@/controllers/authorController';
 import {
   listGenresHandler,
   getGenreHandler,
@@ -35,7 +35,7 @@ import {
   listPublicationStatusesHandler,
   getPublicationStatusHandler,
   upsertPublicationStatusHandler,
-} from '../controllers/taxonomyController.js';
+} from '@/controllers/taxonomyController';
 import {
   listChaptersHandler,
   getChapterHandler,
@@ -48,28 +48,28 @@ import {
   listChapterVisitsHandler,
   recordChapterVisitHandler,
   translateRawChapterHandler,
-} from '../controllers/chapterController.js';
-import { getPublicBookCoverHandler, syncBookCoverHandler } from '../controllers/coverController.js';
-import { getUserSettingsHandler, updateUserSettingsHandler } from '../controllers/settingsController.js';
+} from '@/controllers/chapterController';
+import { getPublicBookCoverHandler, syncBookCoverHandler } from '@/controllers/coverController';
+import { getUserSettingsHandler, updateUserSettingsHandler } from '@/controllers/settingsController';
 import {
   listPronunciationRulesHandler,
   createPronunciationRuleHandler,
   updatePronunciationRuleHandler,
   deletePronunciationRuleHandler,
-} from '../controllers/pronunciationRuleController.js';
-import { getHomeHandler } from '../controllers/homeController.js';
-import { getHistoryHandler } from '../controllers/historyController.js';
+} from '@/controllers/pronunciationRuleController';
+import { getHomeHandler } from '@/controllers/homeController';
+import { getHistoryHandler } from '@/controllers/historyController';
 import {
   getNotificationsHandler,
   markNotificationReadHandler,
   markAllNotificationsReadHandler,
-} from '../controllers/notificationController.js';
-import { createReportHandler, listReportsHandler, updateReportStatusHandler } from '../controllers/reportController.js';
+} from '@/controllers/notificationController';
+import { createReportHandler, listReportsHandler, updateReportStatusHandler } from '@/controllers/reportController';
 import {
   createBookRequestHandler,
   listBookRequestsHandler,
   voteBookRequestHandler,
-} from '../controllers/requestController.js';
+} from '@/controllers/requestController';
 import {
   importFailedChapterHtmlHandler,
   importChapterHtmlHandler,
@@ -81,7 +81,7 @@ import {
   retryJobHandler,
   runScrapeNowHandler,
   triggerScrapeHandler,
-} from '../controllers/jobController.js';
+} from '@/controllers/jobController';
 import {
   getAdminStatsHandler,
   listUsersHandler,
@@ -99,8 +99,8 @@ import {
   listResourcesHandler,
   enableResourceHandler,
   listAuditLogsHandler,
-} from '../controllers/adminController.js';
-import { CAPABILITY, requireCapability, onResponseAuditLog } from '../services/rbac.js';
+} from '@/controllers/adminController';
+import { CAPABILITY, requireCapability, onResponseAuditLog } from '@/services/rbac';
 
 /**
  * Authentication Hook to verify JWT

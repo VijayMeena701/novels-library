@@ -1,10 +1,10 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { Book } from '../models/Novel.js';
-import { UserBook } from '../models/UserNovel.js';
-import { ChapterVisit } from '../models/ChapterVisit.js';
-import { BookStats } from '../models/BookStats.js';
-import { BookActivity } from '../models/BookActivity.js';
+import { Book } from '../models/Novel';
+import { UserBook } from '../models/UserNovel';
+import { ChapterVisit } from '../models/ChapterVisit';
+import { BookStats } from '../models/BookStats';
+import { BookActivity } from '../models/BookActivity';
 
 const HOME_LIMIT = 6;
 const ACTIVITY_LIMIT = 10;

@@ -1,0 +1,20 @@
+{
+  "_comment": "Copy this file to mongodb-backup-config.json and edit it for your setup. Values omitted here are read from backend/.env (or environment variables) through the shared config.",
+  "mode": "export",
+  "source": "",
+  "target": "",
+  "backupDir": "./mongodb-backups/manual-run",
+  "database": "novels-library",
+  "collections": null,
+  "includeAtlas": false,
+  "atlas": {
+    "publicKey": "",
+    "privateKey": "",
+    "groupId": "",
+    "appId": ""
+  },
+  "drop": false,
+  "stopOnError": false,
+  "rename": null,
+  "toolsDir": ""
+}

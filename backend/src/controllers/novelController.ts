@@ -1,19 +1,19 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { Book, BookStatus, normalizeFilterKey } from '../models/Novel.js';
-import { ReadingSession } from '../models/ReadingSession.js';
-import { ChapterContent } from '../models/ChapterContent.js';
-import { RawChapterContent } from '../models/RawChapterContent.js';
-import { BackgroundJob } from '../models/BackgroundJob.js';
-import { ChapterVisit } from '../models/ChapterVisit.js';
-import { UserBook } from '../models/UserNovel.js';
-import { BookStats } from '../models/BookStats.js';
-import { BookActivity } from '../models/BookActivity.js';
-import { Notification } from '../models/Notification.js';
-import { deleteCoverImageFile } from '../services/coverImage.js';
-import { resolveAuthorIds, toAuthorObjectId, toAuthorObjectIds } from '../services/authors.js';
-import { resolveGenres, resolvePublicationStatus } from '../services/taxonomy.js';
-import { hasCapability, CAPABILITY } from '../services/rbac.js';
+import { Book, BookStatus, normalizeFilterKey } from '../models/Novel';
+import { ReadingSession } from '../models/ReadingSession';
+import { ChapterContent } from '../models/ChapterContent';
+import { RawChapterContent } from '../models/RawChapterContent';
+import { BackgroundJob } from '../models/BackgroundJob';
+import { ChapterVisit } from '../models/ChapterVisit';
+import { UserBook } from '../models/UserNovel';
+import { BookStats } from '../models/BookStats';
+import { BookActivity } from '../models/BookActivity';
+import { Notification } from '../models/Notification';
+import { deleteCoverImageFile } from '../services/coverImage';
+import { resolveAuthorIds, toAuthorObjectId, toAuthorObjectIds } from '../services/authors';
+import { resolveGenres, resolvePublicationStatus } from '../services/taxonomy';
+import { hasCapability, CAPABILITY } from '../services/rbac';
 
 const VALID_BOOK_STATUSES = new Set<BookStatus>(['reading', 'completed', 'on_hold', 'dropped', 'planning']);
 

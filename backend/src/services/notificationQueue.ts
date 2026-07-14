@@ -1,6 +1,6 @@
 import { Queue, Worker } from 'bullmq';
-import { redisClient, redisUrl } from '../config/redis.js';
-import { EmailService } from './email.js';
+import { redisClient, redisUrl } from '../config/redis';
+import { EmailService } from './email';
 
 export type NotificationJobType = 'email' | 'jobFailure';
 

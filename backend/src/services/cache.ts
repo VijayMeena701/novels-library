@@ -1,4 +1,4 @@
-import { redisClient } from '../config/redis.js';
+import { redisClient } from '../config/redis';
 
 const CACHE_PREFIX = 'books:';
 const memoryCache = new Map<string, unknown>();

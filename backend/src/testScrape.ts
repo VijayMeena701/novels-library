@@ -1,4 +1,4 @@
-import { ScraperService, setHtmlFetcherForTesting } from './services/scraper.js';
+import { ScraperService, setHtmlFetcherForTesting } from './services/scraper';
 
 // Mock the rendered HTML fetcher to avoid making real network requests
 setHtmlFetcherForTesting(mockFetchHtml);
