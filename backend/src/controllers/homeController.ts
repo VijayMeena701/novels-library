@@ -2,7 +2,6 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
 import { Book } from '../models/Novel';
 import { UserBook } from '../models/UserNovel';
-import { ChapterVisit } from '../models/ChapterVisit';
 import { BookStats } from '../models/BookStats';
 import { BookActivity } from '../models/BookActivity';
 

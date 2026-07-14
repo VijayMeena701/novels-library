@@ -13,6 +13,7 @@ if (config.redisEnabled) {
   });
 
   redisClient.on('error', (err) => {
+    console.error('[Redis] Error:', err);
     // suppress unhandled error events; connection failures are logged in the connect try/catch
   });
 

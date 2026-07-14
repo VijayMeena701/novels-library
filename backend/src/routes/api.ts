@@ -125,6 +125,7 @@ async function authenticateHook(request: FastifyRequest, reply: FastifyReply) {
       };
     }
   } catch (err) {
+    request.log.error(err);
     return reply.status(401).send({ error: 'Unauthorized. Invalid or missing token.' });
   }
 }

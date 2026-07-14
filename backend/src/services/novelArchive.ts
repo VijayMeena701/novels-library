@@ -485,7 +485,7 @@ export class BookArchiveService {
     pageUrl: string,
   ): Promise<ImportedChapterResult> {
     const parsedPageUrl = new URL(pageUrl).toString();
-    const scrapedChapter = await ScraperService.scrapeChapterFromHtml(html, parsedPageUrl);
+    const scrapedChapter = await ScraperService.scrapeChapterFromHtml(html);
     const indexedChapter = getChapterList(book, sourceKind).find((chapter) => Number(chapter.number) === chapterNumber);
     const chapterTitle = selectChapterTitle(
       indexedChapter?.title || '',

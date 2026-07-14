@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import 'dotenv/config';
 import mongoose from 'mongoose';
 
@@ -463,7 +462,7 @@ async function verifyCopy(db: MongoDb, before: Record<string, number>, after: Re
   }
 }
 
-async function verifyUnset(db: MongoDb, before: Record<string, number>): Promise<void> {
+async function verifyUnset(db: MongoDb): Promise<void> {
   const errors: string[] = [];
   const oldFields: { collection: string; field: string }[] = [
     { collection: 'books', field: 'rawUnitsList' },
@@ -620,7 +619,7 @@ export async function renameChapterTerminology(db: MongoDb, dryRun: boolean): Pr
   await unsetErrorField(db, dryRun);
 
   // Step 6: Verify removal
-  await verifyUnset(db, before);
+  await verifyUnset(db);
   console.log('All old fields and job types successfully removed.');
 
   // Step 7: Ensure indexes on new chapter fields

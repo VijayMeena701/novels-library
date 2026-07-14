@@ -59,7 +59,6 @@ export async function listBookRequestsHandler(request: FastifyRequest, reply: Fa
 }
 
 export async function voteBookRequestHandler(request: FastifyRequest, reply: FastifyReply) {
-  const userId = (request.user as any).id;
   const { id } = request.params as any;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {

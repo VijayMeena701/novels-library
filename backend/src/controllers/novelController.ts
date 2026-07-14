@@ -288,7 +288,6 @@ export async function listBooksHandler(request: FastifyRequest, reply: FastifyRe
     }
 
     const userBooks = await UserBook.find(userBookFilter).sort({ updatedAt: -1 });
-    const userBookByBookId = new Map(userBooks.map((item) => [item.bookId.toString(), item]));
 
     const filter: Record<string, any> = {
       _id: { $in: userBooks.map((item) => item.bookId) },

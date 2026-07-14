@@ -1,9 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuditLog } from '../models/AuditLog';
 import { User } from '../models/User';
-import { Resource } from '../models/Resource';
 import { Role } from '../models/Role';
-import { getEnforcer, initEnforcer, syncPolicies } from './casbin';
+import { initEnforcer, syncPolicies } from './casbin';
 
 export const CAPABILITY = {
   // Profile & settings

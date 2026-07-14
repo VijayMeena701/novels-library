@@ -24,7 +24,7 @@ export default tseslint.config(
     rules: {
       // Project has many explicit `any` types and legacy patterns.
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'error',
       'no-unused-vars': 'off',
       'no-console': 'off',
       'no-empty': 'off',

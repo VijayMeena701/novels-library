@@ -1685,14 +1685,14 @@ export class ScraperService {
    */
   static async scrapeChapter(url: string): Promise<ScrapedChapter> {
     const data = await fetchHtml(url);
-    return this.scrapeChapterFromHtml(data, url);
+    return this.scrapeChapterFromHtml(data);
   }
 
-  static async scrapeChapterFromHtml(html: string, url: string): Promise<ScrapedChapter> {
-    return this.parseChapterHtml(html, url);
+  static async scrapeChapterFromHtml(html: string): Promise<ScrapedChapter> {
+    return this.parseChapterHtml(html);
   }
 
-  private static parseChapterHtml(data: string, _url: string): ScrapedChapter {
+  private static parseChapterHtml(data: string): ScrapedChapter {
     const $ = cheerio.load(data);
     const title = extractChapterTitleFromHtml($, data);
     const contentHtml = extractChapterContentHtml($, title);

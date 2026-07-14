@@ -1,7 +1,5 @@
 import { newEnforcer, newModel, StringAdapter, Enforcer } from 'casbin';
 import { Role } from '../models/Role';
-import { AccessGroup } from '../models/AccessGroup';
-import { Capability } from '../models/Capability';
 import { Resource } from '../models/Resource';
 import { User } from '../models/User';
 import '../models/Action';
