@@ -10,10 +10,10 @@ import {
   UserSettings,
 } from '../models/UserSettings';
 
-const READER_THEMES: ReaderTheme[] = ['dark', 'light', 'sepia'];
-const READER_WIDTHS: ReaderWidth[] = ['narrow', 'medium', 'wide'];
-const READER_HIGHLIGHT_MODES: ReaderHighlightMode[] = ['off', 'paragraph', 'word'];
-const READER_AUTOSCROLL_BEHAVIORS: ReaderAutoScrollBehavior[] = ['smooth', 'instant'];
+const READER_THEMES: Set<ReaderTheme> = new Set(['dark', 'light', 'sepia']);
+const READER_WIDTHS: Set<ReaderWidth> = new Set(['narrow', 'medium', 'wide']);
+const READER_HIGHLIGHT_MODES: Set<ReaderHighlightMode> = new Set(['off', 'paragraph', 'word']);
+const READER_AUTOSCROLL_BEHAVIORS: Set<ReaderAutoScrollBehavior> = new Set(['smooth', 'instant']);
 
 function normalizeHexColor(value: unknown): string | undefined {
   if (typeof value !== 'string') {
@@ -46,7 +46,7 @@ function cleanReaderPatch(input: unknown): Partial<IReaderSettings> {
   const source = input as Record<string, unknown>;
   const patch: Partial<IReaderSettings> = {};
 
-  if (typeof source.theme === 'string' && READER_THEMES.includes(source.theme as ReaderTheme)) {
+  if (typeof source.theme === 'string' && READER_THEMES.has(source.theme as ReaderTheme)) {
     patch.theme = source.theme as ReaderTheme;
   }
 
@@ -55,7 +55,7 @@ function cleanReaderPatch(input: unknown): Partial<IReaderSettings> {
     patch.fontSize = Math.round(fontSize);
   }
 
-  if (typeof source.width === 'string' && READER_WIDTHS.includes(source.width as ReaderWidth)) {
+  if (typeof source.width === 'string' && READER_WIDTHS.has(source.width as ReaderWidth)) {
     patch.width = source.width as ReaderWidth;
   }
 
@@ -79,7 +79,7 @@ function cleanReaderPatch(input: unknown): Partial<IReaderSettings> {
 
   if (
     typeof source.highlightMode === 'string' &&
-    READER_HIGHLIGHT_MODES.includes(source.highlightMode as ReaderHighlightMode)
+    READER_HIGHLIGHT_MODES.has(source.highlightMode as ReaderHighlightMode)
   ) {
     patch.highlightMode = source.highlightMode as ReaderHighlightMode;
   }
@@ -109,7 +109,7 @@ function cleanReaderPatch(input: unknown): Partial<IReaderSettings> {
 
   if (
     typeof source.autoScrollBehavior === 'string' &&
-    READER_AUTOSCROLL_BEHAVIORS.includes(source.autoScrollBehavior as ReaderAutoScrollBehavior)
+    READER_AUTOSCROLL_BEHAVIORS.has(source.autoScrollBehavior as ReaderAutoScrollBehavior)
   ) {
     patch.autoScrollBehavior = source.autoScrollBehavior as ReaderAutoScrollBehavior;
   }
