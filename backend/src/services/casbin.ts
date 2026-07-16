@@ -26,9 +26,7 @@ const adapter = new StringAdapter('# initial');
 let enforcer: Enforcer | null = null;
 
 export async function initEnforcer(): Promise<Enforcer> {
-  if (!enforcer) {
-    enforcer = await newEnforcer(model, adapter);
-  }
+  enforcer ??= await newEnforcer(model, adapter);
   return enforcer;
 }
 
@@ -39,9 +37,84 @@ export function getEnforcer(): Enforcer {
   return enforcer;
 }
 
+type ResourceMap = Map<string, { isEnabled: boolean }>;
+
+async function loadResourceMap(): Promise<ResourceMap> {
+  const resourceMap: ResourceMap = new Map();
+  const resources = await Resource.find().lean();
+  for (const r of resources) {
+    resourceMap.set(r.key, { isEnabled: r.isEnabled });
+  }
+  return resourceMap;
+}
+
+async function addCapabilityPolicy(
+  roleKey: string,
+  cap: any,
+  e: Enforcer,
+  resourceMap: ResourceMap,
+): Promise<void> {
+  const resource: string | undefined = cap.resource?.key;
+  const action: string | undefined = cap.action?.key;
+  if (!resource) return;
+  if (!action) return;
+
+  const res = resourceMap.get(resource);
+  if (!res) return;
+  if (!res.isEnabled) return;
+
+  const casbinAction = action === 'manage' ? '*' : action;
+  await e.addPolicy(`role:${roleKey}`, resource, casbinAction);
+}
+
+async function addGroupPolicies(
+  roleKey: string,
+  group: any,
+  e: Enforcer,
+  resourceMap: ResourceMap,
+): Promise<void> {
+  for (const cap of group.capabilities ?? []) {
+    await addCapabilityPolicy(roleKey, cap, e, resourceMap);
+  }
+}
+
+async function addRolePolicies(
+  role: any,
+  e: Enforcer,
+  resourceMap: ResourceMap,
+): Promise<void> {
+  if (role.isSuperuser) {
+    await e.addPolicy(`role:${role.key}`, '*', '*');
+    return;
+  }
+
+  for (const group of role.groups ?? []) {
+    await addGroupPolicies(role.key, group, e, resourceMap);
+  }
+}
+
+async function addAnonymousPolicies(e: Enforcer): Promise<void> {
+  await e.addPolicy('role:anonymous', 'books', 'read');
+  await e.addPolicy('role:anonymous', 'chapters', 'read');
+  await e.addPolicy('role:anonymous', 'chapters', 'read_raw');
+  await e.addPolicy('role:anonymous', 'authors', 'read');
+  await e.addPolicy('role:anonymous', 'genres', 'read');
+  await e.addPolicy('role:anonymous', 'publication_statuses', 'read');
+  await e.addGroupingPolicy('anonymous', 'role:anonymous');
+}
+
+async function addUserGroupings(user: any, e: Enforcer): Promise<void> {
+  if (user.isDeleted) return;
+  if (user.isDisabled) return;
+
+  for (const role of user.roles ?? []) {
+    await e.addGroupingPolicy(String(user._id), `role:${role.key}`);
+  }
+}
+
 export async function syncPolicies(): Promise<void> {
   const e = await initEnforcer();
-  await e.clearPolicy();
+  e.clearPolicy();
 
   const roles = await Role.find().populate({
     path: 'groups',
@@ -51,48 +124,17 @@ export async function syncPolicies(): Promise<void> {
     },
   });
 
-  const resourceMap = new Map<string, { isEnabled: boolean }>();
-  const resources = await Resource.find().lean();
-  for (const r of resources) {
-    resourceMap.set(r.key, { isEnabled: r.isEnabled });
-  }
+  const resourceMap = await loadResourceMap();
 
   for (const role of roles) {
-    if (role.isSuperuser) {
-      await e.addPolicy(`role:${role.key}`, '*', '*');
-      continue;
-    }
-
-    const groups = (role.groups || []) as any[];
-    for (const group of groups) {
-      const capabilities = (group.capabilities || []) as any[];
-      for (const cap of capabilities) {
-        const resource = cap.resource?.key as string;
-        const action = cap.action?.key as string;
-        if (!resource || !action) continue;
-        const res = resourceMap.get(resource);
-        if (!res || !res.isEnabled) continue;
-        const casbinAction = action === 'manage' ? '*' : action;
-        await e.addPolicy(`role:${role.key}`, resource, casbinAction);
-      }
-    }
+    await addRolePolicies(role, e, resourceMap);
   }
 
-  await e.addPolicy('role:anonymous', 'books', 'read');
-  await e.addPolicy('role:anonymous', 'chapters', 'read');
-  await e.addPolicy('role:anonymous', 'chapters', 'read_raw');
-  await e.addPolicy('role:anonymous', 'authors', 'read');
-  await e.addPolicy('role:anonymous', 'genres', 'read');
-  await e.addPolicy('role:anonymous', 'publication_statuses', 'read');
-  await e.addGroupingPolicy('anonymous', 'role:anonymous');
+  await addAnonymousPolicies(e);
 
   const users = await User.find().populate('roles');
   for (const user of users) {
-    if (user.isDeleted || user.isDisabled) continue;
-    const userRoles = (user.roles || []) as any[];
-    for (const role of userRoles) {
-      await e.addGroupingPolicy(String(user._id), `role:${role.key}`);
-    }
+    await addUserGroupings(user, e);
   }
 }
 

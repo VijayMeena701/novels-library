@@ -1,7 +1,7 @@
-import { createReadStream } from 'fs';
-import { access, mkdir, stat, unlink, writeFile } from 'fs/promises';
-import path from 'path';
-import { randomUUID } from 'crypto';
+import { createReadStream } from 'node:fs';
+import { access, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const STORAGE_ROOT = path.resolve(process.env.COVER_STORAGE_DIR || path.join(process.cwd(), 'storage'));
 const COVER_DIR = path.join(STORAGE_ROOT, 'covers');
@@ -142,7 +142,7 @@ export async function syncBookCoverImage(book: any, coverUrl: string) {
   }
 
   const previousPath = book.coverImagePath;
-  const token = randomUUID().replace(/-/g, '');
+  const token = randomUUID().replaceAll('-', '');
   const fileName = `${book._id.toString()}-${token}.${extension}`;
   const relativePath = path.join('covers', fileName);
 

@@ -96,53 +96,74 @@ export async function getAuthorHandler(request: FastifyRequest, reply: FastifyRe
   }
 }
 
+function firstUrl(urls: unknown): string | undefined {
+  if (Array.isArray(urls) && urls.length > 0) {
+    return urls[0];
+  }
+  return undefined;
+}
+
+function buildUpdatePatch(body: any) {
+  const { displayName, author, penName, realName, alternativeNames, originalLanguage, officialUrls, notes } = body;
+  const patch = Object.fromEntries(
+    Object.entries({
+      displayName,
+      realName,
+      alternativeNames,
+      originalLanguage,
+      officialUrls,
+      notes,
+    }).filter(([, value]) => value !== undefined),
+  );
+  if (author !== undefined || penName !== undefined) {
+    patch.penName = penName || author;
+  }
+  return patch;
+}
+
+async function updateAuthor(id: string, body: any, reply: FastifyReply) {
+  const patch = buildUpdatePatch(body);
+  const authorDoc = await Author.findByIdAndUpdate(id, patch, { new: true, runValidators: true });
+  if (!authorDoc) {
+    return reply.status(404).send({ error: 'Author not found.' });
+  }
+  return reply.send(authorDoc);
+}
+
+async function createAuthor(body: any, reply: FastifyReply) {
+  const { author, displayName, penName, realName, alternativeNames, originalLanguage, officialUrls, notes } = body;
+  const fallback = author || displayName || penName;
+  const created = await findOrCreateAuthor({
+    author: fallback,
+    penName: penName || fallback,
+    realName,
+    alternativeNames,
+    originalLanguage,
+    officialUrl: firstUrl(officialUrls),
+  });
+  if (!created) {
+    return reply.status(400).send({ error: 'Author name is required.' });
+  }
+  if (notes !== undefined) {
+    created.notes = notes;
+    await created.save();
+  }
+  return reply.status(201).send(created);
+}
+
 export async function upsertAuthorHandler(request: FastifyRequest, reply: FastifyReply) {
   if (!(await hasCapability(request, CAPABILITY.AUTHORS_MANAGE))) {
     return reply.status(403).send({ error: 'Admin access is required to manage authors.' });
   }
 
   const { id } = request.params as any;
-  const { displayName, author, penName, realName, alternativeNames, originalLanguage, officialUrls, notes } =
-    request.body as any;
+  const body = request.body as any;
 
   try {
     if (id && mongoose.Types.ObjectId.isValid(id)) {
-      const patch = {
-        ...(displayName !== undefined ? { displayName } : {}),
-        ...(penName !== undefined || author !== undefined ? { penName: penName || author } : {}),
-        ...(realName !== undefined ? { realName } : {}),
-        ...(alternativeNames !== undefined ? { alternativeNames } : {}),
-        ...(originalLanguage !== undefined ? { originalLanguage } : {}),
-        ...(officialUrls !== undefined ? { officialUrls } : {}),
-        ...(notes !== undefined ? { notes } : {}),
-      };
-      const authorDoc = await Author.findByIdAndUpdate(id, patch, { new: true, runValidators: true });
-      if (!authorDoc) {
-        return reply.status(404).send({ error: 'Author not found.' });
-      }
-
-      return reply.send(authorDoc);
+      return await updateAuthor(id, body, reply);
     }
-
-    const created = await findOrCreateAuthor({
-      author: author || displayName || penName,
-      penName: penName || author || displayName,
-      realName,
-      alternativeNames,
-      originalLanguage,
-      officialUrl: Array.isArray(officialUrls) ? officialUrls[0] : undefined,
-    });
-
-    if (!created) {
-      return reply.status(400).send({ error: 'Author name is required.' });
-    }
-
-    if (notes !== undefined) {
-      created.notes = notes;
-      await created.save();
-    }
-
-    return reply.status(201).send(created);
+    return await createAuthor(body, reply);
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error saving author.' });

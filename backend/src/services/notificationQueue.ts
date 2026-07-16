@@ -17,16 +17,16 @@ export interface NotificationJobData {
   stackTrace?: string;
 }
 
-export let notificationQueue: Queue<NotificationJobData, any, string> | null = null;
+export const notificationQueue: Queue<NotificationJobData, any, string> | null = redisClient
+  ? new Queue<NotificationJobData, any, string>('notifications', {
+      connection: { url: redisUrl },
+      defaultJobOptions: { removeOnComplete: 100, removeOnFail: 50 },
+    })
+  : null;
 let notificationWorker: Worker<NotificationJobData, any, string> | null = null;
 
 if (redisClient) {
   const connection = { url: redisUrl };
-
-  notificationQueue = new Queue<NotificationJobData, any, string>('notifications', {
-    connection,
-    defaultJobOptions: { removeOnComplete: 100, removeOnFail: 50 },
-  });
 
   notificationWorker = new Worker<NotificationJobData, any, string>(
     'notifications',
@@ -67,6 +67,5 @@ export async function stopNotificationWorker(): Promise<void> {
   }
   if (notificationQueue) {
     await notificationQueue.close();
-    notificationQueue = null;
   }
 }

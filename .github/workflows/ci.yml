@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ['ver_*']
+  push:
+    branches: ['ver_*']
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    needs: changes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - name: Backend lint & typecheck
+        if: needs.changes.outputs.backend == 'true'
+        working-directory: backend
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+      - name: Frontend lint & typecheck
+        if: needs.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    needs: changes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - name: Backend tests
+        if: needs.changes.outputs.backend == 'true'
+        working-directory: backend
+        run: |
+          npm ci
+          npm run test
+        env:
+          NODE_ENV: test
+          MONGODB_URI: ""
+      - name: Frontend tests
+        if: needs.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test
+
+  security:
+    runs-on: ubuntu-latest
+    needs: changes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - name: npm audit (backend)
+        if: needs.changes.outputs.backend == 'true'
+        working-directory: backend
+        run: npm audit --audit-level=high
+      - name: npm audit (frontend)
+        if: needs.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: npm audit --audit-level=high
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          severity: "HIGH,CRITICAL"
+          exit-code: "1"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: changes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - name: Backend build
+        if: needs.changes.outputs.backend == 'true'
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+      - name: Frontend build
+        if: needs.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  all-green:
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck, test, build, security]
+    if: always()
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          if [[ "${{ needs.lint-typecheck.result }}" == "failure" ]]; then exit 1; fi
+          if [[ "${{ needs.test.result }}" == "failure" ]]; then exit 1; fi
+          if [[ "${{ needs.build.result }}" == "failure" ]]; then exit 1; fi
+          if [[ "${{ needs.security.result }}" == "failure" ]]; then exit 1; fi
+          echo "All checks passed"

@@ -7,8 +7,8 @@ export async function getNotificationsHandler(request: FastifyRequest, reply: Fa
   const { unreadOnly = 'false', page = '1', limit = '20' } = request.query as any;
 
   try {
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, Number.parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
     const filter: Record<string, any> = { userId: new mongoose.Types.ObjectId(userId) };

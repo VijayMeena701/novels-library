@@ -252,83 +252,46 @@ export class BookArchiveService {
     }
 
     if (sourceKind === 'raw') {
-      book.rawChaptersList = scraped.chapters.map((chapter) => ({
-        title: chapter.title,
-        url: chapter.url,
-        chapterNumber: chapter.number,
-        chapterType: 'chapter',
-      }));
-      book.rawChaptersTotal = scraped.chapters.length;
-      if (!book.rawSourceUrl) {
-        book.rawSourceUrl = options.sourceUrl;
-      }
-      if (!book.rawOriginalLanguage && scraped.originalSource) {
-        book.rawOriginalLanguage = scraped.originalSource;
-      }
-      await book.save();
+      await this.applyRawMetadata(book, scraped, options);
       return { sourceKind, chaptersFound: scraped.chapters.length, title: book.title };
     }
 
-    if (scraped.title && scraped.title !== 'Unknown Book' && (!book.title || book.title === 'Pending Scrape')) {
-      book.title = scraped.title;
-    }
-    if (scraped.author && scraped.author !== 'Unknown Author' && !book.author) {
-      book.author = scraped.author;
-    }
-    if (scraped.authorPenName && !book.authorPenName) {
-      book.authorPenName = scraped.authorPenName;
-    }
-    if (scraped.authorRealName && !book.authorRealName) {
-      book.authorRealName = scraped.authorRealName;
-    }
-    if (scraped.alternativeNames?.length && (!book.alternativeNames || book.alternativeNames.length === 0)) {
-      book.alternativeNames = scraped.alternativeNames;
-    }
-    if (scraped.genres?.length && (!book.genreIds || book.genreIds.length === 0)) {
-      const resolvedGenres = await resolveGenres({ genres: scraped.genres });
-      book.genreIds = resolvedGenres.genreIds;
-      book.genres = resolvedGenres.genres;
-      book.genreKeys = resolvedGenres.genreKeys;
-    }
-    if (scraped.originalSource && !book.originalSource) {
-      book.originalSource = scraped.originalSource;
-    }
-    if (scraped.publicationStatus && !book.publicationStatus) {
-      const resolvedStatus = await resolvePublicationStatus({ publicationStatus: scraped.publicationStatus });
-      book.publicationStatusId = resolvedStatus.publicationStatusId;
-      book.publicationStatus = resolvedStatus.publicationStatus || scraped.publicationStatus;
-      book.publicationStatusKey = resolvedStatus.publicationStatusKey || '';
-    }
+    await this.applyTranslatedMetadata(book, scraped, options);
+    return { sourceKind, chaptersFound: scraped.chapters.length, title: book.title };
+  }
 
-    const linkedAuthorIds = await resolveAuthorIds({
-      author: scraped.author,
-      penName: scraped.authorPenName || scraped.author,
-      realName: scraped.authorRealName,
-      alternativeNames: [],
-      officialUrl: options.sourceUrl,
-      originalLanguage: book.rawOriginalLanguage,
-    });
-    if (linkedAuthorIds.length > 0) {
-      book.authorIds = linkedAuthorIds;
-      book.authorId = linkedAuthorIds[0];
+  private static async applyRawMetadata(
+    book: any,
+    scraped: ScrapedMetadata,
+    options: { sourceUrl: string },
+  ): Promise<void> {
+    book.rawChaptersList = scraped.chapters.map((chapter) => ({
+      title: chapter.title,
+      url: chapter.url,
+      chapterNumber: chapter.number,
+      chapterType: 'chapter',
+    }));
+    book.rawChaptersTotal = scraped.chapters.length;
+    if (!book.rawSourceUrl) {
+      book.rawSourceUrl = options.sourceUrl;
     }
+    if (!book.rawOriginalLanguage && scraped.originalSource) {
+      book.rawOriginalLanguage = scraped.originalSource;
+    }
+    await book.save();
+  }
 
-    if (scraped.description && !book.description) {
-      book.description = scraped.description;
-    }
-    if (scraped.coverUrl) {
-      if (!book.coverUrl) {
-        book.coverUrl = scraped.coverUrl;
-      }
+  private static async applyTranslatedMetadata(
+    book: any,
+    scraped: ScrapedMetadata,
+    options: { sourceUrl: string; syncCover?: boolean },
+  ): Promise<void> {
+    this.applyTranslatedTextFields(book, scraped);
+    await this.applyTranslatedGenres(book, scraped);
+    await this.applyTranslatedPublicationStatus(book, scraped);
+    await this.applyTranslatedAuthors(book, scraped, options);
+    await this.applyTranslatedCover(book, scraped, options);
 
-      if (options.syncCover) {
-        try {
-          await syncBookCoverImage(book, scraped.coverUrl);
-        } catch (err: any) {
-          console.warn(`[Archive] Cover image sync failed for book ${book._id}: ${err.message}`);
-        }
-      }
-    }
     if (!book.sourceUrl) {
       book.sourceUrl = options.sourceUrl;
     }
@@ -341,8 +304,121 @@ export class BookArchiveService {
     }));
     book.translatedChaptersTotal = scraped.chapters.length;
     await book.save();
+  }
 
-    return { sourceKind, chaptersFound: scraped.chapters.length, title: book.title };
+  private static applyTranslatedTextFields(book: any, scraped: ScrapedMetadata): void {
+    this.setStringField(book, 'title', scraped.title, {
+      invalidValue: 'Unknown Book',
+      replaceValue: 'Pending Scrape',
+    });
+    this.setStringField(book, 'author', scraped.author, { invalidValue: 'Unknown Author' });
+    this.setStringField(book, 'authorPenName', scraped.authorPenName);
+    this.setStringField(book, 'authorRealName', scraped.authorRealName);
+    this.setArrayField(book, 'alternativeNames', scraped.alternativeNames);
+    this.setStringField(book, 'originalSource', scraped.originalSource);
+    this.setStringField(book, 'description', scraped.description);
+  }
+
+  private static setStringField(
+    book: any,
+    key: string,
+    value: string | undefined,
+    options?: { invalidValue?: string; replaceValue?: string },
+  ): void {
+    if (!value) {
+      return;
+    }
+    if (options?.invalidValue && value === options.invalidValue) {
+      return;
+    }
+    const current = book[key];
+    if (current && current !== options?.replaceValue) {
+      return;
+    }
+    book[key] = value;
+  }
+
+  private static setArrayField(book: any, key: string, value: any[] | undefined): void {
+    if (!value) {
+      return;
+    }
+    if (value.length === 0) {
+      return;
+    }
+    if (book[key]?.length) {
+      return;
+    }
+    book[key] = value;
+  }
+
+  private static async applyTranslatedGenres(book: any, scraped: ScrapedMetadata): Promise<void> {
+    if (!scraped.genres?.length) {
+      return;
+    }
+    if (book.genreIds?.length) {
+      return;
+    }
+    const resolvedGenres = await resolveGenres({ genres: scraped.genres });
+    book.genreIds = resolvedGenres.genreIds;
+    book.genres = resolvedGenres.genres;
+    book.genreKeys = resolvedGenres.genreKeys;
+  }
+
+  private static async applyTranslatedPublicationStatus(
+    book: any,
+    scraped: ScrapedMetadata,
+  ): Promise<void> {
+    if (!scraped.publicationStatus) {
+      return;
+    }
+    if (book.publicationStatus) {
+      return;
+    }
+    const resolvedStatus = await resolvePublicationStatus({ publicationStatus: scraped.publicationStatus });
+    book.publicationStatusId = resolvedStatus.publicationStatusId;
+    book.publicationStatus = resolvedStatus.publicationStatus || scraped.publicationStatus;
+    book.publicationStatusKey = resolvedStatus.publicationStatusKey || '';
+  }
+
+  private static async applyTranslatedAuthors(
+    book: any,
+    scraped: ScrapedMetadata,
+    options: { sourceUrl: string },
+  ): Promise<void> {
+    const linkedAuthorIds = await resolveAuthorIds({
+      author: scraped.author,
+      penName: scraped.authorPenName || scraped.author,
+      realName: scraped.authorRealName,
+      alternativeNames: [],
+      officialUrl: options.sourceUrl,
+      originalLanguage: book.rawOriginalLanguage,
+    });
+    if (linkedAuthorIds.length === 0) {
+      return;
+    }
+    book.authorIds = linkedAuthorIds;
+    book.authorId = linkedAuthorIds[0];
+  }
+
+  private static async applyTranslatedCover(
+    book: any,
+    scraped: ScrapedMetadata,
+    options: { syncCover?: boolean },
+  ): Promise<void> {
+    if (!scraped.coverUrl) {
+      return;
+    }
+    if (!book.coverUrl) {
+      book.coverUrl = scraped.coverUrl;
+    }
+    if (!options.syncCover) {
+      return;
+    }
+    try {
+      await syncBookCoverImage(book, scraped.coverUrl);
+    } catch (err: any) {
+      console.warn(`[Archive] Cover image sync failed for book ${book._id}: ${err.message}`);
+    }
   }
 
   static async archiveMissingChapters(

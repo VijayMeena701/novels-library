@@ -3,31 +3,32 @@ import { config } from './index';
 
 export const redisUrl = config.redisUrl;
 
-let redisClient: Redis | null = null;
+export const redisClient: Redis | null = await (async (): Promise<Redis | null> => {
+  if (!config.redisEnabled) {
+    return null;
+  }
 
-if (config.redisEnabled) {
-  redisClient = new Redis(redisUrl, {
+  const client = new Redis(redisUrl, {
     lazyConnect: true,
     retryStrategy: () => null,
     showFriendlyErrorStack: config.nodeEnv !== 'production',
   });
 
-  redisClient.on('error', (err) => {
+  client.on('error', (err) => {
     console.error('[Redis] Error:', err);
     // suppress unhandled error events; connection failures are logged in the connect try/catch
   });
 
   try {
-    await redisClient.connect();
+    await client.connect();
+    return client;
   } catch (err) {
     console.warn('[Redis] Could not connect to Redis at', redisUrl, '-', err instanceof Error ? err.message : err);
     try {
-      redisClient.disconnect();
+      client.disconnect();
     } catch {
       // ignore
     }
-    redisClient = null;
+    return null;
   }
-}
-
-export { redisClient };
+})();

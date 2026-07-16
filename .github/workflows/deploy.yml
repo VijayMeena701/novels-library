@@ -1,0 +1,32 @@
+name: Deploy to AWS
+
+on:
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to AWS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/novels-library
+            git fetch origin
+            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+            cd backend
+            # Optionally update .env from a GitHub secret
+            # printf '%s' '${{ secrets.ENV_FILE }}' > .env
+            docker compose down
+            docker compose up -d --build
+            docker compose ps

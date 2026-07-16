@@ -13,7 +13,7 @@ export async function getPublicBookCoverHandler(request: FastifyRequest, reply: 
 
   try {
     const book = await Book.findOne({ _id: id, coverImageToken: token });
-    if (!book || !book.coverImagePath) {
+    if (!book?.coverImagePath) {
       return reply.status(404).send({ error: 'Cover image not found.' });
     }
 

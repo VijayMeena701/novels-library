@@ -135,8 +135,8 @@ export async function getChapterHandler(request: FastifyRequest, reply: FastifyR
     return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChapterNumber = parseInt(chapterNumber, 10);
-  if (isNaN(parsedChapterNumber)) {
+  const parsedChapterNumber = Number.parseInt(chapterNumber, 10);
+  if (Number.isNaN(parsedChapterNumber)) {
     return reply.status(400).send({ error: 'Invalid chapter number.' });
   }
 
@@ -420,8 +420,8 @@ export async function getPublicChapterHandler(request: FastifyRequest, reply: Fa
     return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChapterNumber = parseInt(chapterNumber, 10);
-  if (isNaN(parsedChapterNumber)) {
+  const parsedChapterNumber = Number.parseInt(chapterNumber, 10);
+  if (Number.isNaN(parsedChapterNumber)) {
     return reply.status(400).send({ error: 'Invalid chapter number.' });
   }
 

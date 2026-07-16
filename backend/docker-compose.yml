@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: novels-library-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5050:5050"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_ENABLED=${REDIS_ENABLED:-false}
+      - SCRAPER_HEADLESS=true
+      - SCRAPER_CHAPTER_CONCURRENCY=${SCRAPER_CHAPTER_CONCURRENCY:-4}
+      - SCRAPER_CHAPTER_DELAY_MS=${SCRAPER_CHAPTER_DELAY_MS:-1000}
+      - SCRAPER_LIST_PAGE_CONCURRENCY=${SCRAPER_LIST_PAGE_CONCURRENCY:-2}
+      - COVER_STORAGE_DIR=/app/storage
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+    volumes:
+      - novels-storage:/app/storage
+    depends_on:
+      - redis
+    networks:
+      - novels-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: novels-library-redis
+    restart: unless-stopped
+    networks:
+      - novels-net
+
+volumes:
+  novels-storage:
+
+networks:
+  novels-net:
+    driver: bridge

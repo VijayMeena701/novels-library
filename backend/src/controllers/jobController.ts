@@ -25,7 +25,13 @@ function isChapterJob(type: JobType): boolean {
 }
 
 function parseDirectArchiveLimit(value: unknown): number {
-  const parsed = Number.parseInt(String(value || ''), 10);
+  let str = '';
+  if (typeof value === 'string') {
+    str = value;
+  } else if (typeof value === 'number') {
+    str = String(value);
+  }
+  const parsed = Number.parseInt(str, 10);
   if (!Number.isFinite(parsed)) {
     return 5;
   }
@@ -304,8 +310,8 @@ export async function importChapterHtmlHandler(request: FastifyRequest, reply: F
     return reply.status(400).send({ error: 'Invalid book ID.' });
   }
 
-  const parsedChapterNumber = Number.parseInt(String(chapterNumber || ''), 10);
-  if (!Number.isFinite(parsedChapterNumber) || parsedChapterNumber <= 0) {
+  const parsedChapterNumber = resolveDirectRunChapterNumber(chapterNumber);
+  if (!parsedChapterNumber) {
     return reply.status(400).send({ error: 'Provide the chapter number this HTML belongs to.' });
   }
 
@@ -360,6 +366,142 @@ export async function importChapterHtmlHandler(request: FastifyRequest, reply: F
   }
 }
 
+function resolveDirectRunChapterNumber(value: unknown): number | undefined {
+  let str = '';
+  if (typeof value === 'string') {
+    str = value;
+  } else if (typeof value === 'number') {
+    str = String(value);
+  }
+
+  const parsed = Number.parseInt(str, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function getScrapePrerequisiteError(jobType: JobType, book: any): string | null {
+  if ((jobType === 'scrape_metadata' || jobType === 'scrape_chapters') && !book.sourceUrl) {
+    return 'Add a translated source URL before running translated scraping.';
+  }
+  if ((jobType === 'scrape_raw_metadata' || jobType === 'scrape_raw_chapters') && !book.rawSourceUrl) {
+    return 'Add a raw source URL before running raw scraping.';
+  }
+  if (jobType === 'scrape_chapters' && (!book.translatedChaptersList || book.translatedChaptersList.length === 0)) {
+    return 'Run translated metadata indexing before archiving translated chapters.';
+  }
+  if (jobType === 'scrape_raw_chapters' && (!book.rawChaptersList || book.rawChaptersList.length === 0)) {
+    return 'Run raw metadata indexing before archiving raw chapters.';
+  }
+  return null;
+}
+
+async function createDirectRunJob(bookId: string, userId: string, jobType: JobType, limit: unknown) {
+  const total = isChapterJob(jobType) ? parseDirectArchiveLimit(limit) : 1;
+  return BackgroundJob.create({
+    bookId,
+    userId,
+    type: jobType,
+    status: 'processing',
+    startedAt: new Date(),
+    retryCount: 1,
+    progress: {
+      current: 0,
+      total,
+      message: `Running ${jobType.replaceAll('_', ' ')} immediately from the admin API...`,
+    },
+  });
+}
+
+type DirectRunSuccess = { success: true; message: string; result: any; book: any; job: any };
+type DirectRunFailure = {
+  success: false;
+  statusCode: number;
+  body: {
+    error: string;
+    requiresManualIntervention: boolean;
+    url?: string;
+    chapterNumber?: number;
+    sourceKind?: SourceKind;
+    job: any;
+  };
+};
+
+async function runDirectArchiveJob(
+  job: any,
+  book: any,
+  jobType: JobType,
+  sourceKind: SourceKind,
+  safeChapterNumber: number | undefined,
+  limit: unknown,
+): Promise<DirectRunSuccess | DirectRunFailure> {
+  try {
+    const chapterJob = isChapterJob(jobType);
+
+    let result: any;
+    if (chapterJob) {
+      let chapterLimit = parseDirectArchiveLimit(limit);
+      let chapterConcurrency = 2;
+      if (safeChapterNumber) {
+        chapterLimit = 1;
+        chapterConcurrency = 1;
+      }
+      result = await BookArchiveService.archiveMissingChapters(book, sourceKind, {
+        limit: chapterLimit,
+        chapterNumber: safeChapterNumber,
+        concurrency: chapterConcurrency,
+        onProgress: async (progress: any) => {
+          await BackgroundJob.updateOne({ _id: job._id }, { $set: { progress } });
+        },
+      });
+    } else {
+      result = await BookArchiveService.scrapeMetadata(book, sourceKind, {
+        syncCover: sourceKind === 'translated',
+        requireChapters: true,
+      });
+    }
+
+    job.status = 'completed';
+    job.completedAt = new Date();
+
+    let responseMessage: string;
+    if (chapterJob) {
+      const archiveResult = result as any;
+      job.progress = {
+        current: archiveResult.total - archiveResult.pending,
+        total: archiveResult.total,
+        message: `Direct run archived ${archiveResult.archived} ${sourceKind} chapters. ${archiveResult.pending} remain.`,
+      };
+      responseMessage = `Archived ${archiveResult.archived} ${sourceKind} chapters now.`;
+    } else {
+      const metadataResult = result as any;
+      job.progress = {
+        current: 1,
+        total: 1,
+        message: `Direct run indexed ${metadataResult.chaptersFound} ${sourceKind} chapters.`,
+      };
+      responseMessage = `Indexed ${metadataResult.chaptersFound} ${sourceKind} chapters now.`;
+    }
+
+    await job.save();
+
+    return { success: true, message: responseMessage, result, book, job };
+  } catch (err: any) {
+    await BookArchiveService.recordDirectJobFailure(job, err);
+    const requiresManualIntervention = isManualInterventionError(err);
+    return {
+      success: false,
+      statusCode: requiresManualIntervention ? 409 : 500,
+      body: {
+        error: err.message || 'Direct scraper run failed.',
+        requiresManualIntervention,
+        url: err.url,
+        chapterNumber: err.chapterNumber,
+        sourceKind: err.sourceKind,
+        job,
+      },
+    };
+  }
+}
+
 export async function runScrapeNowHandler(request: FastifyRequest, reply: FastifyReply) {
   const userId = (request.user as any).id;
   const { bookId } = request.params as any;
@@ -385,89 +527,20 @@ export async function runScrapeNowHandler(request: FastifyRequest, reply: Fastif
 
     const jobType = type as JobType;
     const sourceKind = jobTypeToSourceKind(jobType);
-    const requestedChapterNumber = Number.parseInt(String(chapterNumber || ''), 10);
-    const safeChapterNumber =
-      Number.isFinite(requestedChapterNumber) && requestedChapterNumber > 0 ? requestedChapterNumber : undefined;
-    if ((jobType === 'scrape_metadata' || jobType === 'scrape_chapters') && !book.sourceUrl) {
-      return reply.status(400).send({ error: 'Add a translated source URL before running translated scraping.' });
-    }
-    if ((jobType === 'scrape_raw_metadata' || jobType === 'scrape_raw_chapters') && !book.rawSourceUrl) {
-      return reply.status(400).send({ error: 'Add a raw source URL before running raw scraping.' });
-    }
-    if (jobType === 'scrape_chapters' && (!book.translatedChaptersList || book.translatedChaptersList.length === 0)) {
-      return reply
-        .status(400)
-        .send({ error: 'Run translated metadata indexing before archiving translated chapters.' });
-    }
-    if (jobType === 'scrape_raw_chapters' && (!book.rawChaptersList || book.rawChaptersList.length === 0)) {
-      return reply.status(400).send({ error: 'Run raw metadata indexing before archiving raw chapters.' });
+    const prerequisiteError = getScrapePrerequisiteError(jobType, book);
+    if (prerequisiteError) {
+      return reply.status(400).send({ error: prerequisiteError });
     }
 
-    const job = await BackgroundJob.create({
-      bookId,
-      userId,
-      type: jobType,
-      status: 'processing',
-      startedAt: new Date(),
-      retryCount: 1,
-      progress: {
-        current: 0,
-        total: isChapterJob(jobType) ? parseDirectArchiveLimit(limit) : 1,
-        message: `Running ${jobType.replace(/_/g, ' ')} immediately from the admin API...`,
-      },
-    });
+    const safeChapterNumber = resolveDirectRunChapterNumber(chapterNumber);
+    const job = await createDirectRunJob(bookId, userId, jobType, limit);
+    const outcome = await runDirectArchiveJob(job, book, jobType, sourceKind, safeChapterNumber, limit);
 
-    try {
-      const result = isChapterJob(jobType)
-        ? await BookArchiveService.archiveMissingChapters(book, sourceKind, {
-            limit: safeChapterNumber ? 1 : parseDirectArchiveLimit(limit),
-            chapterNumber: safeChapterNumber,
-            concurrency: safeChapterNumber ? 1 : 2,
-            onProgress: async (progress) => {
-              await BackgroundJob.updateOne({ _id: job._id }, { $set: { progress } });
-            },
-          })
-        : await BookArchiveService.scrapeMetadata(book, sourceKind, {
-            syncCover: sourceKind === 'translated',
-            requireChapters: true,
-          });
-
-      job.status = 'completed';
-      job.completedAt = new Date();
-      job.progress = isChapterJob(jobType)
-        ? {
-            current: (result as any).total - (result as any).pending,
-            total: (result as any).total,
-            message: `Direct run archived ${(result as any).archived} ${sourceKind} chapters. ${(result as any).pending} remain.`,
-          }
-        : {
-            current: 1,
-            total: 1,
-            message: `Direct run indexed ${(result as any).chaptersFound} ${sourceKind} chapters.`,
-          };
-      await job.save();
-
-      return reply.send({
-        success: true,
-        message: isChapterJob(jobType)
-          ? `Archived ${(result as any).archived} ${sourceKind} chapters now.`
-          : `Indexed ${(result as any).chaptersFound} ${sourceKind} chapters now.`,
-        result,
-        book,
-        job,
-      });
-    } catch (err: any) {
-      await BookArchiveService.recordDirectJobFailure(job, err);
-      const statusCode = isManualInterventionError(err) ? 409 : 500;
-      return reply.status(statusCode).send({
-        error: err.message || 'Direct scraper run failed.',
-        requiresManualIntervention: isManualInterventionError(err),
-        url: err.url,
-        chapterNumber: err.chapterNumber,
-        sourceKind: err.sourceKind,
-        job,
-      });
+    if (!outcome.success) {
+      return reply.status(outcome.statusCode).send(outcome.body);
     }
+
+    return reply.send(outcome);
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: err.message || 'Server error running scraper task.' });

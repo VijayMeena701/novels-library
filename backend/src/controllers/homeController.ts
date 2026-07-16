@@ -80,7 +80,7 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
         .lean();
 
       continueReading = continueReadingEntries.map((item: any) => ({
-        ...(item.bookId || {}),
+        ...(item.bookId),
         status: item.status,
         chaptersRead: item.chaptersRead,
         rating: item.rating,
@@ -96,19 +96,19 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
     }
 
     const topRated = topRatedStats.map((stat: any) => ({
-      ...(stat.bookId || {}),
+      ...stat.bookId,
       ratingAverage: stat.ratingAverage,
       ratingCount: stat.ratingCount,
       rating: stat.ratingAverage,
     }));
 
     const mostVisited = mostVisitedStats.map((stat: any) => ({
-      ...(stat.bookId || {}),
+      ...stat.bookId,
       totalVisits: stat.totalVisits,
     }));
 
     const topVoted = topVotedStats.map((stat: any) => ({
-      ...(stat.bookId || {}),
+      ...stat.bookId,
       totalVotes: stat.totalVotes,
       ratingAverage: stat.ratingAverage,
     }));

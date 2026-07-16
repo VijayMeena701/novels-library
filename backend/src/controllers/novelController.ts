@@ -118,7 +118,7 @@ function toObjectIds(value: unknown): mongoose.Types.ObjectId[] {
 }
 
 function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 function parseNumber(value: unknown, fallback?: number, min?: number, max?: number): number | undefined {
@@ -202,8 +202,8 @@ function applySharedBookFilters(andFilters: any[], query: Record<string, any>) {
   }
 
   const ratingFilter: Record<string, number> = {};
-  const minRating = parseNumber(query.minRating, undefined);
-  const maxRating = parseNumber(query.maxRating, undefined);
+  const minRating = parseNumber(query.minRating);
+  const maxRating = parseNumber(query.maxRating);
   if (minRating !== undefined) ratingFilter.$gte = minRating;
   if (maxRating !== undefined) ratingFilter.$lte = maxRating;
   if (Object.keys(ratingFilter).length > 0) {
@@ -211,70 +211,98 @@ function applySharedBookFilters(andFilters: any[], query: Record<string, any>) {
   }
 }
 
+function applyStringUpdate(book: any, updates: Record<string, any>, field: string, fallbackToExisting = false) {
+  const raw = updates[field];
+  if (raw === undefined) {
+    return;
+  }
+  const value = String(raw || '').trim();
+  if (fallbackToExisting && value === '') {
+    return;
+  }
+  book[field] = value;
+}
+
+async function applyAuthorBookUpdates(book: any, updates: Record<string, any>) {
+  if (
+    updates.authorIds === undefined &&
+    updates.authorId === undefined &&
+    updates.author === undefined &&
+    updates.authorPenName === undefined &&
+    updates.authorRealName === undefined
+  ) {
+    return;
+  }
+
+  const authorIds = await resolveAuthorIds({
+    authorIds: updates.authorIds,
+    authorId: updates.authorId,
+    author: updates.author ?? book.author,
+    penName: updates.authorPenName ?? updates.author ?? book.authorPenName,
+    realName: updates.authorRealName ?? book.authorRealName,
+    alternativeNames: updates.alternativeNames ?? book.alternativeNames,
+    originalLanguage: updates.rawOriginalLanguage ?? book.rawOriginalLanguage,
+    officialUrl: updates.sourceUrl ?? book.sourceUrl,
+  });
+  if (authorIds.length > 0) {
+    book.authorIds = authorIds;
+    book.authorId = authorIds[0];
+  }
+}
+
+async function applyGenreBookUpdates(book: any, updates: Record<string, any>) {
+  if (updates.genreIds === undefined && updates.genres === undefined) {
+    return;
+  }
+
+  const resolvedGenres = await resolveGenres({
+    genreIds: updates.genreIds,
+    genres: updates.genres,
+  });
+  book.genreIds = resolvedGenres.genreIds;
+  book.genres = resolvedGenres.genres;
+  book.genreKeys = resolvedGenres.genreKeys;
+}
+
+async function applyPublicationStatusBookUpdates(book: any, updates: Record<string, any>) {
+  if (updates.publicationStatusId === undefined && updates.publicationStatus === undefined) {
+    return;
+  }
+
+  const resolvedStatus = await resolvePublicationStatus({
+    publicationStatusId: updates.publicationStatusId,
+    publicationStatus: updates.publicationStatus,
+  });
+  if (resolvedStatus.publicationStatusId) {
+    book.publicationStatusId = resolvedStatus.publicationStatusId;
+    book.publicationStatus = resolvedStatus.publicationStatus || '';
+    book.publicationStatusKey = resolvedStatus.publicationStatusKey || '';
+  } else if (updates.publicationStatus === '') {
+    book.publicationStatusId = undefined;
+    book.publicationStatus = '';
+    book.publicationStatusKey = '';
+  }
+}
+
 async function applySharedBookUpdates(book: any, updates: Record<string, any>) {
-  if (updates.title !== undefined) book.title = String(updates.title || '').trim() || book.title;
-  if (updates.author !== undefined) book.author = String(updates.author || '').trim();
-  if (updates.authorPenName !== undefined) book.authorPenName = String(updates.authorPenName || '').trim();
-  if (updates.authorRealName !== undefined) book.authorRealName = String(updates.authorRealName || '').trim();
+  applyStringUpdate(book, updates, 'title', true);
+  applyStringUpdate(book, updates, 'author');
+  applyStringUpdate(book, updates, 'authorPenName');
+  applyStringUpdate(book, updates, 'authorRealName');
+  applyStringUpdate(book, updates, 'originalSource');
+  applyStringUpdate(book, updates, 'description');
+  applyStringUpdate(book, updates, 'coverUrl');
+  applyStringUpdate(book, updates, 'sourceUrl');
+  applyStringUpdate(book, updates, 'rawSourceUrl');
+  applyStringUpdate(book, updates, 'rawOriginalLanguage');
+
   if (updates.alternativeNames !== undefined) {
     book.alternativeNames = Array.isArray(updates.alternativeNames) ? updates.alternativeNames : [];
   }
-  if (updates.originalSource !== undefined) book.originalSource = String(updates.originalSource || '').trim();
-  if (updates.description !== undefined) book.description = String(updates.description || '').trim();
-  if (updates.coverUrl !== undefined) book.coverUrl = String(updates.coverUrl || '').trim();
-  if (updates.sourceUrl !== undefined) book.sourceUrl = String(updates.sourceUrl || '').trim();
-  if (updates.rawSourceUrl !== undefined) book.rawSourceUrl = String(updates.rawSourceUrl || '').trim();
-  if (updates.rawOriginalLanguage !== undefined)
-    book.rawOriginalLanguage = String(updates.rawOriginalLanguage || '').trim();
 
-  if (
-    updates.authorIds !== undefined ||
-    updates.authorId !== undefined ||
-    updates.author !== undefined ||
-    updates.authorPenName !== undefined ||
-    updates.authorRealName !== undefined
-  ) {
-    const authorIds = await resolveAuthorIds({
-      authorIds: updates.authorIds,
-      authorId: updates.authorId,
-      author: updates.author ?? book.author,
-      penName: updates.authorPenName ?? updates.author ?? book.authorPenName,
-      realName: updates.authorRealName ?? book.authorRealName,
-      alternativeNames: updates.alternativeNames ?? book.alternativeNames,
-      originalLanguage: updates.rawOriginalLanguage ?? book.rawOriginalLanguage,
-      officialUrl: updates.sourceUrl ?? book.sourceUrl,
-    });
-    if (authorIds.length > 0) {
-      book.authorIds = authorIds;
-      book.authorId = authorIds[0];
-    }
-  }
-
-  if (updates.genreIds !== undefined || updates.genres !== undefined) {
-    const resolvedGenres = await resolveGenres({
-      genreIds: updates.genreIds,
-      genres: updates.genres,
-    });
-    book.genreIds = resolvedGenres.genreIds;
-    book.genres = resolvedGenres.genres;
-    book.genreKeys = resolvedGenres.genreKeys;
-  }
-
-  if (updates.publicationStatusId !== undefined || updates.publicationStatus !== undefined) {
-    const resolvedStatus = await resolvePublicationStatus({
-      publicationStatusId: updates.publicationStatusId,
-      publicationStatus: updates.publicationStatus,
-    });
-    if (resolvedStatus.publicationStatusId) {
-      book.publicationStatusId = resolvedStatus.publicationStatusId;
-      book.publicationStatus = resolvedStatus.publicationStatus || '';
-      book.publicationStatusKey = resolvedStatus.publicationStatusKey || '';
-    } else if (updates.publicationStatus === '') {
-      book.publicationStatusId = undefined;
-      book.publicationStatus = '';
-      book.publicationStatusKey = '';
-    }
-  }
+  await applyAuthorBookUpdates(book, updates);
+  await applyGenreBookUpdates(book, updates);
+  await applyPublicationStatusBookUpdates(book, updates);
 }
 
 export async function listBooksHandler(request: FastifyRequest, reply: FastifyReply) {
@@ -684,9 +712,7 @@ async function syncBookStatsAndActivities(
 ) {
   const bookId = book._id;
   let bookStats = await BookStats.findOne({ bookId });
-  if (!bookStats) {
-    bookStats = new BookStats({ bookId });
-  }
+  bookStats ??= new BookStats({ bookId });
 
   const oldRatingNum = Number(oldRating) || 0;
   const newRatingNum = Number(newRating) || 0;
@@ -764,8 +790,8 @@ export async function getBookReviewsHandler(request: FastifyRequest, reply: Fast
   }
 
   try {
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, Number.parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
     const [reviews, total] = await Promise.all([
@@ -814,9 +840,7 @@ export async function voteBookHandler(request: FastifyRequest, reply: FastifyRep
       activityType: 'vote',
     });
     let bookStats = await BookStats.findOne({ bookId: book._id });
-    if (!bookStats) {
-      bookStats = new BookStats({ bookId: book._id });
-    }
+    bookStats ??= new BookStats({ bookId: book._id });
 
     if (existingVote) {
       await existingVote.deleteOne();

@@ -29,8 +29,8 @@ export async function getAdminStatsHandler(request: FastifyRequest, reply: Fasti
 export async function listUsersHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const query = request.query as any;
-    const limit = Math.min(parseInt(query.limit || '50', 10), 200);
-    const page = parseInt(query.page || '1', 10);
+    const limit = Math.min(Number.parseInt(query.limit || '50', 10), 200);
+    const page = Number.parseInt(query.page || '1', 10);
     const skip = (page - 1) * limit;
     const filter: any = {};
     if (query.search) {
@@ -348,8 +348,8 @@ export async function enableResourceHandler(request: FastifyRequest, reply: Fast
 export async function listAuditLogsHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const query = request.query as any;
-    const limit = Math.min(parseInt(query.limit || '50', 10), 200);
-    const page = parseInt(query.page || '1', 10);
+    const limit = Math.min(Number.parseInt(query.limit || '50', 10), 200);
+    const page = Number.parseInt(query.page || '1', 10);
     const skip = (page - 1) * limit;
     const [logs, total] = await Promise.all([
       AuditLog.find().sort({ timestamp: -1 }).skip(skip).limit(limit).lean(),

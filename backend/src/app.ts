@@ -6,15 +6,15 @@ import helmet from '@fastify/helmet';
 import compress from '@fastify/compress';
 import rateLimit from '@fastify/rate-limit';
 import underPressure from '@fastify/under-pressure';
-import { Socket } from 'net';
-import crypto from 'crypto';
+import { Socket } from 'node:net';
+import crypto from 'node:crypto';
 import { connectDB, disconnectDB } from './config/db';
 import { redisClient } from './config/redis';
 import { apiRoutes } from './routes/api';
 import { startWorker, stopWorker } from './worker/jobProcessor';
 import { stopNotificationWorker } from './services/notificationQueue';
 import { closeBrowser } from './services/scraper';
-import { syncPolicies } from './services/casbin';
+import { seedRoles } from './services/seed';
 
 const isProduction = config.nodeEnv === 'production';
 
@@ -115,12 +115,23 @@ app.setErrorHandler((error, request, reply) => {
   const err = error as FastifyError;
   request.log.error({ err }, 'Unhandled request error');
   if (reply.sent) return;
-  const statusCode = err.validation ? 400 : err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
-  const message = err.validation
-    ? 'Request validation failed.'
-    : statusCode >= 500
-      ? 'Internal server error.'
-      : err.message;
+  let statusCode: number;
+  if (err.validation) {
+    statusCode = 400;
+  } else if (err.statusCode && err.statusCode >= 400) {
+    statusCode = err.statusCode;
+  } else {
+    statusCode = 500;
+  }
+
+  let message: string;
+  if (err.validation) {
+    message = 'Request validation failed.';
+  } else if (statusCode >= 500) {
+    message = 'Internal server error.';
+  } else {
+    message = err.message || 'Request failed.';
+  }
   reply.status(statusCode).send({ error: message, code: err.code, requestId: request.id });
 });
 
@@ -140,8 +151,8 @@ const start = async () => {
     // 1. Connect MongoDB
     await connectDB();
 
-    // 2. Sync RBAC policies into Casbin
-    await syncPolicies();
+    // 2. Ensure default roles and sync RBAC policies into Casbin
+    await seedRoles();
 
     // 3. Start Background Job Worker
     startWorker();

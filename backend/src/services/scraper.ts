@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { URL } from 'url';
+import { URL } from 'node:url';
 import puppeteer, { Browser } from 'puppeteer';
 
 export interface ScrapedMetadata {

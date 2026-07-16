@@ -85,7 +85,7 @@ function extractResponseText(data: any, provider: TranslationProvider): string {
 function stripCodeFence(value: string): string {
   return value
     .replace(/^```(?:html)?\s*/i, '')
-    .replace(/\s*```$/i, '')
+    .replace(/```$/, '')
     .trim();
 }
 

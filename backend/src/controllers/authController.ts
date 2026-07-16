@@ -86,6 +86,9 @@ export async function registerHandler(request: FastifyRequest, reply: FastifyRep
     });
   } catch (err: any) {
     request.log.error(err);
+    if (err?.code === 11000 || err?.message?.includes('duplicate key')) {
+      return reply.status(400).send({ error: 'A user with this email already exists.' });
+    }
     return reply.status(500).send({ error: 'Server error during registration.' });
   }
 }
@@ -99,7 +102,7 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
 
   try {
     const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user || !user.passwordHash) {
+    if (!user?.passwordHash) {
       return reply.status(401).send({ error: 'Invalid email or password.' });
     }
 
@@ -116,7 +119,7 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
     const envRoleId = await getDefaultRoleId(user.email);
     let roleChanged = false;
     if (envRoleId) {
-      const current = new Set(user.roles.map((r) => String(r)));
+      const current = new Set(user.roles.map(String));
       if (!current.has(envRoleId)) {
         user.roles.push(new mongoose.Types.ObjectId(envRoleId));
         await user.save();
@@ -175,6 +178,93 @@ export async function googleLoginHandler(request: FastifyRequest, reply: Fastify
   return reply.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 }
 
+async function exchangeGoogleCode(
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  callbackUrl: string,
+): Promise<string> {
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: callbackUrl,
+      grant_type: 'authorization_code',
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    throw new Error(`Google token exchange failed with HTTP ${tokenResponse.status}.`);
+  }
+
+  const tokenData = (await tokenResponse.json()) as { access_token?: string };
+  if (!tokenData.access_token) {
+    throw new Error('Google token response did not include an access token.');
+  }
+
+  return tokenData.access_token;
+}
+
+async function fetchGoogleProfile(accessToken: string) {
+  const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!profileResponse.ok) {
+    throw new Error(`Google profile fetch failed with HTTP ${profileResponse.status}.`);
+  }
+
+  const profile = (await profileResponse.json()) as {
+    sub: string;
+    email: string;
+    name?: string;
+    picture?: string;
+  };
+  if (!profile.email || !profile.sub) {
+    throw new Error('Google profile is missing email or subject.');
+  }
+
+  return profile;
+}
+
+async function createGoogleUser(profile: any, roleId: string | undefined) {
+  return User.create({
+    username: profile.name || profile.email.split('@')[0],
+    email: profile.email.toLowerCase(),
+    googleId: profile.sub,
+    avatarUrl: profile.picture || '',
+    authProvider: 'google',
+    roles: roleId ? [new mongoose.Types.ObjectId(roleId)] : [],
+  });
+}
+
+async function updateGoogleUser(user: any, profile: any, roleId: string | undefined) {
+  user.googleId = user.googleId || profile.sub;
+  user.avatarUrl = profile.picture || user.avatarUrl;
+  user.authProvider = user.passwordHash ? 'both' : 'google';
+  if (roleId) {
+    const current = new Set(user.roles.map(String));
+    if (!current.has(roleId)) {
+      user.roles.push(new mongoose.Types.ObjectId(roleId));
+    }
+  }
+  await user.save();
+  return user;
+}
+
+async function findOrCreateGoogleUser(profile: any) {
+  const roleId = await getDefaultRoleId(profile.email);
+  const existing = await User.findOne({
+    $or: [{ googleId: profile.sub }, { email: profile.email.toLowerCase() }],
+  });
+  if (!existing) {
+    return createGoogleUser(profile, roleId);
+  }
+  return updateGoogleUser(existing, profile, roleId);
+}
+
 export async function googleCallbackHandler(request: FastifyRequest, reply: FastifyReply) {
   const { code, error } = request.query as any;
   const { clientId, clientSecret, callbackUrl, frontendOrigin } = getGoogleAuthConfig(request);
@@ -190,68 +280,9 @@ export async function googleCallbackHandler(request: FastifyRequest, reply: Fast
   }
 
   try {
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: callbackUrl,
-        grant_type: 'authorization_code',
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      throw new Error(`Google token exchange failed with HTTP ${tokenResponse.status}.`);
-    }
-
-    const tokenData = (await tokenResponse.json()) as { access_token?: string };
-    if (!tokenData.access_token) {
-      throw new Error('Google token response did not include an access token.');
-    }
-
-    const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    });
-    if (!profileResponse.ok) {
-      throw new Error(`Google profile fetch failed with HTTP ${profileResponse.status}.`);
-    }
-
-    const profile = (await profileResponse.json()) as {
-      sub: string;
-      email: string;
-      name?: string;
-      picture?: string;
-    };
-    if (!profile.email || !profile.sub) {
-      throw new Error('Google profile is missing email or subject.');
-    }
-
-    let user = await User.findOne({ $or: [{ googleId: profile.sub }, { email: profile.email.toLowerCase() }] });
-    const roleId = await getDefaultRoleId(profile.email);
-    if (!user) {
-      user = await User.create({
-        username: profile.name || profile.email.split('@')[0],
-        email: profile.email.toLowerCase(),
-        googleId: profile.sub,
-        avatarUrl: profile.picture || '',
-        authProvider: 'google',
-        roles: roleId ? [new mongoose.Types.ObjectId(roleId)] : [],
-      });
-    } else {
-      user.googleId = user.googleId || profile.sub;
-      user.avatarUrl = profile.picture || user.avatarUrl;
-      user.authProvider = user.passwordHash ? 'both' : 'google';
-      if (roleId) {
-        const current = new Set(user.roles.map((r) => String(r)));
-        if (!current.has(roleId)) {
-          user.roles.push(new mongoose.Types.ObjectId(roleId));
-        }
-      }
-      await user.save();
-    }
-
+    const accessToken = await exchangeGoogleCode(code, clientId, clientSecret, callbackUrl);
+    const profile = await fetchGoogleProfile(accessToken);
+    const user = await findOrCreateGoogleUser(profile);
     const jwt = await reply.jwtSign({ id: user._id, email: user.email });
     return reply.redirect(`${frontendOrigin}/login?token=${encodeURIComponent(jwt)}`);
   } catch (err: any) {

@@ -35,9 +35,45 @@ function splitAuthorNames(value: unknown): string[] {
   }
 
   return raw
-    .split(/[,;、，]|(?:\s+and\s+)/i)
+    .split(/[,;、，]| and /i)
     .map(cleanString)
     .filter(Boolean);
+}
+
+function applyAuthorUpdates(
+  existing: IAuthor,
+  penName: string,
+  realName: string,
+  alternativeNames: string[],
+  originalLanguage: string,
+  officialUrl?: string,
+): boolean {
+  let changed = false;
+
+  if (penName && !existing.penName) {
+    existing.penName = penName;
+    changed = true;
+  }
+  if (realName && !existing.realName) {
+    existing.realName = realName;
+    changed = true;
+  }
+  if (originalLanguage && !existing.originalLanguage) {
+    existing.originalLanguage = originalLanguage;
+    changed = true;
+  }
+  if (officialUrl && !existing.officialUrls.includes(officialUrl)) {
+    existing.officialUrls.push(officialUrl);
+    changed = true;
+  }
+
+  const nextAlternativeNames = Array.from(new Set([...existing.alternativeNames, ...alternativeNames]));
+  if (nextAlternativeNames.length !== existing.alternativeNames.length) {
+    existing.alternativeNames = nextAlternativeNames;
+    changed = true;
+  }
+
+  return changed;
 }
 
 export async function findOrCreateAuthor(input: AuthorInput): Promise<IAuthor | null> {
@@ -45,6 +81,7 @@ export async function findOrCreateAuthor(input: AuthorInput): Promise<IAuthor | 
   const realName = cleanString(input.realName);
   const alternativeNames = cleanStringList(input.alternativeNames);
   const displayName = penName || realName || alternativeNames[0] || '';
+  const originalLanguage = cleanString(input.originalLanguage);
 
   if (!displayName) {
     return null;
@@ -54,31 +91,14 @@ export async function findOrCreateAuthor(input: AuthorInput): Promise<IAuthor | 
 
   const existing = await Author.findOne({ nameKeys: { $in: candidateKeys } });
   if (existing) {
-    let changed = false;
-
-    if (penName && !existing.penName) {
-      existing.penName = penName;
-      changed = true;
-    }
-    if (realName && !existing.realName) {
-      existing.realName = realName;
-      changed = true;
-    }
-    if (input.originalLanguage && !existing.originalLanguage) {
-      existing.originalLanguage = cleanString(input.originalLanguage);
-      changed = true;
-    }
-    if (input.officialUrl && !existing.officialUrls.includes(input.officialUrl)) {
-      existing.officialUrls.push(input.officialUrl);
-      changed = true;
-    }
-
-    const nextAlternativeNames = Array.from(new Set([...existing.alternativeNames, ...alternativeNames]));
-    if (nextAlternativeNames.length !== existing.alternativeNames.length) {
-      existing.alternativeNames = nextAlternativeNames;
-      changed = true;
-    }
-
+    const changed = applyAuthorUpdates(
+      existing,
+      penName,
+      realName,
+      alternativeNames,
+      originalLanguage,
+      input.officialUrl,
+    );
     if (changed) {
       await existing.save();
     }
@@ -91,7 +111,7 @@ export async function findOrCreateAuthor(input: AuthorInput): Promise<IAuthor | 
     penName,
     realName,
     alternativeNames,
-    originalLanguage: cleanString(input.originalLanguage),
+    originalLanguage,
     officialUrls: input.officialUrl ? [input.officialUrl] : [],
   });
 }

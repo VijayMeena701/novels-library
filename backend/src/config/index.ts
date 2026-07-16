@@ -39,6 +39,7 @@ delete camelEnv.adminEmail;
 function int(defaultValue: number, min: number, max: number) {
   return z.preprocess((val) => {
     if (val === undefined || val === '') return defaultValue;
+    if (typeof val !== 'string' && typeof val !== 'number') return defaultValue;
     const parsed = Number.parseInt(String(val), 10);
     if (!Number.isFinite(parsed)) return defaultValue;
     return Math.min(max, Math.max(min, parsed));
@@ -48,14 +49,17 @@ function int(defaultValue: number, min: number, max: number) {
 function bool(defaultValue: boolean) {
   return z.preprocess((val) => {
     if (val === undefined || val === '') return defaultValue;
-    return String(val).toLowerCase() === 'true' || val === '1';
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'number') return val === 1;
+    if (typeof val !== 'string') return defaultValue;
+    return val.toLowerCase() === 'true' || val === '1';
   }, z.boolean());
 }
 
 function csv(defaultValue: string[] = []) {
   return z.preprocess((val) => {
-    if (val === undefined || val === '') return defaultValue;
-    return String(val)
+    if (typeof val !== 'string' || val === '') return defaultValue;
+    return val
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
