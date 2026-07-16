@@ -5,6 +5,8 @@ on:
 
 env:
   NODE_VERSION: "24"
+  PM2_APP_NAME: "novels-backend"
+  REMOTE_APP_DIR: "novels-library"
 
 jobs:
   deploy:
@@ -12,21 +14,64 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v7
-      - name: Deploy to AWS
-        uses: appleboy/ssh-action@master
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Check and test backend
+        working-directory: backend
+        run: |
+          npm run check
+          npm run test
+        env:
+          NODE_ENV: test
+          MONGODB_URI: ""
+
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
+      - name: Package backend
+        working-directory: backend
+        run: tar -czf ../backend-deploy.tar.gz package.json package-lock.json dist
+
+      - name: Copy to EC2
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: backend-deploy.tar.gz
+          target: /home/${{ secrets.AWS_USER }}/${{ env.REMOTE_APP_DIR }}/
+          overwrite: true
+
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script_stop: true
           script: |
             set -e
-            cd /opt/novels-library
-            git fetch origin
-            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
+            cd /home/${{ secrets.AWS_USER }}/${{ env.REMOTE_APP_DIR }}
+            rm -rf backend/dist backend/package.json backend/package-lock.json
+            mkdir -p backend
+            tar -xzf backend-deploy.tar.gz -C backend
             cd backend
-            # Optionally update .env from a GitHub secret
-            # printf '%s' '${{ secrets.ENV_FILE }}' > .env
-            docker compose down
-            docker compose up -d --build
-            docker compose ps
+            npm ci --production
+            if pm2 describe ${{ env.PM2_APP_NAME }} > /dev/null 2>&1; then
+              pm2 restart ${{ env.PM2_APP_NAME }} --update-env
+            else
+              pm2 start dist/app.js --name ${{ env.PM2_APP_NAME }}
+            fi
+            pm2 save
