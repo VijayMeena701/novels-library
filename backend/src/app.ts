@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import { connectDB, disconnectDB } from './config/db';
 import { redisClient } from './config/redis';
 import { apiRoutes } from './routes/api';
+import { healthRoutes } from './routes/health';
 import { startWorker, stopWorker } from './worker/jobProcessor';
 import { stopNotificationWorker } from './services/notificationQueue';
 import { closeBrowser } from './services/scraper';
@@ -137,11 +138,7 @@ app.setErrorHandler((error, request, reply) => {
 
 // Register API Routes
 await app.register(apiRoutes, { prefix: '/api' });
-
-// Simple Health Check
-app.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date() };
-});
+await app.register(healthRoutes, { prefix: '/health' });
 
 /**
  * Start Server & Connect Database

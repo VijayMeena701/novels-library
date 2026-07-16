@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
-import { apiRoutes } from '@/routes/api.js';
+import { apiRoutes } from '@/routes/api';
 
 export async function buildApp() {
   const app = Fastify({ logger: false });
