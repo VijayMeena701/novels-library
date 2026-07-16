@@ -37,6 +37,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: '**/package-lock.json'
       - name: Backend lint & typecheck
         if: needs.changes.outputs.backend == 'true'
         working-directory: backend
@@ -61,6 +62,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: '**/package-lock.json'
       - name: Backend tests
         if: needs.changes.outputs.backend == 'true'
         working-directory: backend
@@ -86,6 +88,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: '**/package-lock.json'
       - name: npm audit (backend)
         if: needs.changes.outputs.backend == 'true'
         working-directory: backend
@@ -110,6 +113,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: '**/package-lock.json'
       - name: Backend build
         if: needs.changes.outputs.backend == 'true'
         working-directory: backend
