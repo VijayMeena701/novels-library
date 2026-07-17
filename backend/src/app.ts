@@ -229,7 +229,20 @@ const handleShutdown = async (signal: string) => {
   }
 };
 
+export {
+  app,
+  start,
+  handleShutdown,
+  withTimeout,
+  forceCloseHttpConnections,
+  activeSockets,
+  SHUTDOWN_TIMEOUT_MS,
+  isShuttingDown,
+};
+
 process.on('SIGINT', () => handleShutdown('SIGINT'));
 process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 
-start();
+if (!process.env.VITEST) {
+  start();
+}

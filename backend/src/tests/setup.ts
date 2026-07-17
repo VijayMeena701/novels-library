@@ -1,6 +1,8 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { beforeAll, afterAll, afterEach } from 'vitest';
 
+process.env.REDIS_ENABLED = 'false';
+
 let mongod: MongoMemoryServer;
 
 beforeAll(async () => {

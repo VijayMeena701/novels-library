@@ -1,9 +1,8 @@
 import { ScraperService, setHtmlFetcherForTesting } from './services/scraper';
 
-// Mock the rendered HTML fetcher to avoid making real network requests
-setHtmlFetcherForTesting(mockFetchHtml);
-
-async function runTest() {
+export async function runTest() {
+  // Mock the rendered HTML fetcher to avoid making real network requests
+  setHtmlFetcherForTesting(mockFetchHtml);
   console.log('--- STARTING SCRAPER HEURISTICS INTEGRATION TEST ---');
 
   const novelUrl = 'https://benign-novel-site.local/novels/test-story';
@@ -83,8 +82,17 @@ async function runTest() {
     console.log('\n🎉 ALL SCRAPER TESTS COMPLETED SUCCESSFULLY!');
   } catch (err: any) {
     console.error('❌ TEST FAILED:', err.message);
-    process.exit(1);
+    throw err;
   }
+}
+
+export { mockFetchHtml };
+
+if (!process.env.VITEST) {
+  runTest().catch((err: any) => {
+    console.error('❌ TEST FAILED:', err.message);
+    process.exit(1);
+  });
 }
 
 function mockFetchHtml(url: string) {
@@ -238,5 +246,3 @@ function mockFetchHtml(url: string) {
         `);
   }
 }
-
-runTest();
