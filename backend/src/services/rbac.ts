@@ -315,8 +315,8 @@ export function isAdminCapability(capability: string): boolean {
 }
 
 export async function canManageTarget(actor: any, target: any): Promise<boolean> {
-  if (actor?.isSuperuser) return true;
   if (!target) return false;
+  if (actor?.isSuperuser) return true;
 
   // If target is already a populated Role/User document
   let targetRoles: any[] = [];

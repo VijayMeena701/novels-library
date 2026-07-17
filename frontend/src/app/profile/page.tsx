@@ -291,7 +291,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            <form onSubmit={handleCreateBook} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form onSubmit={handleCreateBook} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
               
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Book Web Link (Optional - for automated background scraping)</label>

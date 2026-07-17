@@ -96,7 +96,7 @@ function LoginContent() {
 
         {showPasswordLogin && (
           <>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
               {isRegister && (
                 <div>
                   <label className="mb-2 block text-xs font-bold text-copy">Username</label>

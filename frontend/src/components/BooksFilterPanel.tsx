@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input, Select } from "./ui/input";
 import { Button } from "./ui/button";
@@ -50,6 +51,11 @@ function getActiveFilterCount(filters: CatalogBookFilters): number {
 
 export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksFilterPanelProps) {
 	const activeCount = getActiveFilterCount(filters);
+	const [search, setSearch] = useState(filters.search || "");
+
+	useEffect(() => {
+		setSearch(filters.search || "");
+	}, [filters.search]);
 
 	const handleToggle = (field: keyof CatalogBookFilters, key: string) => {
 		onChange({ [field]: toggleKey(filters[field] as string | undefined, key) } as Partial<CatalogBookFilters>);
@@ -67,8 +73,12 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 					<Input
 						type="text"
 						placeholder="Title, author, pen name..."
-						value={filters.search || ""}
-						onChange={(e) => onChange({ search: e.target.value || undefined })}
+						value={search}
+						onChange={(e) => {
+							const value = e.target.value;
+							setSearch(value);
+							onChange({ search: value || undefined });
+						}}
 					/>
 				</div>
 
