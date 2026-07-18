@@ -53,15 +53,19 @@ app.server.on('connection', (socket) => {
   socket.on('close', () => activeSockets.delete(socket));
 });
 
-const defaultCorsOrigins = [
+const defaultCorsOrigins = new Set([
+  config.frontendOrigin,
   'https://books-library.vijaymeena.dev',
+  'https://novels-library.vijaymeena.dev',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:3001',
   'http://127.0.0.1:3001',
-];
+]);
 
-const allowedCorsOrigins = new Set(config.corsOrigins.length > 0 ? config.corsOrigins : defaultCorsOrigins);
+const allowedCorsOrigins = new Set(
+  config.corsOrigins.length > 0 ? config.corsOrigins : [...defaultCorsOrigins].filter(Boolean)
+);
 const localDevOriginPattern = /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+$/;
 
 // Register CORS
@@ -78,6 +82,8 @@ await app.register(cors, {
   allowedHeaders: ['Content-Type', 'Authorization'],
 });
 
+app.log.info({ allowedCorsOrigins: [...allowedCorsOrigins] }, 'CORS allowlist initialized');
+
 // Register JWT plugin
 if (!config.jwtSecret && config.nodeEnv === 'production') {
   throw new Error('JWT_SECRET must be configured in production.');
@@ -90,7 +96,9 @@ await app.register(jwt, {
 // Security headers
 await app.register(helmet, {
   contentSecurityPolicy: true,
-  crossOriginResourcePolicy: true,
+  crossOriginResourcePolicy: {
+    policy: "same-site"
+  },
 });
 
 // Response compression
