@@ -53,7 +53,8 @@ app.server.on('connection', (socket) => {
   socket.on('close', () => activeSockets.delete(socket));
 });
 
-const defaultCorsOrigins = new Set([
+// --- SAFE CORS ALLOWLISHING STRUCTURE ---
+const defaultCorsOrigins = [
   config.frontendOrigin,
   'https://books-library.vijaymeena.dev',
   'https://novels-library.vijaymeena.dev',
@@ -61,10 +62,15 @@ const defaultCorsOrigins = new Set([
   'http://127.0.0.1:3000',
   'http://localhost:3001',
   'http://127.0.0.1:3001',
-]);
+].filter(Boolean);
+
+// Ensure we handle both dynamic env arrays and string comma boundaries safely
+const parsedConfigOrigins = Array.isArray(config.corsOrigins)
+  ? config.corsOrigins
+  : (config.corsOrigins ? (config.corsOrigins as string).split(',').map(s => s.trim()) : []);
 
 const allowedCorsOrigins = new Set(
-  config.corsOrigins.length > 0 ? config.corsOrigins : [...defaultCorsOrigins].filter(Boolean)
+  parsedConfigOrigins.length > 0 ? parsedConfigOrigins : defaultCorsOrigins
 );
 const localDevOriginPattern = /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+$/;
 
@@ -75,17 +81,16 @@ await app.register(cors, {
       callback(null, true);
       return;
     }
-
     callback(new Error(`Origin ${origin} is not allowed by CORS`), false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Required for safe cross-subdomain cookie tracking
 });
 
 app.log.info({ allowedCorsOrigins: [...allowedCorsOrigins] }, 'CORS allowlist initialized');
 
-// Register JWT plugin
-if (!config.jwtSecret && config.nodeEnv === 'production') {
+if (!config.jwtSecret && isProduction) {
   throw new Error('JWT_SECRET must be configured in production.');
 }
 
@@ -93,24 +98,21 @@ await app.register(jwt, {
   secret: config.jwtSecret || 'super-secret-key-books-library-321!',
 });
 
-// Security headers
+// Security headers with array-mapped safe Set conversion
 await app.register(helmet, {
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      // Tells the browser your frontend subdomain is allowed to connect
-      connectSrc: ["'self'", ...allowedCorsOrigins], 
+      connectSrc: ["'self'", ...Array.from(allowedCorsOrigins)], 
     },
   },
   crossOriginResourcePolicy: { 
-    policy: "cross-origin" // Relax from same-origin/same-site to cross-origin
+    policy: "cross-origin" 
   },
 });
 
-// Response compression
 await app.register(compress, { encodings: ['gzip', 'br'] });
 
-// Rate limiting with optional Redis store
 await app.register(rateLimit, {
   max: config.rateLimitMax,
   timeWindow: config.rateLimitWindowMs,
@@ -118,7 +120,6 @@ await app.register(rateLimit, {
   ...(redisClient ? { redis: redisClient } : {}),
 });
 
-// Under-pressure circuit breaker
 await app.register(underPressure, {
   maxEventLoopDelay: 1000,
   maxHeapUsedBytes: 1024 * 1024 * 1024,
@@ -126,49 +127,45 @@ await app.register(underPressure, {
   maxEventLoopUtilization: 0.98,
 });
 
+// --- HARDENED PRODUCTION ERROR HANDLER ---
 app.setErrorHandler((error, request, reply) => {
   const err = error as FastifyError;
   request.log.error({ err }, 'Unhandled request error');
+  
   if (reply.sent) return;
-  let statusCode: number;
-  if (err.validation) {
-    statusCode = 400;
-  } else if (err.statusCode && err.statusCode >= 400) {
-    statusCode = err.statusCode;
-  } else {
-    statusCode = 500;
-  }
+  
+  let statusCode = err.statusCode || 500;
+  if (err.validation) statusCode = 400;
 
   let message: string;
   if (err.validation) {
     message = 'Request validation failed.';
+  } else if (statusCode === 429) {
+    message = 'Too many requests. Please try again later.';
   } else if (statusCode >= 500) {
     message = 'Internal server error.';
   } else {
-    message = err.message || 'Request failed.';
+    // Standard safe message for client consumption without leaking internal logic
+    message = isProduction ? 'Request could not be processed.' : err.message;
   }
-  reply.status(statusCode).send({ error: message, code: err.code, requestId: request.id });
+
+  reply.status(statusCode).send({ 
+    error: message, 
+    code: err.code || 'UNKNOWN_ERROR', 
+    requestId: request.id 
+  });
 });
 
 // Register API Routes
 await app.register(apiRoutes, { prefix: '/api' });
 await app.register(healthRoutes, { prefix: '/health' });
 
-/**
- * Start Server & Connect Database
- */
 const start = async () => {
   try {
-    // 1. Connect MongoDB
     await connectDB();
-
-    // 2. Ensure default roles and sync RBAC policies into Casbin
     await seedRoles();
-
-    // 3. Start Background Job Worker
     startWorker();
 
-    // 4. Bind server port
     const port = config.port;
     const host = config.host;
 
@@ -180,9 +177,6 @@ const start = async () => {
   }
 };
 
-/**
- * Handle Graceful Server Shutdowns
- */
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   let timeout: NodeJS.Timeout;
 
