@@ -98,8 +98,8 @@ await app.register(compress, { encodings: ['gzip', 'br'] });
 
 // Rate limiting with optional Redis store
 await app.register(rateLimit, {
-  max: 100,
-  timeWindow: 60 * 1000,
+  max: config.rateLimitMax,
+  timeWindow: config.rateLimitWindowMs,
   keyGenerator: (req) => String((req.user as any)?.id || req.ip || req.id),
   ...(redisClient ? { redis: redisClient } : {}),
 });

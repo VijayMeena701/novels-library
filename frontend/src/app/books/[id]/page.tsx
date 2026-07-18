@@ -924,7 +924,7 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 				let userBook = false;
 				if (user) {
 					try {
-						bookData = await api.getBook(id);
+						bookData = await api.getBook(id, { suppressErrorToast: true });
 						userBook = true;
 					} catch (err) {
 						if (err instanceof ApiError && err.status === 404) {

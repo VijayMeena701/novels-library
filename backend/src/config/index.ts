@@ -83,6 +83,9 @@ const schema = z.object({
   redisUrl: z.string().default('redis://127.0.0.1:6379'),
   redisEnabled: bool(false),
 
+  rateLimitMax: int(1000, 1, 100000),
+  rateLimitWindowMs: int(60000, 1000, 3600000),
+
   adminEmails: csv([]),
 
   aiTranslationProvider: z.preprocess(

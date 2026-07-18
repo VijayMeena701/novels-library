@@ -485,9 +485,9 @@ class ApiClient {
 		return headers;
 	}
 
-	private async request<T>(endpoint: string, options: RequestInit & { timeoutMs?: number } = {}): Promise<T> {
+	private async request<T>(endpoint: string, options: RequestInit & { timeoutMs?: number; suppressErrorToast?: boolean } = {}): Promise<T> {
 		const url = `${API_BASE_URL}${endpoint}`;
-		const { timeoutMs, ...fetchOptions } = options;
+		const { timeoutMs, suppressErrorToast, ...fetchOptions } = options;
 		const headers = { ...this.getHeaders(), ...fetchOptions.headers } as Record<string, string>;
 		if (fetchOptions.body && !(fetchOptions.body instanceof FormData) && !headers["Content-Type"]) {
 			headers["Content-Type"] = "application/json";
@@ -504,14 +504,14 @@ class ApiClient {
 				const errorData = typeof payload === "object" && payload ? payload as { error?: string; code?: string; details?: unknown } : {};
 				const message = errorData.error || (typeof payload === "string" && payload.trim()) || `Request failed (${response.status}).`;
 				const error = new ApiError(message, response.status, errorData.code, errorData.details);
-				if (typeof window !== "undefined" && response.status !== 401) window.dispatchEvent(new CustomEvent("novels-library:api-error", { detail: { message, variant: "error" } }));
+				if (typeof window !== "undefined" && response.status !== 401 && !suppressErrorToast) window.dispatchEvent(new CustomEvent("novels-library:api-error", { detail: { message, variant: "error" } }));
 				throw error;
 			}
 			return payload as T;
 		} catch (error) {
 			if (error instanceof ApiError) throw error;
 			const message = error instanceof DOMException && error.name === "AbortError" ? "The request timed out. Check the backend and try again." : error instanceof Error ? error.message : "Network request failed.";
-			if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("novels-library:api-error", { detail: { message, variant: "error" } }));
+			if (typeof window !== "undefined" && !suppressErrorToast) window.dispatchEvent(new CustomEvent("novels-library:api-error", { detail: { message, variant: "error" } }));
 			throw new ApiError(message, 0);
 		} finally {
 			if (timeout !== undefined) window.clearTimeout(timeout);
@@ -849,8 +849,8 @@ class ApiClient {
 		return this.request<Source[]>("/public/sources");
 	}
 
-	async getBook(id: string): Promise<Book> {
-		return this.request<Book>(`/books/${id}`);
+	async getBook(id: string, options?: { suppressErrorToast?: boolean }): Promise<Book> {
+		return this.request<Book>(`/books/${id}`, options);
 	}
 
 	async createBook(bookData: Partial<Book>): Promise<Book> {
