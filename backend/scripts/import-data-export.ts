@@ -12,7 +12,7 @@ const MONGODB_URI = config.mongodbUri;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DEFAULT_DATA_EXPORT_DIR = join(__dirname, '..', 'data_export');
+const DEFAULT_DATA_EXPORT_DIR = join(__dirname, '..', 'data_export/latest_prod');
 
 const IMPORT_ORDER: Record<string, number> = {
   novels: 0,
