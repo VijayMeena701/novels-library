@@ -1,12 +1,33 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config as dotenvConfig } from 'dotenv';
+import dotenv from 'dotenv';
+import { expand } from 'dotenv-expand';
 import { z } from 'zod';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = path.resolve(__dirname, '../../.env.prod');
 
-// Load the backend .env file once. Scripts that import this module share the same values.
-dotenvConfig({ path: path.resolve(__dirname, '../../.env') });
+// --- CROSS-PLATFORM SYSTEM ENVIRONMENT LOADER ---
+if (fs.existsSync(envPath)) {
+  const rawContent = fs.readFileSync(envPath, 'utf-8');
+
+  // Clean out the bash 'export ' prefix before feeding standard dotenv
+  const cleanContent = rawContent.replace(/^export\s+/gm, '');
+
+  // Parse the custom multi-line text block into an object literal
+  const parsedEnv = dotenv.parse(cleanContent);
+
+  // Safely interpolate references like ${PRIMARY_DOMAIN} using valid types
+  const expandedEnv = expand({ parsed: parsedEnv, processEnv: process.env as Record<string, string> });
+
+  // Apply parsed values without overriding existing system env vars
+  for (const [key, value] of Object.entries(expandedEnv)) {
+    if (process.env[key] === undefined && value !== undefined) {
+      process.env[key] = value;
+    }
+  }
+}
 
 function toCamelCase(str: string): string {
   return str
