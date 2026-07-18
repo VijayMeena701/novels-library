@@ -95,9 +95,15 @@ await app.register(jwt, {
 
 // Security headers
 await app.register(helmet, {
-  contentSecurityPolicy: true,
-  crossOriginResourcePolicy: {
-    policy: "same-site"
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      // Tells the browser your frontend subdomain is allowed to connect
+      connectSrc: ["'self'", ...allowedCorsOrigins], 
+    },
+  },
+  crossOriginResourcePolicy: { 
+    policy: "cross-origin" // Relax from same-origin/same-site to cross-origin
   },
 });
 
