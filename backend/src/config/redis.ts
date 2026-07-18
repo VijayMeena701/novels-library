@@ -21,6 +21,7 @@ export const redisClient: Redis | null = await (async (): Promise<Redis | null> 
 
   try {
     await client.connect();
+    console.log(`[Redis] Connected to Redis at ${redisUrl}`);
     return client;
   } catch (err) {
     console.warn('[Redis] Could not connect to Redis at', redisUrl, '-', err instanceof Error ? err.message : err);
