@@ -22,6 +22,9 @@
 /dist
 /data_export
 
+# backend database backups.
+/backups/
+
 # misc
 /.scraper-profile
 .DS_Store

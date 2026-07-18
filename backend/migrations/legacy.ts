@@ -150,8 +150,8 @@ function mapChapterList(
   return (list || []).map((c) => ({
     title: c.title || '',
     url: c.url || '',
-    chapterNumber: c.number || 0,
-    chapterType: 'chapter',
+    chapterNumber: c.unitNumber ?? c.number ?? c.chapterNumber ?? 0,
+    chapterType: c.unitType || c.chapterType || 'chapter',
   }));
 }
 
@@ -235,6 +235,20 @@ async function dropLegacyCollections(db: any) {
   }
 }
 
+async function dropTargetCollections() {
+  const collections = [Book.collection, UserBook.collection, ChapterContent.collection, RawChapterContent.collection, ChapterVisit.collection];
+  for (const coll of collections) {
+    try {
+      await coll.drop();
+      console.log(`Dropped target collection: ${coll.collectionName}`);
+    } catch (err: any) {
+      if (err.code !== 26 && err.codeName !== 'NamespaceNotFound') {
+        console.error(`Failed to drop target collection ${coll.collectionName}:`, err.message);
+      }
+    }
+  }
+}
+
 export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void> {
   if (dryRun) {
     console.log('[dry-run] legacy migration: would process legacy collections if present');
@@ -242,6 +256,13 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
   }
 
   const oldNovels = await db.collection('novels').find().toArray();
+  if (oldNovels.length === 0) {
+    console.log('No legacy novels to migrate');
+    return;
+  }
+
+  console.log(`Found ${oldNovels.length} legacy novels; dropping and rebuilding target collections...`);
+  await dropTargetCollections();
   const oldUserNovels = await db.collection('usernovels').find().toArray();
   const oldChapters = await db.collection('chaptercontents').find().toArray();
   const oldRawChapters = await db.collection('rawchaptercontents').find().toArray();
@@ -332,16 +353,17 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
       publicationStatusId = ps._id;
     }
 
-    const translatedChaptersList = mapChapterList(oldNovel.chaptersList);
-    const translatedChaptersTotal = oldNovel.chaptersTotal || translatedChaptersList.length;
-    const rawChaptersList = mapChapterList(oldNovel.rawChaptersList);
-    const rawChaptersTotal = oldNovel.rawChaptersTotal || rawChaptersList.length;
+    const translatedChaptersList = mapChapterList(oldNovel.unitsList ?? oldNovel.chaptersList);
+    const translatedChaptersTotal = oldNovel.unitsTotal ?? oldNovel.chaptersTotal ?? translatedChaptersList.length;
+    const rawChaptersList = mapChapterList(oldNovel.rawUnitsList ?? oldNovel.rawChaptersList);
+    const rawChaptersTotal = oldNovel.rawUnitsTotal ?? oldNovel.rawChaptersTotal ?? rawChaptersList.length;
 
     let book: any;
     if (existing) {
       book = existing;
     } else {
       book = new Book({
+        _id: oldNovel._id,
         addedByUserId: oldNovel.addedByUserId || oldNovel.userId || null,
         mediaType: 'novel',
         authorId,
@@ -383,14 +405,18 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
     if (userNovels.length) {
       for (const un of userNovels) {
         const personalTags = Array.isArray(un.personalTags) ? un.personalTags : [];
+        const chaptersRead = un.chaptersRead ?? un.unitsRead ?? 0;
+        const lastVisitedChapterNumber = un.lastVisitedUnitNumber ?? un.lastVisitedChapterNumber ?? un.unitsRead ?? un.chaptersRead ?? 0;
+        const lastVisitedAt = un.lastVisitedAt ?? (lastVisitedChapterNumber ? un.updatedAt : null);
         await UserBook.updateOne(
           { userId: un.userId, bookId },
           {
             $setOnInsert: {
+              _id: un._id,
               userId: un.userId,
               bookId,
               status: un.status || 'planning',
-              chaptersRead: un.chaptersRead ?? un.unitsRead ?? 0,
+              chaptersRead,
               rating: un.rating || 0,
               review: un.review || '',
               personalNotes: un.personalNotes || '',
@@ -400,8 +426,8 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
               personalTags,
               personalTagKeys: personalTags.map((tag: string) => normalizeFilterKey(tag)).filter(Boolean),
               completedAt: un.completedAt || null,
-              lastVisitedChapterNumber: un.chaptersRead ?? un.unitsRead ?? 0,
-              lastVisitedAt: un.chaptersRead ? un.updatedAt : null,
+              lastVisitedChapterNumber,
+              lastVisitedAt,
               createdAt: un.createdAt,
               updatedAt: un.updatedAt,
             },
@@ -412,6 +438,9 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
       }
     } else if (oldNovel.userId) {
       const personalTags = Array.isArray(oldNovel.personalTags) ? oldNovel.personalTags : [];
+      const chaptersRead = oldNovel.chaptersRead ?? oldNovel.unitsRead ?? 0;
+      const lastVisitedChapterNumber = oldNovel.lastVisitedUnitNumber ?? oldNovel.lastVisitedChapterNumber ?? oldNovel.unitsRead ?? oldNovel.chaptersRead ?? 0;
+      const lastVisitedAt = oldNovel.lastVisitedAt ?? (lastVisitedChapterNumber ? oldNovel.updatedAt : null);
       await UserBook.updateOne(
         { userId: oldNovel.userId, bookId },
         {
@@ -419,7 +448,7 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
             userId: oldNovel.userId,
             bookId,
             status: oldNovel.status || 'planning',
-            chaptersRead: oldNovel.chaptersRead ?? oldNovel.unitsRead ?? 0,
+            chaptersRead,
             rating: oldNovel.rating || 0,
             review: oldNovel.review || '',
             personalNotes: oldNovel.personalNotes || '',
@@ -440,8 +469,8 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
             personalTags,
             personalTagKeys: personalTags.map((tag: string) => normalizeFilterKey(tag)).filter(Boolean),
             completedAt: oldNovel.completedAt || null,
-            lastVisitedChapterNumber: oldNovel.chaptersRead ?? oldNovel.unitsRead ?? 0,
-            lastVisitedAt: oldNovel.chaptersRead ? oldNovel.updatedAt : null,
+            lastVisitedChapterNumber,
+            lastVisitedAt,
             createdAt: oldNovel.createdAt,
             updatedAt: oldNovel.updatedAt,
           },
@@ -453,9 +482,9 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
 
     const chapters = chaptersByNovel.get(String(oldNovel._id)) || [];
     const chapterOps = chapters.map((ch) => {
-      const chapterNumber = ch.chapterNumber || 0;
+      const chapterNumber = ch.unitNumber ?? ch.chapterNumber ?? 0;
       const titleFromList = translatedChaptersList.find((u) => u.chapterNumber === chapterNumber)?.title || '';
-      const title = titleFromList || ch.title || '';
+      const title = titleFromList || (ch.unitTitle ?? ch.title ?? '');
       return {
         updateOne: {
           filter: { bookId, chapterNumber },
@@ -463,12 +492,13 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
             $set: {
               bookId,
               chapterNumber,
-              chapterType: 'chapter',
+              chapterType: ch.unitType ?? ch.chapterType ?? 'chapter',
               title,
               content: ch.content || '',
               sourceUrl: ch.sourceUrl || '',
               scrapedAt: ch.scrapedAt || new Date(),
             },
+            $setOnInsert: { _id: ch._id },
           },
           upsert: true,
         },
@@ -481,9 +511,9 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
 
     const rawChapters = rawChaptersByNovel.get(String(oldNovel._id)) || [];
     const rawOps = rawChapters.map((ch) => {
-      const chapterNumber = ch.chapterNumber || 0;
+      const chapterNumber = ch.unitNumber ?? ch.chapterNumber ?? 0;
       const titleFromList = rawChaptersList.find((u) => u.chapterNumber === chapterNumber)?.title || '';
-      const title = titleFromList || ch.title || '';
+      const title = titleFromList || (ch.unitTitle ?? ch.title ?? '');
       return {
         updateOne: {
           filter: { bookId, chapterNumber },
@@ -491,13 +521,14 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
             $set: {
               bookId,
               chapterNumber,
-              chapterType: 'chapter',
+              chapterType: ch.unitType ?? ch.chapterType ?? 'chapter',
               title,
               content: ch.content || '',
               language: ch.language || '',
               sourceUrl: ch.sourceUrl || '',
               scrapedAt: ch.scrapedAt || new Date(),
             },
+            $setOnInsert: { _id: ch._id },
           },
           upsert: true,
         },
@@ -510,18 +541,19 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
 
     const visits = visitsByNovel.get(String(oldNovel._id)) || [];
     const visitOps = visits.map((v) => {
-      const chapterNumber = v.chapterNumber || 0;
+      const chapterNumber = v.unitNumber ?? v.chapterNumber ?? 0;
       const titleFromList = translatedChaptersList.find((u) => u.chapterNumber === chapterNumber)?.title || '';
-      const chapterTitle = v.chapterTitle || titleFromList || '';
+      const chapterTitle = v.unitTitle || v.chapterTitle || titleFromList || '';
       return {
         updateOne: {
           filter: { bookId, userId: v.userId, chapterNumber, openedAt: v.openedAt },
           update: {
             $setOnInsert: {
+              _id: v._id,
               bookId,
               userId: v.userId,
               chapterNumber,
-              chapterType: 'chapter',
+              chapterType: v.unitType ?? 'chapter',
               chapterTitle,
               sourceUrl: v.sourceUrl || '',
               openedAt: v.openedAt || new Date(),

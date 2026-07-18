@@ -103,7 +103,7 @@ await ensureDir(join(backupDir, 'data'));
 log(`Starting backup of ${redactUri(source)}`);
 log(`Backup directory: ${backupDir}`);
 
-const dumpArgs: string[] = ['--uri', source, '--out', join(backupDir, 'data'), '--gzip', '--stopOnError'];
+const dumpArgs: string[] = ['--uri', source, '--out', join(backupDir, 'data'), '--gzip'];
 if (dbName) {
   dumpArgs.push('--db', dbName);
 }

@@ -66,6 +66,7 @@ export async function binaryExists(bin: string): Promise<boolean> {
 interface RunCommandOptions {
   env?: NodeJS.ProcessEnv;
   cwd?: string;
+  includeStderr?: boolean; // only used by captureOutput
 }
 
 export async function runCommand(cmd: string, args: string[], options: RunCommandOptions = {}): Promise<void> {
@@ -81,7 +82,7 @@ export async function runCommand(cmd: string, args: string[], options: RunComman
 }
 
 export async function captureOutput(cmd: string, args: string[], options: RunCommandOptions = {}): Promise<string> {
-  const { env, cwd } = options;
+  const { env, cwd, includeStderr } = options;
   return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
@@ -94,14 +95,17 @@ export async function captureOutput(cmd: string, args: string[], options: RunCom
     });
     child.on('error', reject);
     child.on('close', (code) => {
-      if (code === 0) resolve(stdout.trim());
-      else
+      if (code === 0) {
+        const out = includeStderr ? `${stdout}\n${stderr}`.trim() : stdout.trim();
+        resolve(out);
+      } else {
         reject(
           new Error(
             `Command failed: ${cmd} ${args.join(' ')}
 ${stderr || stdout}`.trim(),
           ),
         );
+      }
     });
   });
 }

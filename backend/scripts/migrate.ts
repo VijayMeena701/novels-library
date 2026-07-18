@@ -1,11 +1,11 @@
 /// <reference types="node" />
 import process from 'node:process';
 import mongoose from 'mongoose';
-import { config } from './src/config/index';
-import { seedRbac } from './src/seed/index';
-import { runLegacyMigration } from './migrations/legacy';
-import { renameChapterTerminology } from './migrations/001-unit-to-chapter';
-import { renameRbacTerminology } from './migrations/002-rbac-unit-to-chapter';
+import { config } from '../src/config/index';
+import { seedRbac } from '../src/services/seed';
+import { runLegacyMigration } from '../migrations/legacy';
+import { renameChapterTerminology } from '../migrations/001-unit-to-chapter';
+import { renameRbacTerminology } from '../migrations/002-rbac-unit-to-chapter';
 
 const MONGODB_URI = config.mongodbUri;
 
