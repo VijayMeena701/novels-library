@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { runTest, mockFetchHtml } from './testScrape';
-import { setHtmlFetcherForTesting } from './services/scraper';
+import { runTest, mockFetchHtml } from '@/testScrape.js';
+import { setHtmlFetcherForTesting } from '@/services/scraper.js';
 
 describe('testScrape.ts', () => {
   afterEach(() => {

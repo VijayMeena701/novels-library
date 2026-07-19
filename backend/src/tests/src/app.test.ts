@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import supertest from 'supertest';
-import { app } from './app';
+import { app } from '@/app.js';
 
 describe('app.ts', () => {
   beforeAll(async () => {

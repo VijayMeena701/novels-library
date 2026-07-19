@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import supertest from 'supertest';
-import { buildApp } from '../helpers/app.js';
-import { createUser } from '../fixtures/users.js';
+import { buildApp } from '../../helpers/app.js';
+import { createUser } from '../../fixtures/users.js';
 import { Notification } from '@/models/Notification.js';
 
 const TEST_PASSWORD = 'password123';

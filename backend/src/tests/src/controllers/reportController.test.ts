@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import supertest from 'supertest';
-import { buildApp } from '../helpers/app.js';
-import { createUser } from '../fixtures/users.js';
-import { createSampleBook } from '../fixtures/books.js';
+import { buildApp } from '../../helpers/app.js';
+import { createUser } from '../../fixtures/users.js';
+import { createSampleBook } from '../../fixtures/books.js';
 import { Report } from '@/models/Report.js';
 
 const TEST_PASSWORD = 'password123';
@@ -10,7 +10,7 @@ const TEST_PASSWORD = 'password123';
 describe('Report routes', () => {
   it('POST /api/books/:id/report creates a report for an authenticated user', async () => {
     const app = await buildApp();
-    const user = await createUser({ email: 'reporter@example.com', password: TEST_PASSWORD });
+    await createUser({ email: 'reporter@example.com', password: TEST_PASSWORD });
     const book = await createSampleBook({ title: 'Reportable Book' });
 
     const login = await supertest(app.server)
@@ -29,7 +29,7 @@ describe('Report routes', () => {
 
   it('returns 400 for invalid report reason', async () => {
     const app = await buildApp();
-    const user = await createUser({ email: 'badreporter@example.com', password: TEST_PASSWORD });
+    await createUser({ email: 'badreporter@example.com', password: TEST_PASSWORD });
     const book = await createSampleBook({ title: 'Book' });
 
     const login = await supertest(app.server)

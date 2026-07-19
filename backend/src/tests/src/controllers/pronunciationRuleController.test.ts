@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import supertest from 'supertest';
-import { buildApp } from '../helpers/app.js';
-import { createUser } from '../fixtures/users.js';
-import { createSampleBook } from '../fixtures/books.js';
+import { buildApp } from '../../helpers/app.js';
+import { createUser } from '../../fixtures/users.js';
+import { createSampleBook } from '../../fixtures/books.js';
 import { PronunciationRule } from '@/models/PronunciationRule.js';
 
 const TEST_PASSWORD = 'password123';
@@ -35,7 +35,7 @@ describe('Pronunciation rule routes', () => {
 
   it('POST /api/books/:id/pronunciation-rules creates a rule', async () => {
     const app = await buildApp();
-    const user = await createUser({
+    await createUser({
       email: 'pronounceadmin@example.com',
       password: TEST_PASSWORD,
       roleKey: 'superadmin',

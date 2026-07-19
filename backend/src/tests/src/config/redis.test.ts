@@ -14,7 +14,7 @@ describe('redis.ts', () => {
   });
 
   it('returns null when Redis is disabled', async () => {
-    const { redisClient } = await import('./redis.js');
+    const { redisClient } = await import('@/config/redis.js');
     expect(redisClient).toBeNull();
   });
 
@@ -29,7 +29,7 @@ describe('redis.ts', () => {
       Redis: vi.fn().mockImplementation(() => mockClient),
     }));
 
-    const { redisClient } = await import('./redis.js');
+    const { redisClient } = await import('@/config/redis.js');
     expect(redisClient).toBe(mockClient);
   });
 
@@ -44,7 +44,7 @@ describe('redis.ts', () => {
       Redis: vi.fn().mockImplementation(() => mockClient),
     }));
 
-    const { redisClient } = await import('./redis.js');
+    const { redisClient } = await import('@/config/redis.js');
     expect(redisClient).toBeNull();
     expect(mockClient.disconnect).toHaveBeenCalled();
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import supertest from 'supertest';
-import { buildApp } from '../helpers/app.js';
-import { createSampleBook } from '../fixtures/books.js';
+import { buildApp } from '../../helpers/app.js';
+import { createSampleBook } from '../../fixtures/books.js';
 
 describe('GET /api/home', () => {
   it('returns home data for anonymous users', async () => {
