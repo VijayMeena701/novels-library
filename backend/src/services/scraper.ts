@@ -13,6 +13,7 @@ export interface ScrapedMetadata {
   publicationStatus: string;
   description: string;
   coverUrl: string;
+  originalLanguage?: string;
   chapters: { title: string; url: string; number: number }[];
 }
 
@@ -1602,6 +1603,13 @@ export class ScraperService {
       });
     }
 
+    // 4b. Extract original language hint
+    const originalLanguage =
+      normalizeWhitespace($('html').attr('lang') || '') ||
+      normalizeWhitespace($('meta[property="og:locale"]').attr('content') || '') ||
+      normalizeWhitespace($('meta[name="language"]').attr('content') || '') ||
+      '';
+
     // 5. Extract Chapters, including paginated chapter lists
     const chaptersByUrl = new Map<string, ChapterCandidate>();
     const chapterOrderState = { next: 0 };
@@ -1676,6 +1684,7 @@ export class ScraperService {
       publicationStatus,
       description,
       coverUrl,
+      originalLanguage,
       chapters,
     };
   }

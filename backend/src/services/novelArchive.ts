@@ -263,7 +263,7 @@ export class BookArchiveService {
   private static async applyRawMetadata(
     book: any,
     scraped: ScrapedMetadata,
-    options: { sourceUrl: string },
+    options: { sourceUrl: string; syncCover?: boolean },
   ): Promise<void> {
     book.rawChaptersList = scraped.chapters.map((chapter) => ({
       title: chapter.title,
@@ -275,9 +275,18 @@ export class BookArchiveService {
     if (!book.rawSourceUrl) {
       book.rawSourceUrl = options.sourceUrl;
     }
-    if (!book.rawOriginalLanguage && scraped.originalSource) {
-      book.rawOriginalLanguage = scraped.originalSource;
+    if (!book.rawOriginalLanguage && scraped.originalLanguage) {
+      book.rawOriginalLanguage = scraped.originalLanguage;
     }
+
+    // Raw sources may be the only source for a book, so backfill canonical
+    // fields when they are still empty without overwriting existing data.
+    this.applyTranslatedTextFields(book, scraped);
+    await this.applyTranslatedGenres(book, scraped);
+    await this.applyTranslatedPublicationStatus(book, scraped);
+    await this.applyTranslatedAuthors(book, scraped, options);
+    await this.applyTranslatedCover(book, scraped, { syncCover: options.syncCover });
+
     await book.save();
   }
 
@@ -385,6 +394,13 @@ export class BookArchiveService {
     scraped: ScrapedMetadata,
     options: { sourceUrl: string },
   ): Promise<void> {
+    if (book.authorIds?.length || book.authorId) {
+      return;
+    }
+    const authorName = scraped.authorPenName || scraped.author;
+    if (!authorName || authorName === 'Unknown Author') {
+      return;
+    }
     const linkedAuthorIds = await resolveAuthorIds({
       author: scraped.author,
       penName: scraped.authorPenName || scraped.author,
