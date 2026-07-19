@@ -15,7 +15,7 @@ const COVER_PALETTES = [
   ['#6d4b7e', '#25243c', '#4d8795'],
 ];
 
-function getCoverPalette(book: Book): CSSProperties {
+function getCoverStyle(book: Book): CSSProperties {
   const seed = `${book._id}${book.title}`;
   const hash = Array.from(seed).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   const [a, b, c] = COVER_PALETTES[hash % COVER_PALETTES.length];
@@ -24,6 +24,7 @@ function getCoverPalette(book: Book): CSSProperties {
     '--cover-a': a,
     '--cover-b': b,
     '--cover-c': c,
+    background: `linear-gradient(160deg, rgba(19, 23, 32, 0.02), rgba(19, 23, 32, 0.76)), radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.2), transparent 25%), radial-gradient(circle at 84% 14%, rgba(255, 255, 255, 0.12), transparent 22%), linear-gradient(135deg, ${a}, ${b} 56%, ${c})`,
   } as CSSProperties;
 }
 
@@ -63,18 +64,24 @@ export function BookCard({
   return (
     <Card className="group flex h-full min-w-0 flex-col overflow-hidden transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
       <Link href={detailHref} className="flex min-h-0 flex-1 flex-col text-inherit no-underline">
-        <div
-          className="flex aspect-[3/4] min-h-[230px] items-center justify-center overflow-hidden border-b border-border bg-surface-muted"
-          style={getCoverPalette(book)}
-        >
+        <div className="flex aspect-[3/4] min-h-[230px] items-center justify-center overflow-hidden border-b border-border bg-surface-muted">
           {coverSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]" src={coverSrc} alt={book.title} />
           ) : (
-            <div className="book-card-fallback">
-              <span>{(book.genres || [])[0] || book.publicationStatus || 'Book'}</span>
-              <strong>{book.title}</strong>
-              <small>{authorName}</small>
+            <div
+              className="relative flex h-full w-full flex-col justify-end gap-[0.45rem] p-4 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.28)] before:pointer-events-none before:absolute before:left-[0.65rem] before:top-[0.7rem] before:bottom-[0.7rem] before:w-[3px] before:rounded-full before:bg-white/35"
+              style={getCoverStyle(book)}
+            >
+              <span className="self-start max-w-full overflow-hidden whitespace-nowrap text-ellipsis rounded-full border border-white/30 px-[0.45rem] py-[0.2rem] text-[0.62rem] font-extrabold uppercase text-white/90">
+                {(book.genres || [])[0] || book.publicationStatus || 'Book'}
+              </span>
+              <strong className="line-clamp-3 text-[1.08rem] font-black leading-[1.18] text-white">
+                {book.title}
+              </strong>
+              <small className="block truncate text-[0.76rem] text-white/[0.78]">
+                {authorName}
+              </small>
             </div>
           )}
         </div>

@@ -1,5 +1,9 @@
 "use client";
 
+import "./reader.css";
+
+import { cn } from '../../../../../lib/utils';
+
 import React, { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +25,9 @@ import { CAPABILITY } from "../../../../../utils/permissions";
 import { SpeechWidget } from "../../../../../components/reader/SpeechWidget";
 import { ReaderBottomToolbar } from "../../../../../components/reader/ReaderBottomToolbar";
 import { PronunciationRulesModal } from "../../../../../components/reader/PronunciationRulesModal";
+import { Button } from "../../../../../components/ui/button";
+import { Input, Textarea } from "../../../../../components/ui/input";
+import { Spinner } from "../../../../../components/ui/spinner";
 
 type TtsStatus = "idle" | "playing" | "paused";
 type ReaderPanelTab = "read" | "display" | "speech" | "settings" | "more";
@@ -1252,7 +1259,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		return (
 			<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-primary)" }}>
 				<div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-					<div className="spinner" style={{ width: "40px", height: "40px" }}></div>
+					<Spinner size="xl" />
 					<span style={{ color: "var(--text-secondary)" }}>Retrieving archived chapter...</span>
 				</div>
 			</div>
@@ -1261,26 +1268,25 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 	if (error || !chapter || !book) {
 		return (
-			<div className="container">
-				<div className="glass-card empty-state">
+			<div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
+				<div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
 					<h2 style={{ color: "var(--danger)", marginBottom: "1rem" }}>{missingChapterTitle}</h2>
 					<p style={{ maxWidth: "520px", color: "var(--text-secondary)", margin: "0 auto 2rem" }}>
 						{error || "This chapter has not been archived yet."}
 					</p>
 					<div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-						<Link href={`/books/${bookId}`} className="btn btn-secondary">
-							Back to Book Index
-						</Link>
+						<Button asChild variant="secondary">
+							<Link href={`/books/${bookId}`}>Back to Book Index</Link>
+						</Button>
 						{currentSourceUrl && (
-							<a href={currentSourceUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
-								Open Source Page
-							</a>
+							<Button asChild>
+								<a href={currentSourceUrl} target="_blank" rel="noreferrer">Open Source Page</a>
+							</Button>
 						)}
 					</div>
 
 					{hasCapability(CAPABILITY.JOBS_SCRAPE) && book && (
-						<div
-							className="glass-card"
+						<div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated"
 							style={{
 								width: "min(820px, 100%)",
 								margin: "2rem auto 0",
@@ -1294,27 +1300,24 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 							</p>
 
 							<div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-								<button
-									type="button"
-									className="btn btn-primary"
+								<Button type="button"
 									onClick={handleScrapeCurrentChapterNow}
 									disabled={adminScrapingChapter || !currentCatalogItem?.sourceUrl}
 								>
 									{adminScrapingChapter ? "Scraping..." : "Scrape This Chapter Now"}
-								</button>
+								</Button>
 								{currentSourceUrl && (
-									<a href={currentSourceUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">
-										Open Source
-									</a>
+								<Button asChild variant="secondary">
+									<a href={currentSourceUrl} target="_blank" rel="noreferrer">Open Source</a>
+								</Button>
 								)}
 							</div>
 
 							<form key={`${readerSourceKind}-${chapterNumber}`} onSubmit={handleImportCurrentChapterHtml} style={{ display: "grid", gap: "1rem" }}>
-								<div className="form-group" style={{ marginBottom: 0 }}>
-									<label className="form-label">Chapter Page URL</label>
-									<input
-										type="url"
-										className="form-input"
+								<div className="flex flex-col gap-2">
+									<label className="text-sm font-semibold text-copy">Chapter Page URL</label>
+									<Input type="url"
+										
 										value={chapterHtmlPageUrl || currentSourceUrl}
 										onChange={(event) => setChapterHtmlPageUrl(event.target.value)}
 										placeholder="https://example.com/chapter"
@@ -1322,11 +1325,9 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 									/>
 								</div>
 
-								<div className="form-group" style={{ marginBottom: 0 }}>
-									<label className="form-label">Saved Chapter HTML</label>
-									<textarea
-										className="form-textarea"
-										rows={10}
+								<div className="flex flex-col gap-2">
+									<label className="text-sm font-semibold text-copy">Saved Chapter HTML</label>
+									<Textarea rows={10}
 										value={chapterHtmlContent}
 										onChange={(event) => setChapterHtmlContent(event.target.value)}
 										placeholder="<html>..."
@@ -1338,9 +1339,9 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 									<span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
 										{readerSourceKind === "raw" ? "Raw chapter" : "Translated chapter"} {chapterNumber}
 									</span>
-									<button type="submit" className="btn btn-primary" disabled={importingChapterHtml}>
+									<Button type="submit" disabled={importingChapterHtml}>
 										{importingChapterHtml ? "Importing..." : "Import HTML"}
-									</button>
+									</Button>
 								</div>
 							</form>
 
@@ -1382,21 +1383,20 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					border-radius: 2px;
 				}
 			`}</style>
-			<div className={`${themeClass} reader-shell`}>
-				<div className="reader-toolbar max-[860px]:gap-2 max-[860px]:px-3 max-[860px]:py-[0.65rem]">
-					<div className="reader-toolbar-primary w-full flex-wrap justify-between gap-2">
-						<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
+			<div className={cn(themeClass, "flex min-h-screen flex-col")}>
+				<div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--reader-border)] bg-[var(--reader-bg)]/90 px-5 py-2.5 backdrop-blur-[10px] max-[860px]:gap-2 max-[860px]:px-3 max-[860px]:py-[0.65rem]">
+					<div className="flex w-full flex-wrap items-center justify-between gap-2">
+						<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setIsCatalogOpen(true)}>
 							Catalogue
 						</button>
-						<Link href={`/books/${bookId}`} className="reader-back-link">
+						<Link href={`/books/${bookId}`} className="text-[0.88rem] font-extrabold text-[var(--reader-text)] no-underline">
 							← {book.title.length > 24 ? `${book.title.substring(0, 24)}...` : book.title}
 						</Link>
-						<div className="reader-toolbar-actions">
-							<button className="reader-tool-button" onClick={handlePlaySpeech}>
+						<div className="flex flex-wrap items-center justify-end gap-2">
+							<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={handlePlaySpeech}>
 								Listen
 							</button>
-							<button
-								className="reader-tool-button"
+							<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50"
 								onClick={() => {
 									setReaderPanelTab("display");
 									setIsReaderPanelOpen(true);
@@ -1409,32 +1409,30 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				</div>
 
 				{isCatalogOpen && (
-					<div className="reader-catalog-backdrop" onClick={() => setIsCatalogOpen(false)}>
-						<aside className="reader-catalog-panel" onClick={(event) => event.stopPropagation()}>
-							<div className="reader-catalog-header">
+					<div className="fixed inset-0 z-[1000] flex items-start justify-start bg-black/50" onClick={() => setIsCatalogOpen(false)}>
+						<aside className="flex min-h-screen w-full max-w-[420px] flex-col gap-4 border-r border-[var(--reader-border)] bg-[var(--reader-bg)] p-5 shadow-lg" onClick={(event) => event.stopPropagation()}>
+							<div className="flex items-start justify-between gap-4">
 								<div>
 									<h2>Catalogue</h2>
 									<p>
 										{isRawReader ? "Raw" : "Translated"} · {catalogItems.length} chapters indexed, {chapters.length} archived.
 									</p>
 								</div>
-								<button className="reader-tool-button" onClick={() => setIsCatalogOpen(false)}>
+								<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setIsCatalogOpen(false)}>
 									Close
 								</button>
 							</div>
 
-							<input
-								className="reader-catalog-search"
+							<Input className="min-h-10 w-full rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 text-sm text-[var(--reader-text)] outline-none focus:border-[var(--reader-accent)]"
 								value={catalogSearch}
 								onChange={(event) => setCatalogSearch(event.target.value)}
 								placeholder="Search chapter number or title"
 							/>
 
-							<div className="reader-catalog-list">
+							<div className="flex flex-1 flex-col gap-2 overflow-auto pr-1">
 								{filteredCatalogItems.map((item) => (
-									<button
-										key={item.chapterNumber}
-										className={`reader-catalog-item ${item.chapterNumber === chapterNumber ? "active" : ""}`}
+									<button key={item.chapterNumber}
+										className={cn("w-full rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] p-3 text-left text-sm text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]", item.chapterNumber === chapterNumber && "border-[var(--reader-accent)] bg-[var(--reader-surface-hover)]")}
 										onClick={() => {
 											setIsCatalogOpen(false);
 											navigateToChapter(item.chapterNumber);
@@ -1450,11 +1448,11 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					</div>
 				)}
 
-				<main className="reader-page max-[860px]:px-3 max-[860px]:py-5">
-					<article className="reader-article" style={{ maxWidth: widthStyle }}>
-						<header className="reader-chapter-header">
+				<main className="flex justify-center px-5 py-12 max-[860px]:px-3 max-[860px]:py-5">
+					<article className="flex w-full flex-col gap-6 leading-[1.8] text-[var(--reader-text)]" style={{ maxWidth: widthStyle }}>
+						<header className="border-b border-[var(--reader-border)] pb-6">
 							<h1>{displayChapterTitle}</h1>
-							<div className="reader-chapter-meta max-[860px]:flex-col max-[860px]:items-start">
+							<div className="mt-2 flex flex-wrap items-center justify-between gap-4 text-[0.82rem] text-[var(--reader-muted)] max-[860px]:flex-col max-[860px]:items-start">
 								<span>{book.title}</span>
 								<span>
 									{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}{" "}
@@ -1471,44 +1469,41 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 							{isRawReader && hasCapability(CAPABILITY.CHAPTERS_TRANSLATE) && (
 								<div className="mx-auto mt-4 flex w-fit max-w-[min(92vw,640px)] flex-wrap items-center justify-center gap-3 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-[0.45rem] text-[0.78rem] font-bold text-[var(--reader-muted)]">
 									<span>Raw source view</span>
-									<button className="reader-tool-button" onClick={handleGenerateTranslation} disabled={translatingRawChapter}>
+									<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={handleGenerateTranslation} disabled={translatingRawChapter}>
 										{translatingRawChapter ? "Generating..." : "Generate English Translation"}
 									</button>
 								</div>
 							)}
 						</header>
 
-						<div
-							ref={readerContentRef}
+						<div ref={readerContentRef}
 							className="reader-content"
 							style={readerContentStyle}
 							onClick={handleReaderContentClick}
 							dangerouslySetInnerHTML={{ __html: chapter.content }}
 						/>
 
-						<footer className="reader-footer">
-							<button
-								className="btn btn-secondary"
+						<footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--reader-border)] pt-6">
+							<Button variant="secondary"
 								style={{ color: "var(--reader-text)", borderColor: "var(--reader-border)", backgroundColor: "transparent" }}
 								disabled={!hasPreviousChapter}
 								onClick={() => navigateToChapter(previousChapterNumber)}
 							>
 								← Previous Chapter
-							</button>
+							</Button>
 
-							<button className="reader-tool-button" onClick={() => setIsCatalogOpen(true)}>
+							<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setIsCatalogOpen(true)}>
 								Open Catalogue
 							</button>
 
-							<button className="btn btn-primary" disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
+							<Button disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
 								Next Chapter →
-							</button>
+							</Button>
 						</footer>
 					</article>
 				</main>
 
-				<SpeechWidget
-					supported={speechSupported}
+				<SpeechWidget supported={speechSupported}
 					status={ttsStatus}
 					error={speechError}
 					onPlay={handlePlaySpeech}
@@ -1530,8 +1525,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					isBottomToolbarOpen={isReaderPanelOpen}
 				/>
 
-				<ReaderBottomToolbar
-					isOpen={isReaderPanelOpen}
+				<ReaderBottomToolbar isOpen={isReaderPanelOpen}
 					onOpenChange={setIsReaderPanelOpen}
 					activeTab={readerPanelTab}
 					onTabChange={setReaderPanelTab}
@@ -1588,8 +1582,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					isLoggedIn={!!user}
 				/>
 
-				<PronunciationRulesModal
-					open={isPronunciationModalOpen}
+				<PronunciationRulesModal open={isPronunciationModalOpen}
 					onClose={() => setIsPronunciationModalOpen(false)}
 					bookTitle={book.title || ""}
 					rules={pronunciationRules}

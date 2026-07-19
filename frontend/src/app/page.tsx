@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '../lib/utils';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -12,6 +13,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { Spinner } from '../components/ui/spinner';
 
 function byNewest(a: Book, b: Book) {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -182,9 +184,9 @@ export default function PublicHomePage() {
 
   if (loading) {
     return (
-      <div className="container flex flex-1 items-center justify-center py-24">
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-1 items-center justify-center py-24")}>
         <div className="flex flex-col items-center gap-4">
-          <div className="spinner" style={{ width: 40, height: 40 }} />
+          <Spinner size="xl" />
           <span className="text-sm text-muted-copy">Loading the library...</span>
         </div>
       </div>
@@ -193,7 +195,7 @@ export default function PublicHomePage() {
 
   if (!books.length) {
     return (
-      <div className="container py-12">
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12")}>
         <Card className="mx-auto max-w-2xl p-8 text-center">
           <h1 className="font-serif text-3xl font-medium text-foreground">Books Library</h1>
           <p className="mt-2 text-base text-muted-copy">The catalog is empty right now.</p>
@@ -213,7 +215,7 @@ export default function PublicHomePage() {
   }
 
   return (
-    <div className="container">
+    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
       <div className="grid gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] items-start">
       <main className="flex flex-col gap-6">
         <Card className="relative overflow-hidden p-6 lg:p-8">

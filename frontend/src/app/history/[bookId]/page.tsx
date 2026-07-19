@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '../../../lib/utils';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -118,7 +119,7 @@ export default function BookHistoryPage() {
 
   if (!user) {
     return (
-      <div className="container max-w-5xl mx-auto flex flex-1 items-center justify-center py-24">
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto flex flex-1 items-center justify-center py-24")}>
         <Card className="mx-auto max-w-md p-8 text-center">
           <h1 className="font-serif text-2xl font-medium text-foreground">Book History</h1>
           <p className="mt-2 text-sm text-muted-copy">Sign in to view your reading history.</p>
@@ -131,7 +132,7 @@ export default function BookHistoryPage() {
   }
 
   return (
-    <div className="container max-w-5xl mx-auto py-8">
+    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto py-8")}>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2 gap-1">
         <Link href="/history">
           <ChevronLeft className="size-4" />

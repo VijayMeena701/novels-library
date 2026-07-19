@@ -1,11 +1,14 @@
 "use client";
 
+import { cn } from '../../lib/utils';
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "../../utils/api";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
+import { Spinner } from "../../components/ui/spinner";
 
 interface ProfileFormProps {
 	user: User;
@@ -35,11 +38,11 @@ export function ProfileForm({ user, updateUser }: ProfileFormProps) {
 	};
 
 	return (
-		<div className="container page-stack">
-			<div className="page-header">
+		<div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
+			<div className="flex items-end justify-between gap-4 py-1">
 				<div>
-					<h1 className="page-title">Settings</h1>
-					<p className="page-subtitle">Manage your profile and preferences.</p>
+					<h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Settings</h1>
+					<p className="text-copy max-w-[720px]">Manage your profile and preferences.</p>
 				</div>
 				<Button variant="secondary" onClick={() => router.push("/profile")}>
 					Back to Profile
@@ -95,7 +98,7 @@ export function ProfileForm({ user, updateUser }: ProfileFormProps) {
 						</div>
 
 						<Button type="submit" disabled={saving}>
-							{saving ? <span className="spinner" /> : "Save Profile"}
+							{saving ? <Spinner size="sm" /> : "Save Profile"}
 						</Button>
 					</CardContent>
 				</Card>

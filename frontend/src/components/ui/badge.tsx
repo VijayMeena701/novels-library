@@ -12,9 +12,12 @@ const badgeVariants = cva(
         reading: 'border-[#c7dbfb] bg-[#edf4ff] text-[#2f5f9e]',
         completed: 'border-[#c7e8d0] bg-[#ecf8ef] text-[#207346]',
         hold: 'border-[#f2d7a5] bg-[#fff5df] text-[#9b5a10]',
+        pending: 'border-[#f2d7a5] bg-[#fff5df] text-[#9b5a10]',
         dropped: 'border-[#f3c7bf] bg-[#fff0ee] text-[#a73b2f]',
+        failed: 'border-[#f3c7bf] bg-[#fff0ee] text-[#a73b2f]',
         planning: 'border-[#d8d1ed] bg-[#f0eef8] text-[#5c517e]',
-        processing: 'border-[#c8d5eb] bg-primary-soft text-[#31517d]',
+        processing: 'border-[#c8d5eb] bg-primary-soft text-[#31517d] animate-pulse',
+        requires_manual_intervention: 'border-[#fed7aa] bg-[#fff7ed] text-[#9a3412]',
       },
     },
     defaultVariants: {

@@ -87,7 +87,7 @@ describe('BooksPage', () => {
     mockCatalogApis();
     render(<BooksPage />);
 
-    expect(document.querySelector('.spinner')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Lord of the Mysteries' })).toBeInTheDocument();

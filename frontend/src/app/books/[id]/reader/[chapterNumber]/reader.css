@@ -1,0 +1,82 @@
+
+
+.reader-theme-dark{
+	--reader-bg: #10131a;
+	--reader-text: #ece7dc;
+	--reader-border: #2f3440;
+	--reader-surface: #181d27;
+	--reader-surface-hover: #222938;
+	--reader-muted: #a59c8d;
+	--reader-accent: #d08a48;
+	font-family: var(--font-serif);
+}
+
+.reader-theme-light{
+	--reader-bg: #fffdf8;
+	--reader-text: #24211d;
+	--reader-border: #dfd6c8;
+	--reader-surface: #fffaf1;
+	--reader-surface-hover: #f2ecdf;
+	--reader-muted: #756d62;
+	--reader-accent: #405f8f;
+	font-family: var(--font-sans);
+}
+
+.reader-theme-sepia{
+	--reader-bg: #f7f0df;
+	--reader-text: #5c4d3b;
+	--reader-border: #e4dac6;
+	--reader-surface: #fff8e8;
+	--reader-surface-hover: #efe5d0;
+	--reader-muted: #8b7b65;
+	--reader-accent: #9b5b36;
+	font-family: var(--font-serif);
+}
+
+.reader-content{
+	color: var(--reader-text);
+	font-family: inherit;
+	line-break: anywhere;
+	--reader-highlight-paragraph: #f5d67a;
+	--reader-highlight-word: #f59e0b;
+	--reader-sentence-opacity: 0.2;
+}
+
+.reader-content p, .reader-content li, .reader-content blockquote, .reader-content h1, .reader-content h2, .reader-content h3, .reader-content h4{
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	scroll-margin-top: 7rem;
+	transition:
+		background-color var(--transition),
+		box-shadow var(--transition);
+}
+
+.reader-content p:hover, .reader-content li:hover, .reader-content blockquote:hover{
+	background: color-mix(in srgb, var(--reader-accent) 9%, transparent);
+}
+
+.reader-speaking-block{
+	background: color-mix(in srgb, var(--reader-highlight-paragraph) 32%, transparent);
+	box-shadow: -5px 0 0 var(--reader-highlight-paragraph);
+}
+
+.reader-speaking-sentence{
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--reader-highlight-word) 55%, transparent);
+	background: color-mix(in srgb, var(--reader-highlight-word) calc(var(--reader-sentence-opacity) * 100%), transparent);
+}
+
+.reader-speaking-word{
+	background: color-mix(in srgb, var(--reader-highlight-word) 55%, transparent);
+	border-radius: 0.28em;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--reader-highlight-word) 75%, transparent);
+	padding: 0 0.06em;
+}
+
+.reader-content p{
+	margin: 0 0 1.2em;
+}
+
+.reader-content img{
+	max-width: 100%;
+	height: auto;
+}

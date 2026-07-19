@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '../../lib/utils';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -6,6 +7,9 @@ import { api, Book, BookStatus } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { BookCard } from '../../components/BookCard';
 import { CAPABILITY } from '../../utils/permissions';
+import { Button } from '../../components/ui/button';
+import { Input, Select } from '../../components/ui/input';
+import { Spinner } from '../../components/ui/spinner';
 
 export default function Dashboard() {
   const { user, loading: authLoading, hasCapability } = useAuth();
@@ -156,7 +160,7 @@ export default function Dashboard() {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
+          <Spinner size="xl" />
           <span style={{ color: 'var(--text-secondary)' }}>Loading library database...</span>
         </div>
       </div>
@@ -164,58 +168,55 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container page-stack">
-      <div className="page-header">
+    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
+      <div className="flex items-end justify-between gap-4 py-1">
         <div>
-          <h1 className="page-title">Personal Library</h1>
-          <p className="page-subtitle">
+          <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Personal Library</h1>
+          <p className="text-copy max-w-[720px]">
             Track reading status, personal notes, rereads, characters, and recall details.
           </p>
         </div>
         {hasCapability(CAPABILITY.BOOKS_CREATE) ? (
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+          <Button onClick={() => setIsModalOpen(true)}>
             + Create Catalog Book
-          </button>
+          </Button>
         ) : (
-          <Link href="/" className="btn btn-primary">
-            Browse Catalog
-          </Link>
+          <Button asChild>
+            <Link href="/">Browse Catalog</Link>
+          </Button>
         )}
       </div>
 
-      <div className="stat-grid">
-        <div className="glass-card stat-card">
-          <div className="stat-label">Total</div>
-          <div className="stat-value">{stats.total}</div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Total</div>
+          <div className="text-2xl font-extrabold">{stats.total}</div>
         </div>
-        <div className="glass-card stat-card">
-          <div className="stat-label">Reading</div>
-          <div className="stat-value">{stats.reading}</div>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Reading</div>
+          <div className="text-2xl font-extrabold">{stats.reading}</div>
         </div>
-        <div className="glass-card stat-card">
-          <div className="stat-label">Completed</div>
-          <div className="stat-value">{stats.completed}</div>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Completed</div>
+          <div className="text-2xl font-extrabold">{stats.completed}</div>
         </div>
-        <div className="glass-card stat-card">
-          <div className="stat-label">Raw Sources</div>
-          <div className="stat-value">{stats.rawReady}</div>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Raw Sources</div>
+          <div className="text-2xl font-extrabold">{stats.rawReady}</div>
         </div>
       </div>
 
-      <div className="glass-card toolbar">
+      <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated flex flex-wrap items-center gap-4 p-3.5">
         <div style={{ flex: 1, minWidth: '280px' }}>
-          <input 
-            type="text" 
-            className="form-input" 
+          <Input type="text" 
+             
             placeholder="Search title, author, genre, notes, characters..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-          />
+         />
         </div>
         <div style={{ minWidth: '180px' }}>
-          <select 
-            className="form-select" 
-            value={statusFilter}
+          <Select value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">All Statuses</option>
@@ -224,54 +225,52 @@ export default function Dashboard() {
             <option value="on_hold">⏳ On Hold</option>
             <option value="dropped">🛑 Dropped</option>
             <option value="planning">📋 Planning</option>
-          </select>
+          </Select>
         </div>
       </div>
 
       {filteredBooks.length === 0 ? (
-        <div className="glass-card empty-state">
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
           <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
             {search || statusFilter !== 'all' ? 'No books match your filter query.' : 'Your reading library is empty.'}
           </p>
           {hasCapability(CAPABILITY.BOOKS_CREATE) ? (
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Button onClick={() => setIsModalOpen(true)}>
               + Create Catalog Book
-            </button>
+            </Button>
           ) : (
-            <Link href="/" className="btn btn-primary">
-              Browse Catalog
-            </Link>
+            <Button asChild>
+              <Link href="/">Browse Catalog</Link>
+            </Button>
           )}
         </div>
       ) : (
-        <div className="book-grid">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,250px))] gap-3.5">
           {filteredBooks.map((book) => (
-            <BookCard
-              key={book._id}
+            <BookCard key={book._id}
               book={book}
               href={`/books/${book._id}`}
               action={
-                <button
+                <Button variant="secondary"
+                  size="sm"
+                  className="h-[30px] min-h-0 px-2 py-1 text-[0.75rem]"
                   onClick={(e) => handleQuickIncrement(e, book)}
-                  className="btn btn-secondary"
-                  style={{ minHeight: '30px', padding: '0.25rem 0.55rem', fontSize: '0.75rem' }}
                 >
                   +1
-                </button>
+                </Button>
               }
-            />
+           />
           ))}
         </div>
       )}
 
       {/* Add Book Dialog Modal */}
       {isModalOpen && (
-        <div className="modal-backdrop">
-          <div className="glass-card modal-panel">
-            <div className="flex-between">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[8px]">
+          <div className="flex w-full max-w-[640px] max-h-[90vh] flex-col gap-5 overflow-auto rounded-lg border border-border bg-card p-5 shadow-lg">
+            <div className="flex items-center justify-between gap-4">
               <h2 style={{ fontSize: '1.5rem' }}>Create Catalog Book</h2>
-              <button 
-                onClick={() => { setIsModalOpen(false); setSubmitError(''); }}
+              <button onClick={() => { setIsModalOpen(false); setSubmitError(''); }}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
               >
                 &times;
@@ -293,97 +292,88 @@ export default function Dashboard() {
 
             <form onSubmit={handleCreateBook} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
               
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Book Web Link (Optional - for automated background scraping)</label>
-                <input 
-                  type="url" 
-                  className="form-input" 
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-copy">Book Web Link (Optional - for automated background scraping)</label>
+                <Input type="url" 
+                   
                   placeholder="https://example.com/book/title"
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
-                />
+               />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
                   If provided, our background crawler will download and archive metadata & chapters automatically.
                 </span>
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Cover Image URL (Optional)</label>
-                <input
-                  type="url"
-                  className="form-input"
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-copy">Cover Image URL (Optional)</label>
+                <Input type="url"
+                  
                   placeholder="https://example.com/covers/title.jpg"
                   value={newCoverUrl}
                   onChange={(e) => setNewCoverUrl(e.target.value)}
-                />
+               />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
                   Add this for manual entries, then use Sync Cover from the book page to cache it locally.
                 </span>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.5fr_1fr]">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Raw Source URL (Optional)</label>
-                  <input
-                    type="url"
-                    className="form-input"
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-copy">Raw Source URL (Optional)</label>
+                  <Input type="url"
+                    
                     placeholder="Original-language source URL"
                     value={newRawSourceUrl}
                     onChange={(e) => setNewRawSourceUrl(e.target.value)}
-                  />
+                 />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Raw Language</label>
-                  <input
-                    type="text"
-                    className="form-input"
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-copy">Raw Language</label>
+                  <Input type="text"
+                    
                     placeholder="Chinese"
                     value={newRawOriginalLanguage}
                     onChange={(e) => setNewRawOriginalLanguage(e.target.value)}
-                  />
+                 />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Title {newUrl ? '(Optional)' : '(Required)'}</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-copy">Title {newUrl ? '(Optional)' : '(Required)'}</label>
+                  <Input type="text" 
+                     
                     placeholder={newUrl ? 'Fetched automatically' : 'e.g. Lord of the Mysteries'}
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     required={!newUrl}
-                  />
+                 />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Author (Optional)</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-copy">Author (Optional)</label>
+                  <Input type="text" 
+                     
                     placeholder={newUrl ? 'Fetched automatically' : 'e.g. Cuttlefish'}
                     value={newAuthor}
                     onChange={(e) => setNewAuthor(e.target.value)}
-                  />
+                 />
                 </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
+                <Button type="button"
+                  variant="secondary"
                   onClick={() => { setIsModalOpen(false); setSubmitError(''); }}
                   disabled={submitting}
                 >
                   Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
+                </Button>
+                <Button type="submit"
                   disabled={submitting}
                 >
-                  {submitting ? <span className="spinner"></span> : 'Create Catalog Book'}
-                </button>
+                  {submitting ? <Spinner size="sm" /> : 'Create Catalog Book'}
+                </Button>
               </div>
             </form>
           </div>

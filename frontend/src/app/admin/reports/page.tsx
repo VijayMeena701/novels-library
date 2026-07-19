@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '../../../lib/utils';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -66,12 +67,12 @@ export default function AdminReportsPage() {
 
   if (loading) {
     return (
-      <div className="container py-12 text-center text-sm text-muted-copy">Loading reports...</div>
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted-copy")}>Loading reports...</div>
     );
   }
 
   return (
-    <div className="container py-6 md:py-8">
+    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
       <h1 className="font-serif text-2xl font-medium text-foreground mb-6">Reports & Moderation</h1>
       <Card className="divide-y divide-border overflow-hidden">
         {reports.length === 0 ? (

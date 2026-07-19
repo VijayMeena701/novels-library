@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '../../lib/utils';
 
 import { useEffect, useState, FormEvent } from 'react';
 import Link from 'next/link';
@@ -68,7 +69,7 @@ export default function RequestsPage() {
 
   if (!user) {
     return (
-      <div className="container py-12">
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12")}>
         <Card className="mx-auto max-w-2xl p-8 text-center">
           <h1 className="font-serif text-2xl font-medium text-foreground">Book Requests</h1>
           <p className="mt-2 text-sm text-muted-copy">Please log in to view and create book requests.</p>
@@ -82,12 +83,12 @@ export default function RequestsPage() {
 
   if (loading) {
     return (
-      <div className="container py-12 text-center text-sm text-muted-copy">Loading requests...</div>
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted-copy")}>Loading requests...</div>
     );
   }
 
   return (
-    <div className="container py-6 md:py-8">
+    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
       <div className="mx-auto max-w-3xl">
         <h1 className="font-serif text-2xl font-medium text-foreground mb-6">Book Requests</h1>
 

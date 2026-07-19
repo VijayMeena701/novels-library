@@ -7,10 +7,11 @@ import { api } from '../../utils/api';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
+import { Spinner } from '../../components/ui/spinner';
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex flex-1 items-center justify-center"><div className="spinner"></div></div>}>
+    <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner size="md" /></div>}>
       <LoginContent />
     </Suspense>
   );
@@ -138,7 +139,7 @@ function LoginContent() {
                 disabled={submitting}
               >
                 {submitting ? (
-                  <span className="spinner"></span>
+                  <Spinner size="sm" />
                 ) : (
                   isRegister ? 'Create Account' : 'Sign In'
                 )}

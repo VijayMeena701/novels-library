@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '../../lib/utils';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -6,6 +7,10 @@ import { api, BackgroundJob } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { CAPABILITY } from '../../utils/permissions';
 import { useToast } from '../../context/ToastContext';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Input, Textarea } from '../../components/ui/input';
+import { Spinner } from '../../components/ui/spinner';
 
 export default function ScraperMonitor() {
   const { user, hasCapability } = useAuth();
@@ -126,7 +131,7 @@ export default function ScraperMonitor() {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
+          <Spinner size="xl" />
           <span style={{ color: 'var(--text-secondary)' }}>Loading background tasks registry...</span>
         </div>
       </div>
@@ -135,72 +140,72 @@ export default function ScraperMonitor() {
 
   if (!hasCapability(CAPABILITY.JOBS_LIST)) {
     return (
-      <div className="container">
-        <div className="glass-card empty-state">
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
           <h1>Access Required</h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
             Scraper jobs, raw imports, and archive controls are catalog administration tools.
           </p>
-          <Link href="/profile" className="btn btn-secondary" style={{ marginTop: '1rem' }}>
-            Back to Profile
-          </Link>
+          <Button asChild variant="secondary" className="mt-4">
+            <Link href="/profile">Back to Profile</Link>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container page-stack">
+    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
       
       {/* Title */}
-      <div className="page-header">
+      <div className="flex items-end justify-between gap-4 py-1">
         <div>
-          <h1 className="page-title">Scraper Dashboard</h1>
-          <p className="page-subtitle">
+          <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Scraper Dashboard</h1>
+          <p className="text-copy max-w-[720px]">
             Monitor background archiving queues, track crawl progress, and manage failures.
           </p>
         </div>
-        <button className="btn btn-secondary" onClick={fetchJobs}>
+        <Button variant="secondary" onClick={fetchJobs}>
           Refresh Status
-        </button>
+        </Button>
       </div>
 
       {/* Overview Stats */}
-      <div className="stat-grid">
-        <div className="glass-card stat-card">
-          <div className="stat-label">Total Jobs</div>
-          <div className="stat-value">{jobs.length}</div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Total Jobs</div>
+          <div className="text-2xl font-extrabold">{jobs.length}</div>
         </div>
-        <div className="glass-card stat-card">
-          <div className="stat-label">Active</div>
-          <div className="stat-value" style={{ color: 'var(--info)' }}>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Active</div>
+          <div className="text-2xl font-extrabold" style={{ color: 'var(--info)' }}>
             {jobs.filter(j => j.status === 'processing' || j.status === 'pending').length}
           </div>
         </div>
-        <div className="glass-card stat-card">
-          <div className="stat-label">Completed</div>
-          <div className="stat-value" style={{ color: 'var(--success)' }}>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Completed</div>
+          <div className="text-2xl font-extrabold" style={{ color: 'var(--success)' }}>
             {jobs.filter(j => j.status === 'completed').length}
           </div>
         </div>
-        <div className="glass-card stat-card">
-          <div className="stat-label">Failed</div>
-          <div className="stat-value" style={{ color: 'var(--danger)' }}>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Failed</div>
+          <div className="text-2xl font-extrabold" style={{ color: 'var(--danger)' }}>
             {jobs.filter(j => j.status === 'failed').length}
           </div>
         </div>
-        <div className="glass-card stat-card">
-          <div className="stat-label">Needs Manual</div>
-          <div className="stat-value" style={{ color: '#b45309' }}>
+        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Needs Manual</div>
+          <div className="text-2xl font-extrabold" style={{ color: '#b45309' }}>
             {jobs.filter(j => j.status === 'requires_manual_intervention').length}
           </div>
         </div>
       </div>
 
       {/* Jobs Log Table */}
-      <div className="glass-card" style={{ overflowX: 'auto', padding: '1.5rem' }}>
+      <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated" style={{ overflowX: 'auto', padding: '1.5rem' }}>
         {jobs.length === 0 ? (
-          <div className="empty-state" style={{ padding: '2rem' }}>
+          <div className="p-12 text-center text-copy" style={{ padding: '2rem' }}>
             No background crawler jobs have been scheduled yet.
           </div>
         ) : (
@@ -243,9 +248,7 @@ export default function ScraperMonitor() {
 
                     {/* Status Badge */}
                     <td style={{ padding: '1rem' }}>
-                      <span className={`badge badge-${job.status}`}>
-                        {job.status}
-                      </span>
+                      <Badge variant={job.status}>{job.status}</Badge>
                     </td>
 
                     {/* Progress Bar */}
@@ -295,48 +298,45 @@ export default function ScraperMonitor() {
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                       {job.status === 'requires_manual_intervention' ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                          <button 
-                            className="btn btn-secondary" 
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                          <Button variant="secondary"
+                            size="sm"
                             onClick={() => handleOpenManualIntervention(job._id)}
                           >
                             Open Browser
-                          </button>
+                          </Button>
                           {job.error?.chapterNumber && job.error?.url && (
-                            <button 
-                              className="btn btn-secondary" 
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                            <Button variant="secondary"
+                              size="sm"
                               onClick={() => openChapterHtmlImport(job)}
                             >
                               Import HTML
-                            </button>
+                            </Button>
                           )}
-                          <button 
-                            className="btn btn-secondary" 
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderColor: 'rgba(180, 83, 9, 0.25)', color: '#b45309' }}
+                          <Button variant="secondary"
+                            size="sm"
+                            className="border-amber-700/25 text-amber-700"
                             onClick={() => handleRetry(job._id)}
                           >
                             Retry
-                          </button>
+                          </Button>
                         </div>
                       ) : job.status === 'failed' ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                           {job.error?.chapterNumber && job.error?.url && (
-                            <button 
-                              className="btn btn-secondary" 
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                            <Button variant="secondary"
+                              size="sm"
                               onClick={() => openChapterHtmlImport(job)}
                             >
                               Import HTML
-                            </button>
+                            </Button>
                           )}
-                          <button 
-                            className="btn btn-secondary" 
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderColor: 'rgba(239, 68, 68, 0.25)', color: 'var(--danger)' }}
+                          <Button variant="secondary"
+                            size="sm"
+                            className="border-danger/25 text-danger"
                             onClick={() => handleRetry(job._id)}
                           >
                             Retry Job
-                          </button>
+                          </Button>
                         </div>
                       ) : (
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -354,14 +354,13 @@ export default function ScraperMonitor() {
       </div>
 
       {chapterHtmlJob && (
-        <div className="modal-backdrop">
-          <div className="glass-card modal-panel" style={{ maxWidth: '720px' }}>
-            <div className="flex-between">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[8px]">
+          <div className="flex w-full max-w-[720px] max-h-[90vh] flex-col gap-5 overflow-auto rounded-lg border border-border bg-card p-5 shadow-lg">
+            <div className="flex items-center justify-between gap-4">
               <h2 style={{ fontSize: '1.4rem' }}>
                 Import {chapterHtmlJob.error?.sourceKind === 'raw' ? 'Raw ' : ''}Chapter {chapterHtmlJob.error?.chapterNumber || ''}
               </h2>
-              <button
-                onClick={() => setChapterHtmlJob(null)}
+              <button onClick={() => setChapterHtmlJob(null)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
               >
                 &times;
@@ -369,41 +368,37 @@ export default function ScraperMonitor() {
             </div>
 
             <form onSubmit={handleImportChapterHtml} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Chapter Page URL</label>
-                <input
-                  type="url"
-                  className="form-input"
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-copy">Chapter Page URL</label>
+                <Input type="url"
+                  
                   value={chapterHtmlPageUrl}
                   onChange={(e) => setChapterHtmlPageUrl(e.target.value)}
                   required
-                />
+               />
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Saved Chapter HTML</label>
-                <textarea
-                  className="form-textarea"
-                  rows={14}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-copy">Saved Chapter HTML</label>
+                <Textarea rows={14}
                   value={chapterHtmlContent}
                   onChange={(e) => setChapterHtmlContent(e.target.value)}
                   placeholder="<html>..."
                   required
-                />
+               />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+                <Button type="button"
+                  variant="secondary"
                   onClick={() => setChapterHtmlJob(null)}
                   disabled={importingChapterHtml}
                 >
                   Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={importingChapterHtml}>
+                </Button>
+                <Button type="submit" disabled={importingChapterHtml}>
                   {importingChapterHtml ? 'Importing...' : 'Save Chapter'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

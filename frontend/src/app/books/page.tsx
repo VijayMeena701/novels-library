@@ -1,4 +1,6 @@
 "use client";
+import { cn } from '../../lib/utils';
+
 
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -7,6 +9,7 @@ import { BookCard } from "../../components/BookCard";
 import { BooksFilterPanel } from "../../components/BooksFilterPanel";
 import { BooksPagination } from "../../components/BooksPagination";
 import { Card } from "../../components/ui/card";
+import { Spinner } from "../../components/ui/spinner";
 
 const READING_STATUSES: { value: BookStatus; label: string }[] = [
 	{ value: "reading", label: "Reading" },
@@ -169,11 +172,11 @@ function BooksPageContent() {
 	};
 
 	return (
-		<div className="container page-stack">
-			<div className="page-header">
+		<div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
+			<div className="flex items-end justify-between gap-4 py-1">
 				<div>
-					<h1 className="page-title">Books</h1>
-					<p className="page-subtitle">Browse and filter the full catalog.</p>
+					<h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Books</h1>
+					<p className="text-copy max-w-[720px]">Browse and filter the full catalog.</p>
 				</div>
 			</div>
 
@@ -187,13 +190,13 @@ function BooksPageContent() {
 						<Card className="p-6 text-center text-red-700">{error}</Card>
 					) : loading && !result ? (
 						<div className="flex items-center justify-center py-16">
-							<div className="spinner" />
+							<Spinner size="md" />
 						</div>
 					) : result?.books.length === 0 ? (
 						<Card className="p-6 text-center text-muted-copy">No books match your filters.</Card>
 					) : (
 						<>
-							<div className="catalog-card-grid">
+							<div className="grid grid-cols-[repeat(auto-fill,minmax(200px,230px))] gap-3">
 								{result?.books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
 							</div>
 							{result && (
@@ -219,7 +222,7 @@ export default function BooksPage() {
 		<Suspense
 			fallback={
 				<div className="flex items-center justify-center py-16">
-					<div className="spinner" />
+					<Spinner size="md" />
 				</div>
 			}
 		>

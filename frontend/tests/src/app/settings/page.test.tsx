@@ -15,7 +15,7 @@ describe('SettingsPage', () => {
         <SettingsPage />
       </AuthProvider>,
     );
-    expect(document.querySelector('.spinner')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
   });
 
   it('renders the profile form when authenticated', async () => {

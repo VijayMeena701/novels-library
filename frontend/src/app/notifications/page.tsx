@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '../../lib/utils';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -54,7 +55,7 @@ export default function NotificationsPage() {
 
   if (!user) {
     return (
-      <div className="container py-12">
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12")}>
         <Card className="mx-auto max-w-2xl p-8 text-center">
           <h1 className="font-serif text-2xl font-medium text-foreground">Notifications</h1>
           <p className="mt-2 text-sm text-muted-copy">Please log in to view your notifications.</p>
@@ -68,12 +69,12 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className="container py-12 text-center text-sm text-muted-copy">Loading notifications...</div>
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted-copy")}>Loading notifications...</div>
     );
   }
 
   return (
-    <div className="container py-6 md:py-8">
+    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between gap-4 mb-6">
           <h1 className="font-serif text-2xl font-medium text-foreground">Notifications</h1>
