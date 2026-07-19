@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import supertest from 'supertest';
 import { buildApp } from '../helpers/app.js';
 import { createUser } from '../fixtures/users.js';
-import { Book } from '@/models/Novel.js';
+import { Book } from '@/models/Book.js';
 import { Genre } from '@/models/Genre.js';
 import { PublicationStatus } from '@/models/PublicationStatus.js';
 import { Author } from '@/models/Author.js';

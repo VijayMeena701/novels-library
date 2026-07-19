@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { Book } from '../models/Novel';
+import { Book } from '../models/Book';
 import { PronunciationRule } from '../models/PronunciationRule';
 
 interface PronunciationRulePatch {

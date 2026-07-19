@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { updateReadingSessionHandler } from '@/controllers/novelController';
+import { updateReadingSessionHandler } from '@/controllers/bookController';
 import { CAPABILITY, requireCapability } from '@/services/rbac';
 
 export async function protectedBookReadingSessionDetailRoutes(fastify: FastifyInstance) {

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { voteBookHandler } from '@/controllers/novelController';
+import { voteBookHandler } from '@/controllers/bookController';
 import { CAPABILITY, requireCapability } from '@/services/rbac';
 
 export async function protectedBookVoteRoutes(fastify: FastifyInstance) {

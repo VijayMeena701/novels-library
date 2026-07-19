@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
-import { Book } from '../models/Novel';
+import { Book } from '../models/Book';
 import { createCoverImageReadStream, getCoverImageSize, syncBookCoverImage } from '../services/coverImage';
 import { hasCapability, CAPABILITY } from '../services/rbac';
 

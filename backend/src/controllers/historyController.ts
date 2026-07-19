@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
 import { ChapterVisit } from '../models/ChapterVisit';
-import { UserBook } from '../models/UserNovel';
+import { UserBook } from '../models/UserBook';
 
 const DEFAULT_HISTORY_LIMIT = 50;
 

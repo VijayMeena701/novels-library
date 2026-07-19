@@ -3,7 +3,7 @@ import {
   getBookHandler,
   updateBookHandler,
   deleteBookHandler,
-} from '@/controllers/novelController';
+} from '@/controllers/bookController';
 import { CAPABILITY, requireCapability } from '@/services/rbac';
 
 export async function protectedBookDetailRoutes(fastify: FastifyInstance) {

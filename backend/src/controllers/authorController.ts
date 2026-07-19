@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
 import { Author } from '../models/Author';
-import { Book } from '../models/Novel';
+import { Book } from '../models/Book';
 import { findOrCreateAuthor } from '../services/authors';
 import { hasCapability, CAPABILITY } from '../services/rbac';
 

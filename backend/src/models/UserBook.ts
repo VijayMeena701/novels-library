@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { BookStatus, normalizeFilterKey } from './Novel';
+import { BookStatus, normalizeFilterKey } from './Book';
 
 export interface IUserBook extends Document {
   userId: mongoose.Types.ObjectId;

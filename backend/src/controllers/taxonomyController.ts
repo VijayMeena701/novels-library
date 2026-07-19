@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose from 'mongoose';
 import { Genre } from '../models/Genre';
 import { PublicationStatus } from '../models/PublicationStatus';
-import { Book, normalizeFilterKey } from '../models/Novel';
+import { Book, normalizeFilterKey } from '../models/Book';
 import { backfillBookTaxonomy } from '../services/taxonomy';
 import { hasCapability, CAPABILITY } from '../services/rbac';
 

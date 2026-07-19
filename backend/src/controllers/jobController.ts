@@ -1,9 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
 import { BackgroundJob, JobType } from '../models/BackgroundJob';
-import { Book } from '../models/Novel';
+import { Book } from '../models/Book';
 import { hasCapability, CAPABILITY } from '../services/rbac';
-import { BookArchiveService, SourceKind, isManualInterventionError } from '../services/novelArchive';
+import { BookArchiveService, SourceKind, isManualInterventionError } from '../services/bookArchive';
 import { openManualBrowserSession } from '../services/scraper';
 
 const VALID_JOB_TYPES = new Set(['scrape_metadata', 'scrape_chapters', 'scrape_raw_metadata', 'scrape_raw_chapters']);

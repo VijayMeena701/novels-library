@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Book } from '@/models/Novel.js';
+import { Book } from '@/models/Book.js';
 import { ChapterContent } from '@/models/ChapterContent.js';
 
 export async function createSampleBook(overrides: Record<string, unknown> = {}) {

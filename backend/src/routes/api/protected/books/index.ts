@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import {
   listBooksHandler,
   createBookHandler,
-} from '@/controllers/novelController';
+} from '@/controllers/bookController';
 import { CAPABILITY, requireCapability } from '@/services/rbac';
 import { protectedBookDetailRoutes } from './detail';
 import { protectedBookReportRoutes } from './report';

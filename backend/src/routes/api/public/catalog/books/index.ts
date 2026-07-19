@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { listCatalogBooksHandler } from '@/controllers/novelController';
+import { listCatalogBooksHandler } from '@/controllers/bookController';
 import { CAPABILITY, requireCapability } from '@/services/rbac';
 
 export async function publicCatalogBookRoutes(fastify: FastifyInstance) {

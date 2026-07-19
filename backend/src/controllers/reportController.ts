@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
 import { Report } from '../models/Report';
-import { Book } from '../models/Novel';
+import { Book } from '../models/Book';
 import { hasCapability, CAPABILITY } from '../services/rbac';
 
 const VALID_REASONS = new Set(['spam', 'inappropriate_content', 'copyright', 'incorrect_metadata', 'other']);

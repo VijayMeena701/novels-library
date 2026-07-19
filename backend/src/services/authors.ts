@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Author, IAuthor } from '../models/Author';
-import { normalizeFilterKey } from '../models/Novel';
+import { normalizeFilterKey } from '../models/Book';
 
 export interface AuthorInput {
   author?: string;

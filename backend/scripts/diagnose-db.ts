@@ -16,15 +16,10 @@ async function main() {
 
   const keyNames = [
     'books',
-    'novels',
     'userbooks',
-    'usernovels',
     'bookcontents',
-    'chaptercontents',
     'rawbookcontents',
-    'rawchaptercontents',
     'bookvisits',
-    'chaptervisits',
     'migrations',
     'users',
     'roles',

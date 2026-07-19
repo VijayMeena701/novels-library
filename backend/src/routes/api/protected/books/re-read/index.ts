@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import {
   listReadingSessionsHandler,
   startReadingSessionHandler,
-} from '@/controllers/novelController';
+} from '@/controllers/bookController';
 import { CAPABILITY, requireCapability } from '@/services/rbac';
 import { protectedBookReadingSessionDetailRoutes } from './sessions';
 

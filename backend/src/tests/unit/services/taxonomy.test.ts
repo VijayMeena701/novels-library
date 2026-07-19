@@ -9,7 +9,7 @@ import {
 } from '@/services/taxonomy.js';
 import { Genre } from '@/models/Genre.js';
 import { PublicationStatus } from '@/models/PublicationStatus.js';
-import { Book } from '@/models/Novel.js';
+import { Book } from '@/models/Book.js';
 
 describe('taxonomy service', () => {
   describe('findOrCreateGenre', () => {

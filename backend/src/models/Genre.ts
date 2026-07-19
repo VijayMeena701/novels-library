@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { normalizeFilterKey } from './Novel';
+import { normalizeFilterKey } from './Book';
 
 export interface IGenre extends Document {
   name: string;

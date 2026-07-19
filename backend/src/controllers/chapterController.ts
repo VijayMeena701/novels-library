@@ -1,11 +1,11 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
-import { Book } from '../models/Novel';
+import { Book } from '../models/Book';
 import { ChapterContent } from '../models/ChapterContent';
 import { RawChapterContent } from '../models/RawChapterContent';
 import { ReadingSession } from '../models/ReadingSession';
 import { ChapterVisit } from '../models/ChapterVisit';
-import { UserBook } from '../models/UserNovel';
+import { UserBook } from '../models/UserBook';
 import { translateChapterHtml } from '../services/translation';
 import { hasCapability, CAPABILITY } from '../services/rbac';
 
