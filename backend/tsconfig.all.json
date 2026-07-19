@@ -8,8 +8,6 @@
   "include": [
     "src/**/*",
     "scripts/**/*.ts",
-    "migrations/**/*.ts",
-    "migrate.ts",
     "eslint.config.ts",
     "prettier.config.ts"
   ],

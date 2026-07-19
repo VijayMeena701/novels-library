@@ -226,7 +226,6 @@ export function requireCapability(
   capability: string,
   options: { allowAnonymous?: boolean; audit?: boolean } = {},
 ): (request: FastifyRequest, reply: FastifyReply) => Promise<void> {
-  console.log(capability, "capability")
   const { allowAnonymous = false, audit = true } = options;
   return async function rbacPreHandler(request: FastifyRequest, reply: FastifyReply) {
     const parsed = parseCapability(capability);
