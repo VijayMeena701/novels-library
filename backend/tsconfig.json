@@ -17,6 +17,7 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],
+  "exclude": ["src/tests/**", "src/**/*.test.ts"],
   "tsc-alias": {
     "resolveFullPaths": true,
     "resolveFullExtension": ".js"
