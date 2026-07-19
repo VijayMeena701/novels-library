@@ -10,11 +10,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./test/setup.ts'],
+    setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      exclude: ['node_modules/', '.next/', 'test/'],
+      exclude: ['node_modules/', '.next/', 'tests/'],
     },
   },
   resolve: {
