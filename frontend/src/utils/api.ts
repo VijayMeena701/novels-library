@@ -64,6 +64,19 @@ export interface AdminGroup {
 	capabilities: { _id: string; resource: { key: string; name: string }; action: { key: string; name: string } }[];
 }
 
+export interface AdminCapability {
+	_id: string;
+	resource: { _id: string; key: string; name: string };
+	action: { _id: string; key: string; name: string };
+}
+
+export interface AdminUserCreatePayload {
+	username: string;
+	email: string;
+	password: string;
+	roleIds?: string[];
+}
+
 export interface AdminAction {
 	_id: string;
 	key: string;
@@ -574,6 +587,10 @@ class ApiClient {
 		return this.request<{ users: number; roles: number; groups: number; capabilities: number; resources: number; auditLogs: number }>("/admin");
 	}
 
+	async listAdminCapabilities() {
+		return this.request<{ capabilities: AdminCapability[] }>("/admin/capabilities");
+	}
+
 	async listAdminUsers(query: { search?: string; page?: number; limit?: number } = {}) {
 		const params = new URLSearchParams();
 		if (query.search) params.set("search", query.search);
@@ -581,6 +598,10 @@ class ApiClient {
 		if (query.limit !== undefined) params.set("limit", String(query.limit));
 		const suffix = params.toString() ? `?${params.toString()}` : "";
 		return this.request<{ users: AdminUser[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/users${suffix}`);
+	}
+
+	async createAdminUser(payload: AdminUserCreatePayload) {
+		return this.request<{ user: AdminUser }>("/admin/users", { method: "POST", body: JSON.stringify(payload) });
 	}
 
 	async updateAdminUser(id: string, payload: AdminUserUpdate) {

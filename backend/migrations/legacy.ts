@@ -261,6 +261,12 @@ export async function runLegacyMigration(db: any, dryRun: boolean): Promise<void
     return;
   }
 
+  const targetBooksCount = await db.collection('books').countDocuments().catch(() => 0);
+  if (targetBooksCount > 0) {
+    console.log(`[Safety] Target collection 'books' already has ${targetBooksCount} document(s). Legacy migration skipped to prevent overwriting existing data.`);
+    return;
+  }
+
   console.log(`Found ${oldNovels.length} legacy novels; dropping and rebuilding target collections...`);
   await dropTargetCollections();
   const oldUserNovels = await db.collection('usernovels').find().toArray();

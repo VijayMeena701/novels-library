@@ -15,7 +15,7 @@ import { healthRoutes } from './routes/health';
 import { startWorker, stopWorker } from './worker/jobProcessor';
 import { stopNotificationWorker } from './services/notificationQueue';
 import { closeBrowser } from './services/scraper';
-import { seedRoles } from './services/seed';
+import { syncPolicies } from './services/casbin';
 
 const isProduction = config.nodeEnv === 'production';
 
@@ -163,7 +163,7 @@ await app.register(healthRoutes, { prefix: '/health' });
 const start = async () => {
   try {
     await connectDB();
-    await seedRoles();
+    await syncPolicies();
     startWorker();
 
     const port = config.port;

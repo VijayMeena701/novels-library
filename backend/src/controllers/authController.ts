@@ -102,6 +102,11 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
 
   try {
     const user = await User.findOne({ email: email.toLowerCase() });
+
+    if(!user) {
+      return reply.status(404).send({ error: 'User not found.' });
+    }
+
     if (!user?.passwordHash) {
       return reply.status(401).send({ error: 'Invalid email or password.' });
     }

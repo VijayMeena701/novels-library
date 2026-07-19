@@ -3,9 +3,6 @@ import process from 'node:process';
 import mongoose from 'mongoose';
 import { config } from '../src/config/index';
 import { seedRbac } from '../src/services/seed';
-import { runLegacyMigration } from '../migrations/legacy';
-import { renameChapterTerminology } from '../migrations/001-unit-to-chapter';
-import { renameRbacTerminology } from '../migrations/002-rbac-unit-to-chapter';
 
 const MONGODB_URI = config.mongodbUri;
 
@@ -29,27 +26,6 @@ const MIGRATIONS: Migration[] = [
       }
       await seedRbac();
     },
-    supportsDryRun: true,
-  },
-  {
-    name: 'legacy',
-    marker: 'legacy',
-    description: 'Migrate legacy novels/usernovels/chapter collections to books/userbooks/bookcontents',
-    run: runLegacyMigration,
-    supportsDryRun: false,
-  },
-  {
-    name: 'unit-to-chapter',
-    marker: 'unit-to-chapter',
-    description: 'Rename unit terminology to chapter terminology in data collections',
-    run: renameChapterTerminology,
-    supportsDryRun: true,
-  },
-  {
-    name: 'rbac-unit-to-chapter',
-    marker: 'rbac-unit-to-chapter',
-    description: 'Rename RBAC units resource to chapters',
-    run: renameRbacTerminology,
     supportsDryRun: true,
   },
 ];

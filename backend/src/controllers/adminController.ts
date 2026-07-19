@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { User } from '../models/User';
 import { Role } from '../models/Role';
 import { AccessGroup } from '../models/AccessGroup';
@@ -359,5 +360,71 @@ export async function listAuditLogsHandler(request: FastifyRequest, reply: Fasti
   } catch (err: any) {
     request.log.error(err);
     return reply.status(500).send({ error: 'Server error listing audit logs.' });
+  }
+}
+
+export async function listCapabilitiesHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const capabilities = await Capability.find()
+      .populate('resource', 'key name')
+      .populate('action', 'key name')
+      .sort({ 'resource.key': 1, 'action.key': 1 })
+      .lean();
+    return reply.send({ capabilities });
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error listing capabilities.' });
+  }
+}
+
+export async function createAdminUserHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const { username, email, password, roleIds } = request.body as any;
+
+    if (!username || !email || !password) {
+      return reply.status(400).send({ error: 'Username, email, and password are required.' });
+    }
+
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return reply.status(400).send({ error: 'A user with this email already exists.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    let roles: mongoose.Types.ObjectId[] = [];
+    if (Array.isArray(roleIds) && roleIds.length > 0) {
+      roles = roleIds.map((id: string) => new mongoose.Types.ObjectId(id));
+    } else {
+      const defaultRole = await Role.findOne({ key: 'user' }).lean();
+      if (defaultRole) {
+        roles = [new mongoose.Types.ObjectId(defaultRole._id.toString())];
+      }
+    }
+
+    const user = await User.create({
+      username,
+      email: email.toLowerCase(),
+      passwordHash,
+      authProvider: 'password',
+      roles,
+      isVerified: true,
+    });
+
+    await syncPolicies();
+
+    const created = await User.findById(user._id)
+      .select('-passwordHash')
+      .populate('roles', 'key name')
+      .lean();
+
+    return reply.status(201).send({ user: created });
+  } catch (err: any) {
+    request.log.error(err);
+    if (err?.code === 11000 || err?.message?.includes('duplicate key')) {
+      return reply.status(400).send({ error: 'A user with this email already exists.' });
+    }
+    return reply.status(500).send({ error: 'Server error creating user.' });
   }
 }
