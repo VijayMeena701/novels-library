@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type ReaderTheme = 'dark' | 'light' | 'sepia';
+export type ReaderTheme = 'paper' | 'sepia' | 'forest' | 'night' | 'amoled';
 export type ReaderWidth = 'narrow' | 'medium' | 'wide';
 export type ReaderHighlightMode = 'off' | 'paragraph' | 'word';
 export type ReaderAutoScrollBehavior = 'smooth' | 'instant';
@@ -38,7 +38,7 @@ export interface IUserSettings extends Document {
 
 export function createDefaultReaderSettings(): IReaderSettings {
   return {
-    theme: 'sepia',
+    theme: 'paper',
     fontSize: 18,
     width: 'narrow',
     autoNext: false,
@@ -70,7 +70,7 @@ const ReaderPortalPositionSchema = new Schema<IReaderPortalPosition>(
 
 const ReaderSettingsSchema = new Schema<IReaderSettings>(
   {
-    theme: { type: String, enum: ['dark', 'light', 'sepia'], default: 'sepia' },
+    theme: { type: String, enum: ['paper', 'sepia', 'forest', 'night', 'amoled'], default: 'paper' },
     fontSize: { type: Number, default: 18, min: 12, max: 32 },
     width: { type: String, enum: ['narrow', 'medium', 'wide'], default: 'narrow' },
     autoNext: { type: Boolean, default: false },

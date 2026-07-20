@@ -10,7 +10,7 @@ import {
   UserSettings,
 } from '../models/UserSettings';
 
-const READER_THEMES: ReaderTheme[] = ['dark', 'light', 'sepia'];
+const READER_THEMES: ReaderTheme[] = ['paper', 'sepia', 'forest', 'night', 'amoled'];
 const READER_WIDTHS: ReaderWidth[] = ['narrow', 'medium', 'wide'];
 const READER_HIGHLIGHT_MODES: ReaderHighlightMode[] = ['off', 'paragraph', 'word'];
 const READER_AUTOSCROLL_BEHAVIORS: ReaderAutoScrollBehavior[] = ['smooth', 'instant'];

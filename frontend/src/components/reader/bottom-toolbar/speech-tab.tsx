@@ -13,12 +13,16 @@ function formatMultiplier(value: number): string {
 
 export function SpeechTab(props: ReaderBottomToolbarProps) {
 	return (
-		<div className="flex flex-col gap-4">
-			<Field label="Voice Language Profile">
+		<div className="flex flex-col gap-6">
+			<div>
+				<h2 className="text-sm font-semibold text-[var(--reader-text)]">Listening controls</h2>
+				<p className="mt-1 text-xs leading-relaxed text-[var(--reader-muted)]">Tune the voice and optional highlights without leaving the chapter.</p>
+			</div>
+			<Field label="Voice language profile" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
 				<Select
 					value={props.voiceURI}
 					onChange={(event) => props.onVoiceChange(event.target.value)}
-					className="min-h-10 text-xs"
+					className="min-h-10 border-[var(--reader-border)] bg-[var(--reader-bg)] text-xs text-[var(--reader-text)] focus:border-[var(--reader-accent)] focus:ring-[var(--reader-accent)]"
 				>
 					<option value="">System Default Voice</option>
 					{props.voices.map((voice) => (
@@ -56,7 +60,7 @@ export function SpeechTab(props: ReaderBottomToolbarProps) {
 				onChange={props.onAutoOpenNextChange}
 			/>
 
-			<Field label="Highlight Mode">
+			<Field label="Highlight mode" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
 				<SegmentedControl
 					options={["off", "paragraph", "word"]}
 					value={props.highlightMode}
@@ -65,7 +69,7 @@ export function SpeechTab(props: ReaderBottomToolbarProps) {
 			</Field>
 
 			{props.highlightMode !== "off" && (
-				<div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-muted p-3">
+				<div className="flex flex-col gap-3 rounded-xl border border-[var(--reader-border)] bg-[var(--reader-bg)] p-3">
 					<ToggleRow
 						label="Underline / Highlight paragraph"
 						checked={props.highlightParagraph}
@@ -94,8 +98,8 @@ export function SpeechTab(props: ReaderBottomToolbarProps) {
 			/>
 
 			{props.autoScrollDuringSpeech && (
-				<div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-muted p-3">
-					<Field label="Scroll smoothness">
+				<div className="flex flex-col gap-3 rounded-xl border border-[var(--reader-border)] bg-[var(--reader-bg)] p-3">
+					<Field label="Scroll smoothness" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
 						<SegmentedControl
 							options={["smooth", "instant"]}
 							value={props.autoScrollBehavior}
@@ -118,7 +122,7 @@ export function SpeechTab(props: ReaderBottomToolbarProps) {
 				<button
 					type="button"
 					onClick={props.onOpenPronunciationRules}
-					className="w-full rounded-xl bg-surface-muted px-3 py-2.5 text-xs font-bold text-foreground hover:bg-surface transition"
+					className="w-full rounded-xl border border-[var(--reader-border)] bg-[var(--reader-bg)] px-3 py-2.5 text-xs font-medium text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]"
 				>
 					Pronunciation &amp; TTS Rules
 				</button>

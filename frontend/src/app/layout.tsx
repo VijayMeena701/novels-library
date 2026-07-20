@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
+import { ReaderThemeProvider } from '../context/ReaderThemeContext';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import Header from '../components/Header';
 
@@ -26,12 +27,14 @@ export default function RootLayout({
       <body className="min-h-screen">
         <ToastProvider>
           <AuthProvider>
-            <ErrorBoundary name="Navigation">
-              <Header />
-            </ErrorBoundary>
-            <main className="flex min-h-[calc(100vh-4rem)] flex-col">
-              <ErrorBoundary name="Page content">{children}</ErrorBoundary>
-            </main>
+            <ReaderThemeProvider>
+              <ErrorBoundary name="Navigation">
+                <Header />
+              </ErrorBoundary>
+              <main className="flex min-h-[calc(100vh-4rem)] flex-col">
+                <ErrorBoundary name="Page content">{children}</ErrorBoundary>
+              </main>
+            </ReaderThemeProvider>
           </AuthProvider>
         </ToastProvider>
       </body>

@@ -5,6 +5,7 @@ import { cn } from '../../../../../lib/utils';
 import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, List, Settings2 } from "lucide-react";
 import {
 	api,
 	type Book,
@@ -19,9 +20,12 @@ import {
 	type SourceKind,
 } from "../../../../../utils/api";
 import { useAuth } from "../../../../../context/AuthContext";
+import { useReaderTheme } from "../../../../../context/ReaderThemeContext";
 import { CAPABILITY } from "../../../../../utils/permissions";
+import { applyReaderThemeCssVariables, normalizeReaderTheme } from "../../../../../lib/reader-theme";
 import { SpeechWidget } from "../../../../../components/reader/SpeechWidget";
 import { ReaderBottomToolbar } from "../../../../../components/reader/ReaderBottomToolbar";
+import { ReaderControlBar } from "../../../../../components/reader/ReaderControlBar";
 import { PronunciationRulesModal } from "../../../../../components/reader/PronunciationRulesModal";
 import { Button } from "../../../../../components/ui/button";
 import { Input, Textarea } from "../../../../../components/ui/input";
@@ -208,6 +212,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { user, loading: authLoading, hasCapability } = useAuth();
+	const { setTheme: setReaderTheme } = useReaderTheme();
 
 	const chapterNumber = parseInt(chNumStr, 10);
 	const shouldResumeTtsFromRoute = searchParams.get("tts") === "1";
@@ -226,7 +231,13 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const [chapterHtmlContent, setChapterHtmlContent] = useState("");
 	const [importingChapterHtml, setImportingChapterHtml] = useState(false);
 
-	const [theme, setTheme] = useState<ReaderTheme>("sepia");
+	const [theme, setTheme] = useState<ReaderTheme>("paper");
+
+	useEffect(() => {
+		setReaderTheme(theme);
+		return () => setReaderTheme(null);
+	}, [theme, setReaderTheme]);
+
 	const [fontSize, setFontSize] = useState<number>(18);
 	const [readWidth, setReadWidth] = useState<ReaderWidth>("narrow");
 	const [autoOpenNext, setAutoOpenNext] = useState(true);
@@ -409,7 +420,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				const settings = await api.getSettings();
 				const reader = settings.reader;
 				if (reader) {
-					if (reader.theme) setTheme(reader.theme);
+					if (reader.theme) setTheme(normalizeReaderTheme(reader.theme));
 					if (reader.fontSize) setFontSize(reader.fontSize);
 					if (reader.width) setReadWidth(reader.width);
 					if (reader.autoNext !== undefined) setAutoOpenNext(reader.autoNext);
@@ -1357,106 +1368,93 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	}
 
 	const widthStyle = {
-		narrow: "650px",
-		medium: "850px",
-		wide: "1120px",
+		narrow: "680px",
+		medium: "720px",
+		wide: "760px",
 	}[readWidth];
 	const readerContentStyle = {
 		fontSize: `${fontSize}px`,
 	} as CSSProperties;
 
-	type ReaderThemeStyle = CSSProperties & { [key: string]: string };
-
-	const readerThemeStyle: Record<ReaderTheme, ReaderThemeStyle> = {
-		dark: {
-			"--reader-bg": "#10131a",
-			"--reader-text": "#ece7dc",
-			"--reader-border": "#2f3440",
-			"--reader-surface": "#181d27",
-			"--reader-surface-hover": "#222938",
-			"--reader-muted": "#a59c8d",
-			"--reader-accent": "#d08a48",
-		},
-		light: {
-			"--reader-bg": "#fffdf8",
-			"--reader-text": "#24211d",
-			"--reader-border": "#dfd6c8",
-			"--reader-surface": "#fffaf1",
-			"--reader-surface-hover": "#f2ecdf",
-			"--reader-muted": "#756d62",
-			"--reader-accent": "#405f8f",
-		},
-		sepia: {
-			"--reader-bg": "#f7f0df",
-			"--reader-text": "#5c4d3b",
-			"--reader-border": "#e4dac6",
-			"--reader-surface": "#fff8e8",
-			"--reader-surface-hover": "#efe5d0",
-			"--reader-muted": "#8b7b65",
-			"--reader-accent": "#9b5b36",
-		},
-	};
+	const readerThemeStyle = applyReaderThemeCssVariables(theme) as CSSProperties;
+	const isSerif = theme !== "paper";
+	const totalChapters = isRawReader ? book.rawChaptersTotal : book.translatedChaptersTotal;
+	const readingTimeMinutes = chapter.content
+		? Math.max(1, Math.ceil(chapter.content.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length / 250))
+		: 0;
 
 	return (
 		<>
-			<div className={cn("flex min-h-screen flex-col", theme === "light" ? "font-sans" : "font-serif")} style={readerThemeStyle[theme]}>
-				<div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--reader-border)] bg-[var(--reader-bg)]/90 px-5 py-2.5 backdrop-blur-[10px] max-[860px]:gap-2 max-[860px]:px-3 max-[860px]:py-[0.65rem]">
-					<div className="flex w-full flex-wrap items-center justify-between gap-2">
-						<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setIsCatalogOpen(true)}>
-							Catalogue
-						</button>
-						<Link href={`/books/${bookId}`} className="text-[0.88rem] font-extrabold text-[var(--reader-text)] no-underline">
-							← {book.title.length > 24 ? `${book.title.substring(0, 24)}...` : book.title}
+			<div className={cn("reader-theme relative flex min-h-screen flex-col bg-[var(--reader-bg)] text-[var(--reader-text)]", isSerif ? "font-serif" : "font-sans")} style={readerThemeStyle}>
+				<div className="sticky top-0 z-50 border-b border-[var(--reader-border)] bg-[var(--reader-bg)]/95 px-4 py-3 backdrop-blur-[14px] max-[860px]:px-3">
+					<div className="mx-auto flex w-full max-w-[1120px] items-center justify-between gap-4">
+						<Link
+							href={`/books/${bookId}`}
+							className="inline-flex min-w-0 items-center gap-2 text-[0.78rem] font-medium text-[var(--reader-muted)] no-underline transition hover:text-[var(--reader-text)]"
+						>
+							<ArrowLeft className="size-4 shrink-0" />
+							<span className="hidden sm:inline">Back to book</span>
 						</Link>
-						<div className="flex flex-wrap items-center justify-end gap-2">
-							<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={handlePlaySpeech}>
-								Listen
+						<span className="min-w-0 truncate text-center text-[0.78rem] font-medium text-[var(--reader-muted)]">{book.title}</span>
+						<div className="flex shrink-0 items-center gap-1.5">
+							<button
+								type="button"
+								onClick={() => setIsCatalogOpen(true)}
+								className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-1.5 text-[0.72rem] font-medium text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]"
+							>
+								<List className="size-3.5" />
+								<span className="hidden sm:inline">Contents</span>
+								<span className="text-[var(--reader-muted)]">{catalogItems.length}</span>
 							</button>
-							<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+							<button
+								type="button"
 								onClick={() => {
 									setReaderPanelTab("display");
 									setIsReaderPanelOpen(true);
 								}}
+								aria-label="Open reader settings"
+								title="Reader settings"
+								className="inline-flex size-8 items-center justify-center rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]"
 							>
-								Controls
+								<Settings2 className="size-4" />
 							</button>
 						</div>
 					</div>
 				</div>
 
 				{isCatalogOpen && (
-					<div className="fixed inset-0 z-[1000] flex items-start justify-start bg-black/50" onClick={() => setIsCatalogOpen(false)}>
-						<aside className="flex min-h-screen w-full max-w-[420px] flex-col gap-4 border-r border-[var(--reader-border)] bg-[var(--reader-bg)] p-5 shadow-lg" onClick={(event) => event.stopPropagation()}>
+					<div className="fixed inset-0 z-[1000] flex items-start justify-start bg-[var(--reader-overlay)]" onClick={() => setIsCatalogOpen(false)}>
+						<aside className="flex min-h-screen w-full max-w-[420px] flex-col gap-5 border-r border-[var(--reader-border)] bg-[var(--reader-bg)] p-5 text-[var(--reader-text)] shadow-[18px_0_48px_rgba(0,0,0,0.16)]" onClick={(event) => event.stopPropagation()}>
 							<div className="flex items-start justify-between gap-4">
 								<div>
-									<h2>Catalogue</h2>
-									<p>
+									<h2 className="text-lg font-semibold tracking-tight">Contents</h2>
+									<p className="mt-1 text-xs leading-relaxed text-[var(--reader-muted)]">
 										{isRawReader ? "Raw" : "Translated"} · {catalogItems.length} chapters indexed, {chapters.length} archived.
 									</p>
 								</div>
-								<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setIsCatalogOpen(false)}>
+								<button className="min-h-8 rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-1.5 text-xs font-medium text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]" onClick={() => setIsCatalogOpen(false)}>
 									Close
 								</button>
 							</div>
 
-							<Input className="min-h-10 w-full rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 text-sm text-[var(--reader-text)] outline-none focus:border-[var(--reader-accent)]"
+							<Input className="min-h-10 border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] placeholder:text-[var(--reader-muted)] focus:border-[var(--reader-accent)] focus:ring-[var(--reader-accent)]"
 								value={catalogSearch}
 								onChange={(event) => setCatalogSearch(event.target.value)}
 								placeholder="Search chapter number or title"
 							/>
 
-							<div className="flex flex-1 flex-col gap-2 overflow-auto pr-1">
+							<div className="flex flex-1 flex-col gap-1 overflow-auto pr-1">
 								{filteredCatalogItems.map((item) => (
 									<button key={item.chapterNumber}
-										className={cn("w-full rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] p-3 text-left text-sm text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]", item.chapterNumber === chapterNumber && "border-[var(--reader-accent)] bg-[var(--reader-surface-hover)]")}
+										className={cn("flex w-full flex-col gap-1 rounded-xl border border-transparent px-3.5 py-3 text-left text-[var(--reader-text)] transition hover:border-[var(--reader-border)] hover:bg-[var(--reader-surface)]", item.chapterNumber === chapterNumber && "border-[var(--reader-accent)]/50 bg-[var(--reader-surface)]")}
 										onClick={() => {
 											setIsCatalogOpen(false);
 											navigateToChapter(item.chapterNumber);
 										}}
 									>
-										<span>Chapter {item.chapterNumber}</span>
-										<strong>{item.title}</strong>
-										<small>{item.archived ? "Archived" : "Indexed only"}</small>
+										<span className="text-[0.68rem] font-medium text-[var(--reader-muted)]">Chapter {item.chapterNumber}</span>
+										<strong className="line-clamp-2 text-sm font-medium leading-snug">{item.title}</strong>
+										<small className="text-[0.68rem] text-[var(--reader-muted)]">{item.archived ? "Archived" : "Indexed only"}</small>
 									</button>
 								))}
 							</div>
@@ -1464,59 +1462,49 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					</div>
 				)}
 
-				<main className="flex justify-center px-5 py-12 max-[860px]:px-3 max-[860px]:py-5">
-					<article className="flex w-full flex-col gap-6 leading-[1.8] text-[var(--reader-text)]" style={{ maxWidth: widthStyle }}>
-						<header className="border-b border-[var(--reader-border)] pb-6">
-							<h1>{displayChapterTitle}</h1>
-							<div className="mt-2 flex flex-wrap items-center justify-between gap-4 text-[0.82rem] text-[var(--reader-muted)] max-[860px]:flex-col max-[860px]:items-start">
+				<main className="flex flex-1 justify-center px-5 py-12 pb-40 max-[860px]:px-4 max-[860px]:py-8 max-[860px]:pb-32">
+					<article className="flex w-full flex-col gap-8 leading-[1.9] text-[var(--reader-text)]" style={{ maxWidth: widthStyle }}>
+						<header className="border-b border-[var(--reader-border)] pb-8">
+							<h1 className="text-balance text-[1.75rem] font-bold leading-tight tracking-tight max-[860px]:text-[1.45rem]">{displayChapterTitle}</h1>
+							<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8rem] text-[var(--reader-muted)]">
 								<span>{book.title}</span>
+								<span className="hidden sm:inline" aria-hidden="true">·</span>
 								<span>
-									{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}{" "}
+									{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}
 									{(isRawReader ? book.rawChaptersTotal : book.translatedChaptersTotal)
-										? `of ${isRawReader ? book.rawChaptersTotal : book.translatedChaptersTotal}`
+										? ` of ${isRawReader ? book.rawChaptersTotal : book.translatedChaptersTotal}`
 										: ""}
 								</span>
 								{chapter.sourceUrl && (
-									<a href={chapter.sourceUrl} target="_blank" rel="noreferrer">
-										Original Source
-									</a>
+									<>
+										<span className="hidden sm:inline" aria-hidden="true">·</span>
+										<a href={chapter.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2 transition hover:text-[var(--reader-text)]">
+											Source
+										</a>
+									</>
 								)}
 							</div>
 							{isRawReader && hasCapability(CAPABILITY.CHAPTERS_TRANSLATE) && (
-								<div className="mx-auto mt-4 flex w-fit max-w-[min(92vw,640px)] flex-wrap items-center justify-center gap-3 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-[0.45rem] text-[0.78rem] font-bold text-[var(--reader-muted)]">
+								<div className="mt-6 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--reader-border)] bg-[var(--reader-bg)] px-4 py-3 text-[0.75rem] font-medium text-[var(--reader-muted)]">
 									<span>Raw source view</span>
-									<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={handleGenerateTranslation} disabled={translatingRawChapter}>
-										{translatingRawChapter ? "Generating..." : "Generate English Translation"}
+									<button
+										type="button"
+										className="ml-auto min-h-8 rounded-md bg-[var(--reader-accent)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--reader-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+										onClick={handleGenerateTranslation}
+										disabled={translatingRawChapter}
+									>
+										{translatingRawChapter ? "Generating..." : "Generate English"}
 									</button>
 								</div>
 							)}
 						</header>
 
 						<div ref={readerContentRef}
-							className="text-[var(--reader-text)] [line-break:anywhere] [&_p]:mt-0 [&_p]:mb-[1.2em] [&_p]:cursor-pointer [&_li]:cursor-pointer [&_blockquote]:cursor-pointer [&_h1]:cursor-pointer [&_h2]:cursor-pointer [&_h3]:cursor-pointer [&_h4]:cursor-pointer [&_p]:scroll-mt-28 [&_li]:scroll-mt-28 [&_blockquote]:scroll-mt-28 [&_h1]:scroll-mt-28 [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28 [&_h4]:scroll-mt-28 [&_p]:rounded-sm [&_li]:rounded-sm [&_blockquote]:rounded-sm [&_h1]:rounded-sm [&_h2]:rounded-sm [&_h3]:rounded-sm [&_h4]:rounded-sm [&_p]:transition-[background-color,box-shadow] [&_li]:transition-[background-color,box-shadow] [&_blockquote]:transition-[background-color,box-shadow] [&_h1]:transition-[background-color,box-shadow] [&_h2]:transition-[background-color,box-shadow] [&_h3]:transition-[background-color,box-shadow] [&_h4]:transition-[background-color,box-shadow] [&_p]:duration-[160ms] [&_li]:duration-[160ms] [&_blockquote]:duration-[160ms] [&_h1]:duration-[160ms] [&_h2]:duration-[160ms] [&_h3]:duration-[160ms] [&_h4]:duration-[160ms] [&_p]:ease-[ease] [&_li]:ease-[ease] [&_blockquote]:ease-[ease] [&_h1]:ease-[ease] [&_h2]:ease-[ease] [&_h3]:ease-[ease] [&_h4]:ease-[ease] [&_p:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_9%,transparent)] [&_li:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_9%,transparent)] [&_blockquote:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_9%,transparent)] [&_img]:max-w-full [&_img]:h-auto"
+							className="text-[var(--reader-text)] [line-break:anywhere] [&_p]:mt-0 [&_p]:mb-[1.6em] [&_p]:cursor-pointer [&_li]:cursor-pointer [&_blockquote]:cursor-pointer [&_h1]:cursor-pointer [&_h2]:cursor-pointer [&_h3]:cursor-pointer [&_h4]:cursor-pointer [&_p]:scroll-mt-28 [&_li]:scroll-mt-28 [&_blockquote]:scroll-mt-28 [&_h1]:scroll-mt-28 [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28 [&_h4]:scroll-mt-28 [&_p]:rounded-sm [&_li]:rounded-sm [&_blockquote]:rounded-sm [&_h1]:rounded-sm [&_h2]:rounded-sm [&_h3]:rounded-sm [&_h4]:rounded-sm [&_p]:transition-[background-color,box-shadow] [&_li]:transition-[background-color,box-shadow] [&_blockquote]:transition-[background-color,box-shadow] [&_h1]:transition-[background-color,box-shadow] [&_h2]:transition-[background-color,box-shadow] [&_h3]:transition-[background-color,box-shadow] [&_h4]:transition-[background-color,box-shadow] [&_p]:duration-[160ms] [&_li]:duration-[160ms] [&_blockquote]:duration-[160ms] [&_h1]:duration-[160ms] [&_h2]:duration-[160ms] [&_h3]:duration-[160ms] [&_h4]:duration-[160ms] [&_p]:ease-[ease] [&_li]:ease-[ease] [&_blockquote]:ease-[ease] [&_h1]:ease-[ease] [&_h2]:ease-[ease] [&_h3]:ease-[ease] [&_h4]:ease-[ease] [&_p:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_7%,transparent)] [&_li:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_7%,transparent)] [&_blockquote:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_7%,transparent)] [&_img]:max-w-full [&_img]:h-auto"
 							style={readerContentStyle}
 							onClick={handleReaderContentClick}
 							dangerouslySetInnerHTML={{ __html: chapter.content }}
 						/>
-
-						<footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--reader-border)] pt-6">
-							<Button
-								variant="secondary"
-								className="border-[var(--reader-border)] bg-transparent text-[var(--reader-text)]"
-								disabled={!hasPreviousChapter}
-								onClick={() => navigateToChapter(previousChapterNumber)}
-							>
-								← Previous Chapter
-							</Button>
-
-							<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setIsCatalogOpen(true)}>
-								Open Catalogue
-							</button>
-
-							<Button disabled={!hasNextChapter} onClick={() => navigateToChapter(nextChapterNumber)}>
-								Next Chapter →
-							</Button>
-						</footer>
 					</article>
 				</main>
 
@@ -1597,6 +1585,19 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					sourceUrl={chapter.sourceUrl}
 					onScrollToTop={() => window.scrollTo({ top: 0, behavior: "smooth" })}
 					isLoggedIn={!!user}
+				/>
+
+				<ReaderControlBar
+					chapterNumber={chapter.chapterNumber}
+					totalChapters={totalChapters || catalogItems.length}
+					hasPreviousChapter={hasPreviousChapter}
+					hasNextChapter={hasNextChapter}
+					onPreviousChapter={() => navigateToChapter(previousChapterNumber)}
+					onNextChapter={() => navigateToChapter(nextChapterNumber)}
+					onPlay={handlePlaySpeech}
+					onPause={handlePauseSpeech}
+					speechStatus={ttsStatus}
+					readingTimeMinutes={readingTimeMinutes}
 				/>
 
 				<PronunciationRulesModal open={isPronunciationModalOpen}

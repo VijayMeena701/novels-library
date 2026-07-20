@@ -41,7 +41,7 @@ export function BottomSheet({
 		<>
 			{isOpen && (
 				<div
-					className="fixed inset-0 z-30 bg-foreground/20 transition-opacity duration-300"
+					className="fixed inset-0 z-[51] bg-[var(--reader-overlay)] transition-opacity duration-300"
 					role="presentation"
 					aria-hidden="true"
 					onClick={() => onOpenChange(false)}
@@ -49,22 +49,22 @@ export function BottomSheet({
 			)}
 			<div
 				className={cn(
-					"fixed inset-x-0 bottom-0 z-40 flex flex-col transition-transform duration-300 ease-out sm:left-auto sm:right-4 sm:bottom-4 sm:w-[min(100%,420px)]",
-					isOpen ? "translate-y-0" : "translate-y-full",
+					"fixed inset-x-0 bottom-0 z-[55] flex flex-col font-sans transition-transform duration-300 ease-out sm:left-auto sm:right-4 sm:bottom-4 sm:w-[min(100%,440px)]",
+					isOpen ? "pointer-events-auto translate-y-0" : "pointer-events-none translate-y-full",
 					className,
 				)}
 			>
-				<div className="flex flex-col rounded-t-2xl border border-border bg-surface/95 shadow-elevated backdrop-blur-md sm:rounded-b-2xl font-sans">
-					<div className="flex items-center justify-between gap-2 px-3 py-2">
+				<div className="flex flex-col rounded-t-2xl border border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] shadow-[0_18px_48px_rgba(0,0,0,0.24)] sm:rounded-b-2xl">
+					<div className="flex items-center justify-between gap-2 px-4 py-2.5">
 						<div className="flex flex-1 flex-col items-center gap-1 py-1">
 							{showHandle && (
-								<div className="h-1 w-10 rounded-full bg-muted-copy" />
+								<div className="h-1 w-10 rounded-full bg-[var(--reader-muted)]" />
 							)}
 							{showHandle && closeLabel && (
 								<button
 									type="button"
 									onClick={() => onOpenChange(false)}
-									className="text-[0.65rem] font-bold text-muted-copy hover:text-foreground transition"
+									className="text-[0.7rem] font-medium text-[var(--reader-muted)] transition hover:text-[var(--reader-text)]"
 								>
 									{closeLabel}
 								</button>
@@ -75,16 +75,16 @@ export function BottomSheet({
 								type="button"
 								onClick={() => onOpenChange(false)}
 								aria-label="Close"
-								className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-copy hover:bg-surface-muted hover:text-foreground transition"
+								className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--reader-muted)] transition hover:bg-[var(--reader-surface-hover)] hover:text-[var(--reader-text)]"
 							>
 								<X className="size-4" />
 							</button>
 						)}
 					</div>
 					{header && (
-						<div className="border-t border-border px-3 py-2">{header}</div>
+						<div className="border-t border-[var(--reader-border)] px-4 py-2.5">{header}</div>
 					)}
-					<div className={cn("border-t border-border", contentClassName)}>{children}</div>
+					<div className={cn("border-t border-[var(--reader-border)]", contentClassName)}>{children}</div>
 				</div>
 			</div>
 		</>

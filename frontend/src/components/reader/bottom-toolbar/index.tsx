@@ -27,8 +27,8 @@ export function ReaderBottomToolbar(props: ReaderBottomToolbarProps) {
 			isOpen={isOpen}
 			onOpenChange={onOpenChange}
 			header={<TabBar activeTab={activeTab} onTabClick={handleTabClick} />}
-			contentClassName="overflow-y-auto max-h-[55vh] px-4 py-4"
-			closeLabel="Tap to close"
+			contentClassName="h-[min(520px,calc(100dvh-7rem))] min-h-[300px] overflow-y-auto px-5 py-5 max-[640px]:h-[min(560px,calc(100dvh-6rem))]"
+			closeLabel="Close reader settings"
 		>
 			{activeTab === "read" && <ReadTab {...props} />}
 			{activeTab === "display" && <DisplayTab {...props} />}

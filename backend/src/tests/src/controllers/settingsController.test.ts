@@ -33,10 +33,10 @@ describe('Settings routes', () => {
     const res = await supertest(app.server)
       .put('/api/settings')
       .set('Authorization', `Bearer ${login.body.token}`)
-      .send({ reader: { theme: 'dark', fontSize: 24, width: 'wide' } });
+      .send({ reader: { theme: 'night', fontSize: 24, width: 'wide' } });
 
     expect(res.status).toBe(200);
-    expect(res.body.reader.theme).toBe('dark');
+    expect(res.body.reader.theme).toBe('night');
     expect(res.body.reader.fontSize).toBe(24);
     expect(res.body.reader.width).toBe('wide');
   });

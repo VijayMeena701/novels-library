@@ -6,16 +6,20 @@ import type { ReaderBottomToolbarProps } from "./types";
 
 export function SettingsTab(props: ReaderBottomToolbarProps) {
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
+			<div>
+				<h2 className="text-sm font-semibold text-[var(--reader-text)]">Reading behavior</h2>
+				<p className="mt-1 text-xs leading-relaxed text-[var(--reader-muted)]">Choose how chapters are opened and which source the reader should use.</p>
+			</div>
 			{props.hasRawChapters && (
-				<Field label="Reader Source">
-					<div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border">
+				<Field label="Reader source" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
+					<div className="grid grid-cols-2 overflow-hidden rounded-lg border border-[var(--reader-border)]">
 						<button
 							type="button"
 							onClick={() => props.switchReaderSource("translated")}
 							className={cn(
-								"min-h-10 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
-								!props.isRawReader ? "bg-primary text-background" : "bg-surface text-copy hover:bg-surface-muted",
+								"min-h-10 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-[var(--reader-accent)] focus:ring-inset",
+								!props.isRawReader ? "bg-[var(--reader-accent)] text-[var(--reader-surface)]" : "bg-[var(--reader-surface)] text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)]",
 							)}
 						>
 							Translated
@@ -24,8 +28,8 @@ export function SettingsTab(props: ReaderBottomToolbarProps) {
 							type="button"
 							onClick={() => props.switchReaderSource("raw")}
 							className={cn(
-								"min-h-10 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
-								props.isRawReader ? "bg-primary text-background" : "bg-surface text-copy hover:bg-surface-muted",
+								"min-h-10 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-[var(--reader-accent)] focus:ring-inset",
+								props.isRawReader ? "bg-[var(--reader-accent)] text-[var(--reader-surface)]" : "bg-[var(--reader-surface)] text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)]",
 							)}
 						>
 							Raw
@@ -36,18 +40,18 @@ export function SettingsTab(props: ReaderBottomToolbarProps) {
 
 			<ToggleRow label="Auto-advance to next chapter" checked={props.autoOpenNext} onChange={props.onAutoOpenNextChange} />
 
-			<Field label="Reader Type">
-				<div className="grid grid-cols-3 overflow-hidden rounded-lg border border-border">
+			<Field label="Reader type" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
+				<div className="grid grid-cols-3 overflow-hidden rounded-lg border border-[var(--reader-border)]">
 					{["Single Page", "Infinite", "Old Reader"].map((item, index) => (
 						<button
 							key={item}
 							type="button"
 							disabled={index > 0}
 							className={cn(
-								"min-h-10 text-[0.65rem] font-bold transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
+								"min-h-10 text-[0.68rem] font-medium transition focus:outline-none focus:ring-2 focus:ring-[var(--reader-accent)] focus:ring-inset",
 								index === 0
-									? "bg-primary text-background"
-									: "bg-surface text-muted-copy hover:bg-surface-muted disabled:opacity-50",
+									? "bg-[var(--reader-accent)] text-[var(--reader-surface)]"
+									: "bg-[var(--reader-surface)] text-[var(--reader-muted)] hover:bg-[var(--reader-surface-hover)] disabled:opacity-50",
 							)}
 						>
 							{item}

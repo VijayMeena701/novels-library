@@ -192,9 +192,9 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 	);
 
 	return (
-		<div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3" onClick={handleClose}>
+		<div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--reader-overlay)] p-3" onClick={handleClose}>
 			<div
-				className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3.5 overflow-y-auto rounded-lg border border-border bg-card p-4 text-foreground shadow-elevated scrollbar-thin"
+				className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3.5 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-elevated scrollbar-thin"
 				onClick={(event) => event.stopPropagation()}
 			>
 				<div className="flex items-start justify-between gap-2">

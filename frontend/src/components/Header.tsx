@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X, User, Settings, LogOut, Bell } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useReaderTheme } from "../context/ReaderThemeContext";
+import { applyReaderThemeCssVariables } from "../lib/reader-theme";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { CAPABILITY } from "../utils/permissions";
@@ -23,6 +25,7 @@ const consoleLinks = [{ href: "/admin", label: "Admin", match: (pathname: string
 export default function Header() {
 	const pathname = usePathname();
 	const { user, logout, hasCapability } = useAuth();
+	const { theme: readerTheme } = useReaderTheme();
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 	const [unreadCount, setUnreadCount] = useState(0);
@@ -60,7 +63,7 @@ export default function Header() {
 		}
 	}, [isUserMenuOpen]);
 
-	if (pathname === "/login") return null;
+	if (pathname === "/login" || /^\/books\/[^/]+\/reader(?:\/|$)/.test(pathname)) return null;
 
 	const links = user
 		? [
@@ -70,20 +73,31 @@ export default function Header() {
 		  ]
 		: publicLinks;
 
+	const isThemed = readerTheme !== null;
+	const readerThemeStyle = isThemed ? applyReaderThemeCssVariables(readerTheme) : undefined;
+
 	const navLinkClass = (active: boolean) =>
 		cn(
-			"rounded-md px-3 py-2 text-[0.86rem] font-bold text-copy no-underline transition hover:bg-primary-soft hover:text-foreground",
-			active && "bg-primary-soft text-foreground shadow-[inset_0_-2px_0_var(--secondary)]",
+			"rounded-md px-3 py-2 text-[0.85rem] font-semibold text-copy no-underline transition hover:bg-primary-soft hover:text-foreground",
+			active && "bg-primary-soft text-foreground",
 		);
 
 	return (
-		<header className="sticky top-0 z-[100] border-b border-border bg-[rgba(255,253,248,0.88)] shadow-[0_2px_18px_rgba(48,39,28,0.04)] backdrop-blur-[18px]">
-			<div className="mx-auto flex min-h-[62px] w-full max-w-[1520px] items-center justify-between gap-4 px-5 py-2.5">
+		<header
+			className={cn(
+				"sticky top-0 z-[100] border-b backdrop-blur-[18px]",
+				isThemed
+					? "reader-theme border-[var(--reader-border)] bg-[color-mix(in_srgb,var(--reader-bg)_80%,transparent)]"
+					: "border-border bg-background/80",
+			)}
+			style={readerThemeStyle}
+		>
+			<div className="mx-auto flex min-h-[58px] w-full max-w-[1520px] items-center justify-between gap-4 px-5 py-2">
 				<Link href="/" className="inline-flex min-w-0 items-center gap-2.5 text-inherit no-underline">
-					<span className="inline-flex size-[34px] items-center justify-center rounded-md bg-gradient-to-br from-primary to-[#263a5c] font-black text-white shadow-[0_9px_20px_rgba(64,95,143,0.22)]">
+					<span className="inline-flex size-[32px] items-center justify-center rounded-md bg-primary font-black text-white">
 						N
 					</span>
-					<span className="whitespace-nowrap text-base font-black text-foreground">Books Library</span>
+					<span className="whitespace-nowrap text-base font-bold text-foreground">Books Library</span>
 				</Link>
 
 				<div className="hidden items-center gap-1 md:flex">

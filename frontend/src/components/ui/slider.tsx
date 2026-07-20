@@ -16,8 +16,8 @@ export function Slider({ label, value, min, max, step, onChange, formatValue, cl
 	return (
 		<div className={cn("flex flex-col gap-1.5", className)}>
 			<div className="flex items-center justify-between">
-				<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">{label}</span>
-				<span className="text-xs font-bold text-foreground">{formatValue ? formatValue(value) : value}</span>
+				<span className="text-[0.68rem] font-medium tracking-wide text-[var(--reader-muted)]">{label}</span>
+				<span className="text-xs font-semibold text-[var(--reader-text)]">{formatValue ? formatValue(value) : value}</span>
 			</div>
 			<input
 				type="range"
@@ -26,7 +26,7 @@ export function Slider({ label, value, min, max, step, onChange, formatValue, cl
 				step={step}
 				value={value}
 				onChange={(event) => onChange(Number(event.target.value))}
-				className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-surface-muted accent-primary"
+				className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[var(--reader-bg)] accent-[var(--reader-accent)]"
 			/>
 		</div>
 	);

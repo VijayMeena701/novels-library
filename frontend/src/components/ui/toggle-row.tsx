@@ -14,7 +14,7 @@ export function ToggleRow({ label, checked, onChange, className, disabled }: Tog
 	return (
 		<label
 			className={cn(
-				"flex items-center justify-between gap-3 text-left text-sm font-semibold text-copy hover:opacity-95 cursor-pointer select-none",
+				"flex items-center justify-between gap-3 rounded-lg px-1 py-1 text-left text-sm font-medium text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)] cursor-pointer select-none",
 				disabled && "opacity-50 cursor-not-allowed",
 				className,
 			)}
@@ -22,6 +22,7 @@ export function ToggleRow({ label, checked, onChange, className, disabled }: Tog
 		>
 			<span>{label}</span>
 			<Switch
+				theme="reader"
 				checked={checked}
 				onCheckedChange={(value) => {
 					if (!disabled) onChange(value);

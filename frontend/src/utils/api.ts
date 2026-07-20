@@ -129,7 +129,7 @@ export interface AdminGroupPayload {
 	capabilityIds?: string[];
 }
 
-export type ReaderTheme = "dark" | "light" | "sepia";
+export type ReaderTheme = "paper" | "sepia" | "forest" | "night" | "amoled";
 export type ReaderWidth = "narrow" | "medium" | "wide";
 export type ReaderHighlightMode = "off" | "paragraph" | "word";
 export type ReaderAutoScrollBehavior = "smooth" | "instant";

@@ -11,10 +11,10 @@ export function IconButton({ icon, variant = "secondary", className, ...props }:
 		<button
 			type="button"
 			className={cn(
-				"flex min-h-10 items-center justify-center rounded-lg border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
+				"flex min-h-10 items-center justify-center rounded-lg border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--reader-accent)] focus:ring-offset-2 focus:ring-offset-[var(--reader-bg)]",
 				variant === "primary"
-					? "border-primary bg-primary text-background hover:bg-primary-hover"
-					: "border-border bg-surface text-foreground hover:bg-surface-muted",
+					? "border-[var(--reader-accent)] bg-[var(--reader-accent)] text-[var(--reader-surface)] hover:bg-[var(--reader-accent-hover)]"
+					: "border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)]",
 				className,
 			)}
 			{...props}

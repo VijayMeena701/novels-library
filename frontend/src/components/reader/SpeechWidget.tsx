@@ -221,13 +221,13 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 				aria-expanded={isOpen}
 				aria-label={isOpen ? "Hide listening controls" : "Show listening controls"}
 				className={cn(
-					"fixed z-40 flex size-12 items-center justify-center rounded-full border shadow-lg transition duration-200 hover:-translate-y-0.5 active:scale-95 max-[860px]:bottom-4 max-[860px]:right-4 bottom-24 right-4 font-sans",
+					"fixed bottom-28 right-4 z-40 flex size-10 items-center justify-center rounded-full border shadow-[0_8px_24px_rgba(0,0,0,0.16)] transition duration-200 hover:-translate-y-0.5 active:scale-95 max-[860px]:bottom-[5.75rem] max-[860px]:right-3",
 					isOpen
-						? "border-border bg-surface text-foreground hover:bg-surface-muted"
-						: "border-border bg-foreground text-background hover:bg-muted-copy",
+						? "border-[var(--reader-accent)] bg-[var(--reader-surface-hover)] text-[var(--reader-text)]"
+						: "border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)]",
 				)}
 			>
-				<span className={cn("absolute right-2 top-2 size-2.5 rounded-full border-2 border-background", statusDotClass)} />
+				<span className={cn("absolute right-2 top-2 size-2.5 rounded-full border-2 border-[var(--reader-bg)]", statusDotClass)} />
 				{isPlaying ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
 			</button>
 
@@ -236,7 +236,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 				<div
 					ref={panelRef}
 					className={cn(
-						"fixed flex w-[320px] max-w-[calc(100vw-24px)] flex-col gap-3 rounded-2xl border border-border bg-surface p-3.5 text-foreground shadow-elevated font-sans",
+						"fixed flex w-[320px] max-w-[calc(100vw-24px)] flex-col gap-3 rounded-2xl border border-[var(--reader-border)] bg-[var(--reader-surface)] p-3.5 text-[var(--reader-text)] shadow-[0_18px_48px_rgba(0,0,0,0.24)] font-sans",
 						isBottomToolbarOpen ? "z-40" : "z-50",
 						isCompact ? "inset-x-3 bottom-24" : "max-h-[70vh] overflow-y-auto",
 					)}
@@ -251,9 +251,9 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 						onPointerCancel={handleHeaderPointerCancel}
 						onLostPointerCapture={handleHeaderPointerCancel}
 					>
-						<GripVertical className="size-4 shrink-0 text-muted-copy" />
+						<GripVertical className="size-4 shrink-0 text-[var(--reader-muted)]" />
 						<span className={cn("size-2 shrink-0 rounded-full", statusDotClass)} />
-						<span className="flex-1 text-[0.7rem] uppercase font-extrabold tracking-wider text-copy">
+						<span className="flex-1 text-[0.7rem] font-semibold tracking-wide text-[var(--reader-text)]">
 							{status === "idle" ? "Ready" : isPaused ? "Paused" : "Reading"}
 						</span>
 
@@ -266,7 +266,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 								onOpenSettings();
 							}}
 							aria-label="Open reader settings"
-							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-copy transition hover:bg-surface-muted hover:text-foreground"
+							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--reader-border)] text-[var(--reader-muted)] transition hover:bg-[var(--reader-surface-hover)] hover:text-[var(--reader-text)]"
 						>
 							<Settings2 className="size-4" />
 						</button>
@@ -280,7 +280,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 								setIsOpen(false);
 							}}
 							aria-label="Close listening controls"
-							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-copy transition hover:bg-surface-muted hover:text-foreground"
+							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--reader-border)] text-[var(--reader-muted)] transition hover:bg-[var(--reader-surface-hover)] hover:text-[var(--reader-text)]"
 						>
 							<X className="size-4" />
 						</button>
@@ -294,11 +294,11 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 					)}
 
 					{/* Voice Selector */}
-					<Field label="Voice">
+					<Field label="Voice" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
 						<Select
 							value={voiceURI}
 							onChange={(event) => onVoiceChange(event.target.value)}
-							className="min-h-10 text-xs"
+							className="min-h-10 border-[var(--reader-border)] bg-[var(--reader-bg)] text-xs text-[var(--reader-text)] focus:border-[var(--reader-accent)] focus:ring-[var(--reader-accent)]"
 						>
 							<option value="">System Default Voice</option>
 							{voices.map((voice) => (

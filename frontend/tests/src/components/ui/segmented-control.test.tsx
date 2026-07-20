@@ -15,11 +15,11 @@ describe('SegmentedControl', () => {
     const { rerender } = render(
       <SegmentedControl options={['a', 'b', 'c'] as const} value="a" onChange={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: 'a' })).toHaveClass('bg-primary');
+    expect(screen.getByRole('button', { name: 'a' })).toHaveClass('bg-[var(--reader-accent)]');
 
     rerender(<SegmentedControl options={['a', 'b', 'c'] as const} value="b" onChange={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'b' })).toHaveClass('bg-primary');
-    expect(screen.getByRole('button', { name: 'a' })).not.toHaveClass('bg-primary');
+    expect(screen.getByRole('button', { name: 'b' })).toHaveClass('bg-[var(--reader-accent)]');
+    expect(screen.getByRole('button', { name: 'a' })).not.toHaveClass('bg-[var(--reader-accent)]');
   });
 
   it('calls onChange with the selected option', async () => {

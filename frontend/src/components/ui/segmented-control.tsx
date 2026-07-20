@@ -15,17 +15,17 @@ export function SegmentedControl<T extends string>({
 	className,
 }: SegmentedControlProps<T>) {
 	return (
-		<div className={cn("grid auto-cols-fr grid-flow-col overflow-hidden rounded-lg border border-border", className)}>
+		<div className={cn("grid auto-cols-fr grid-flow-col overflow-hidden rounded-lg border border-[var(--reader-border)]", className)}>
 			{options.map((option) => (
 				<button
 					key={option}
 					type="button"
 					onClick={() => onChange(option)}
 					className={cn(
-						"min-h-9 border-r border-border px-2 py-1.5 text-[0.7rem] font-bold capitalize transition-colors last:border-r-0 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset",
+						"min-h-9 border-r border-[var(--reader-border)] px-2 py-1.5 text-[0.7rem] font-medium capitalize transition-colors last:border-r-0 focus:outline-none focus:ring-2 focus:ring-[var(--reader-accent)] focus:ring-inset",
 						value === option
-							? "bg-primary text-background"
-							: "bg-surface text-copy hover:bg-surface-muted hover:text-foreground",
+							? "bg-[var(--reader-accent)] text-[var(--reader-surface)]"
+							: "bg-[var(--reader-surface)] text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)]",
 					)}
 				>
 					{option}
