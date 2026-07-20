@@ -46,6 +46,7 @@ export default function AdminRolesPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData();
   }, []);
 
@@ -99,8 +100,8 @@ export default function AdminRolesPage() {
       }
       setShowModal(false);
       await fetchData();
-    } catch (err: any) {
-      alert(err?.message || "Failed to save role.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save role.");
     } finally {
       setWorking(false);
     }
@@ -113,8 +114,8 @@ export default function AdminRolesPage() {
     try {
       await api.deleteAdminRole(role._id);
       await fetchData();
-    } catch (err: any) {
-      alert(err?.message || "Failed to delete role.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete role.");
     } finally {
       setWorking(false);
     }

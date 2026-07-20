@@ -72,7 +72,6 @@ export default function PublicHomePage() {
   const [libraryBooks, setLibraryBooks] = useState<Book[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [home, setHome] = useState<HomeResponse | null>(null);
-  const [homeLoading, setHomeLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -117,12 +116,11 @@ export default function PublicHomePage() {
     let cancelled = false;
 
     async function loadHome() {
-      setHomeLoading(true);
       try {
         const data = await api.getHome();
         if (!cancelled) setHome(data);
-      } finally {
-        if (!cancelled) setHomeLoading(false);
+      } catch (err) {
+        console.error('Failed to load home:', err);
       }
     }
 

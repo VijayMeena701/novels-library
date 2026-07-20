@@ -41,18 +41,18 @@ export default function AuthorDetailsPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
-      <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+      <div className="flex flex-col gap-[0.8rem] rounded-lg border border-border bg-card p-6 shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
         <Link href="/authors" className="rounded-md px-3 py-2 text-[0.86rem] font-bold text-copy no-underline transition hover:bg-primary-soft hover:text-foreground">Back to Authors</Link>
         <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">{author.displayName}</h1>
-        {author.realName && <p style={{ color: 'var(--text-secondary)' }}>Real name: {author.realName}</p>}
-        {author.originalLanguage && <p style={{ color: 'var(--text-secondary)' }}>Original language: {author.originalLanguage}</p>}
+        {author.realName && <p className="text-copy">Real name: {author.realName}</p>}
+        {author.originalLanguage && <p className="text-copy">Original language: {author.originalLanguage}</p>}
         {author.alternativeNames.length > 0 && (
-          <p style={{ color: 'var(--text-muted)' }}>Also known as: {author.alternativeNames.join(', ')}</p>
+          <p className="text-muted-copy">Also known as: {author.alternativeNames.join(', ')}</p>
         )}
       </div>
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h2 style={{ fontSize: '1.35rem' }}>Books by {author.displayName}</h2>
+      <section className="flex flex-col gap-4">
+        <h2 className="text-[1.35rem]">Books by {author.displayName}</h2>
         {books.length === 0 ? (
           <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">No linked books yet.</div>
         ) : (

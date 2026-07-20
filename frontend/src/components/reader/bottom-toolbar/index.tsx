@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useCallback } from "react";
+import { useCallback } from 'react';
 import { BottomSheet } from "../../ui/bottom-sheet";
 import { TabBar } from "./tab-bar";
 import { ReadTab } from "./read-tab";

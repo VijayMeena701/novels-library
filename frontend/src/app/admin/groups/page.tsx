@@ -51,6 +51,7 @@ export default function AdminGroupsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData();
   }, []);
 
@@ -120,8 +121,8 @@ export default function AdminGroupsPage() {
       }
       setShowModal(false);
       await fetchData();
-    } catch (err: any) {
-      alert(err?.message || "Failed to save permission group.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save permission group.");
     } finally {
       setWorking(false);
     }
@@ -134,8 +135,8 @@ export default function AdminGroupsPage() {
     try {
       await api.deleteAdminGroup(group._id);
       await fetchData();
-    } catch (err: any) {
-      alert(err?.message || "Failed to delete permission group.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete permission group.");
     } finally {
       setWorking(false);
     }

@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useEffect } from "react";
+import { useEffect, type ReactNode } from 'react';
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Card, CardTitle } from "./card";
@@ -8,7 +7,7 @@ import { Card, CardTitle } from "./card";
 export interface ModalProps {
 	open: boolean;
 	onClose: () => void;
-	children: React.ReactNode;
+	children: ReactNode;
 	title?: string;
 	size?: "sm" | "md" | "lg" | "xl" | "full";
 	className?: string;

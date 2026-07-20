@@ -1,7 +1,7 @@
 'use client';
 import { cn } from '../../lib/utils';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { api, BackgroundJob } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -105,7 +105,7 @@ export default function ScraperMonitor() {
     setChapterHtmlContent('');
   };
 
-  const handleImportChapterHtml = async (event: React.FormEvent) => {
+  const handleImportChapterHtml = async (event: FormEvent) => {
     event.preventDefault();
     if (!chapterHtmlJob) return;
 
@@ -129,10 +129,10 @@ export default function ScraperMonitor() {
 
   if (loading) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
           <Spinner size="xl" />
-          <span style={{ color: 'var(--text-secondary)' }}>Loading background tasks registry...</span>
+          <span className="text-copy">Loading background tasks registry...</span>
         </div>
       </div>
     );
@@ -143,7 +143,7 @@ export default function ScraperMonitor() {
       <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
         <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
           <h1>Access Required</h1>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+          <p className="mt-2 text-copy">
             Scraper jobs, raw imports, and archive controls are catalog administration tools.
           </p>
           <Button asChild variant="secondary" className="mt-4">
@@ -178,46 +178,46 @@ export default function ScraperMonitor() {
         </div>
         <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
           <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Active</div>
-          <div className="text-2xl font-extrabold" style={{ color: 'var(--info)' }}>
+          <div className="text-2xl font-extrabold text-info">
             {jobs.filter(j => j.status === 'processing' || j.status === 'pending').length}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
           <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Completed</div>
-          <div className="text-2xl font-extrabold" style={{ color: 'var(--success)' }}>
+          <div className="text-2xl font-extrabold text-success">
             {jobs.filter(j => j.status === 'completed').length}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
           <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Failed</div>
-          <div className="text-2xl font-extrabold" style={{ color: 'var(--danger)' }}>
+          <div className="text-2xl font-extrabold text-danger">
             {jobs.filter(j => j.status === 'failed').length}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
           <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Needs Manual</div>
-          <div className="text-2xl font-extrabold" style={{ color: '#b45309' }}>
+          <div className="text-2xl font-extrabold text-amber-700">
             {jobs.filter(j => j.status === 'requires_manual_intervention').length}
           </div>
         </div>
       </div>
 
       {/* Jobs Log Table */}
-      <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated" style={{ overflowX: 'auto', padding: '1.5rem' }}>
+      <div className="overflow-x-auto rounded-lg border border-border bg-card p-6 shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
         {jobs.length === 0 ? (
-          <div className="p-12 text-center text-copy" style={{ padding: '2rem' }}>
+          <div className="p-8 text-center text-copy">
             No background crawler jobs have been scheduled yet.
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+          <table className="w-full border-collapse text-left min-w-[800px]">
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                <th style={{ padding: '0.75rem 1rem' }}>Task ID</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Type</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Progress</th>
-                <th style={{ padding: '0.75rem 1rem' }}>Details</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Actions</th>
+              <tr className="border-b border-border text-sm text-copy">
+                <th className="px-4 py-3">Task ID</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Progress</th>
+                <th className="px-4 py-3">Details</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -227,77 +227,70 @@ export default function ScraperMonitor() {
                 const percent = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
                 
                 return (
-                  <tr key={job._id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.925rem' }}>
+                  <tr key={job._id} className="border-b border-border text-[0.925rem]">
                     
                     {/* Job ID / Date */}
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <td className="p-4">
+                      <div className="font-mono text-[0.8rem] text-copy">
                         {job._id.substring(18)}...
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      <div className="mt-0.5 text-xs text-muted-copy">
                         {new Date(job.createdAt).toLocaleString()}
                       </div>
                     </td>
 
                     {/* Job Type */}
-                    <td style={{ padding: '1rem' }}>
-                      <strong style={{ textTransform: 'capitalize', color: 'var(--text-primary)' }}>
+                    <td className="p-4">
+                      <strong className="capitalize text-foreground">
                         {job.type.replace(/_/g, ' ')}
                       </strong>
                     </td>
 
                     {/* Status Badge */}
-                    <td style={{ padding: '1rem' }}>
+                    <td className="p-4">
                       <Badge variant={job.status}>{job.status}</Badge>
                     </td>
 
                     {/* Progress Bar */}
-                    <td style={{ padding: '1rem', width: '220px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <td className="w-[220px] p-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-xs text-muted-copy">
                           <span>{current} / {total}</span>
                           <span>{percent}%</span>
                         </div>
-                        <div style={{ width: '100%', height: '4px', backgroundColor: 'var(--surface-3)', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ 
-                            width: `${percent}%`, 
-                            height: '100%', 
-                            backgroundColor: job.status === 'failed'
-                              ? 'var(--danger)'
-                              : job.status === 'requires_manual_intervention'
-                                ? '#b45309'
-                                : 'var(--primary)', 
-                            borderRadius: '2px',
-                            transition: 'width 0.3s ease'
-                          }}></div>
+                        <div className="h-1 w-full overflow-hidden rounded-sm bg-surface-muted">
+                          <div
+                            className={cn("h-full rounded-sm transition-all duration-300", job.status === 'failed' ? "bg-danger" : job.status === 'requires_manual_intervention' ? "bg-amber-700" : "bg-primary")}
+                            style={{ width: `${percent}%` }}
+                          ></div>
                         </div>
                       </div>
                     </td>
 
                     {/* Progress message / Error Message */}
-                    <td style={{ padding: '1rem', maxWidth: '360px' }}>
+                    <td className="max-w-[360px] p-4">
                       {(job.status === 'failed' || job.status === 'requires_manual_intervention') && job.error ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          <span style={{ color: job.status === 'failed' ? 'var(--danger)' : '#b45309', fontSize: '0.85rem', fontWeight: '500' }} title={job.error.message}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className={cn("text-sm font-medium", job.status === 'failed' ? "text-danger" : "text-amber-700")} title={job.error.message}>
                             {job.error.message}
                           </span>
                           {job.error.url && (
-                            <a href={job.error.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', wordBreak: 'break-all' }}>
+                            <a href={job.error.url} target="_blank" rel="noreferrer" className="break-all text-xs text-copy">
                               {job.error.sourceKind === 'raw' ? 'Raw' : 'Translated'} chapter {job.error.chapterNumber || ''}: {job.error.url}
                             </a>
                           )}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }} title={job.progress?.message}>
+                        <span className="text-sm text-copy" title={job.progress?.message}>
                           {job.progress?.message || 'Queued...'}
                         </span>
                       )}
                     </td>
 
                     {/* Actions */}
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                    <td className="p-4 text-right">
                       {job.status === 'requires_manual_intervention' ? (
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="flex flex-wrap justify-end gap-2">
                           <Button variant="secondary"
                             size="sm"
                             onClick={() => handleOpenManualIntervention(job._id)}
@@ -321,7 +314,7 @@ export default function ScraperMonitor() {
                           </Button>
                         </div>
                       ) : job.status === 'failed' ? (
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="flex flex-wrap justify-end gap-2">
                           {job.error?.chapterNumber && job.error?.url && (
                             <Button variant="secondary"
                               size="sm"
@@ -339,7 +332,7 @@ export default function ScraperMonitor() {
                           </Button>
                         </div>
                       ) : (
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        <span className="text-sm text-muted-copy">
                           {job.status === 'completed' ? 'Synced' : 'Running...'}
                         </span>
                       )}
@@ -357,17 +350,18 @@ export default function ScraperMonitor() {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[8px]">
           <div className="flex w-full max-w-[720px] max-h-[90vh] flex-col gap-5 overflow-auto rounded-lg border border-border bg-card p-5 shadow-lg">
             <div className="flex items-center justify-between gap-4">
-              <h2 style={{ fontSize: '1.4rem' }}>
+              <h2 className="text-[1.4rem]">
                 Import {chapterHtmlJob.error?.sourceKind === 'raw' ? 'Raw ' : ''}Chapter {chapterHtmlJob.error?.chapterNumber || ''}
               </h2>
-              <button onClick={() => setChapterHtmlJob(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
+              <button
+                className="cursor-pointer border-none bg-transparent text-2xl text-copy"
+                onClick={() => setChapterHtmlJob(null)}
               >
                 &times;
               </button>
             </div>
 
-            <form onSubmit={handleImportChapterHtml} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleImportChapterHtml} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-semibold text-copy">Chapter Page URL</label>
                 <Input type="url"
@@ -388,7 +382,7 @@ export default function ScraperMonitor() {
                />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
+              <div className="mt-2 flex justify-end gap-4">
                 <Button type="button"
                   variant="secondary"
                   onClick={() => setChapterHtmlJob(null)}

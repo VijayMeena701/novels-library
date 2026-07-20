@@ -1,6 +1,4 @@
 "use client";
-
-import React from "react";
 import { cn } from "../../../lib/utils";
 import { BookOpen, Settings, Sparkles, MoreHorizontal, Volume2, type LucideIcon } from "lucide-react";
 import { TABS, type ReaderBottomToolbarTab } from "./types";

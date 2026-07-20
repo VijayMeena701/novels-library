@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" style={{ height: '100%' }}>
-      <body className="min-h-screen bg-slate-50 text-slate-900">
+    <html lang="en" className="h-full">
+      <body className="min-h-screen">
         <ToastProvider>
           <AuthProvider>
             <ErrorBoundary name="Navigation">

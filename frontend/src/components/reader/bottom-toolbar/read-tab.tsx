@@ -1,6 +1,4 @@
 "use client";
-
-import React from "react";
 import Link from "next/link";
 import { DockButton } from "../../ui/dock-button";
 import type { ReaderBottomToolbarProps } from "./types";

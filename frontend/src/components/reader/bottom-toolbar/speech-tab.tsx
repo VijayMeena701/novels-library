@@ -1,6 +1,4 @@
 "use client";
-
-import React from "react";
 import { Field } from "../../ui/field";
 import { Slider } from "../../ui/slider";
 import { SegmentedControl } from "../../ui/segmented-control";

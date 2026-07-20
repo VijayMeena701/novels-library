@@ -1,9 +1,9 @@
-import React from "react";
+import { type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from "../../lib/utils";
 
-export interface DockButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface DockButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	label?: string;
-	children: React.ReactNode;
+	children: ReactNode;
 }
 
 export function DockButton({ label, children, className, ...props }: DockButtonProps) {

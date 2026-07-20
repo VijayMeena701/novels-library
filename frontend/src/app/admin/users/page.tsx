@@ -51,11 +51,13 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
@@ -125,8 +127,8 @@ export default function AdminUsersPage() {
       setShowCreate(false);
       setCreateForm({ username: "", email: "", password: "", confirmPassword: "", roleIds: [] });
       await fetchData(1);
-    } catch (err: any) {
-      alert(err?.message || "Failed to create user.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create user.");
     } finally {
       setWorking(null);
     }

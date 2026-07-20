@@ -1,10 +1,8 @@
 "use client";
 
-import "./reader.css";
-
 import { cn } from '../../../../../lib/utils';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -478,7 +476,11 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 	const clearSpeakingHighlights = useCallback(() => {
 		if (activeSpeechElementRef.current) {
-			activeSpeechElementRef.current.classList.remove("reader-speaking-block");
+			const element = activeSpeechElementRef.current;
+			element.style.backgroundColor = "";
+			element.style.boxShadow = "";
+			element.style.borderRadius = "";
+			element.style.transition = "";
 			activeSpeechElementRef.current = null;
 		}
 		if (activeWordHighlightRef.current) {
@@ -513,7 +515,11 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			if (!block) return;
 
 			if (highlightParagraph) {
-				block.element.classList.add("reader-speaking-block");
+				const element = block.element;
+				element.style.backgroundColor = paragraphHighlightColor;
+				element.style.boxShadow = `0 0 0 4px ${paragraphHighlightColor}`;
+				element.style.borderRadius = "4px";
+				element.style.transition = "background-color 0.15s ease, box-shadow 0.15s ease";
 			}
 			activeSpeechElementRef.current = block.element;
 
@@ -537,7 +543,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				}
 			}
 		},
-		[getSpeechBlocks, clearSpeakingHighlights, autoScrollDuringSpeech, autoScrollOffset, autoScrollBehavior, highlightParagraph],
+		[getSpeechBlocks, clearSpeakingHighlights, autoScrollDuringSpeech, autoScrollOffset, autoScrollBehavior, highlightParagraph, paragraphHighlightColor],
 	);
 
 	const highlightSpeechWord = useCallback(
@@ -574,7 +580,9 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			}
 
 			const span = document.createElement("span");
-			span.className = "reader-speaking-word";
+			span.style.backgroundColor = wordHighlightColor;
+			span.style.color = "#000";
+			span.style.borderRadius = "2px";
 			span.textContent = word;
 			element.appendChild(span);
 			activeWordHighlightRef.current = span;
@@ -583,7 +591,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				element.appendChild(document.createTextNode(after));
 			}
 		},
-		[getSpeechBlocks, clearSpeakingWord],
+		[getSpeechBlocks, clearSpeakingWord, wordHighlightColor],
 	);
 
 	const createSpeechQueueFromBlock = useCallback(
@@ -866,7 +874,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	}, [archiveJobType, chapterNumber, book, bookId, reloadCurrentChapter]);
 
 	const handleImportCurrentChapterHtml = useCallback(
-		async (event: React.FormEvent) => {
+		async (event: FormEvent) => {
 			event.preventDefault();
 			if (!book) return;
 
@@ -1231,7 +1239,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		[persistReaderSettings],
 	);
 
-	const handleReaderContentClick = (event: React.MouseEvent<HTMLDivElement>) => {
+	const handleReaderContentClick = (event: MouseEvent<HTMLDivElement>) => {
 		const root = readerContentRef.current;
 		const target = event.target as HTMLElement | null;
 		if (!root || !target) return;
@@ -1257,10 +1265,10 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 	if (loading) {
 		return (
-			<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-primary)" }}>
-				<div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+			<div className="flex flex-1 items-center justify-center bg-background">
+				<div className="flex flex-col items-center gap-4">
 					<Spinner size="xl" />
-					<span style={{ color: "var(--text-secondary)" }}>Retrieving archived chapter...</span>
+					<span className="text-copy">Retrieving archived chapter...</span>
 				</div>
 			</div>
 		);
@@ -1270,11 +1278,11 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		return (
 			<div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
 				<div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
-					<h2 style={{ color: "var(--danger)", marginBottom: "1rem" }}>{missingChapterTitle}</h2>
-					<p style={{ maxWidth: "520px", color: "var(--text-secondary)", margin: "0 auto 2rem" }}>
+					<h2 className="mb-4 text-danger">{missingChapterTitle}</h2>
+					<p className="mx-auto mb-8 max-w-[520px] text-copy">
 						{error || "This chapter has not been archived yet."}
 					</p>
-					<div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+					<div className="flex flex-wrap justify-center gap-4">
 						<Button asChild variant="secondary">
 							<Link href={`/books/${bookId}`}>Back to Book Index</Link>
 						</Button>
@@ -1286,20 +1294,13 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					</div>
 
 					{hasCapability(CAPABILITY.JOBS_SCRAPE) && book && (
-						<div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated"
-							style={{
-								width: "min(820px, 100%)",
-								margin: "2rem auto 0",
-								padding: "1.5rem",
-								textAlign: "left",
-							}}
-						>
-							<h3 style={{ fontSize: "1.15rem", marginBottom: "0.5rem" }}>Admin Recovery</h3>
-							<p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1rem" }}>
+						<div className="mx-auto mt-8 w-[min(820px,100%)] rounded-lg border border-border bg-card p-6 text-left shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
+							<h3 className="mb-2 text-[1.15rem]">Admin Recovery</h3>
+							<p className="mb-4 text-[0.9rem] text-copy">
 								Archive this {isRawReader ? "raw" : "translated"} chapter now, or paste the saved HTML for this source page.
 							</p>
 
-							<div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+							<div className="mb-4 flex flex-wrap gap-3">
 								<Button type="button"
 									onClick={handleScrapeCurrentChapterNow}
 									disabled={adminScrapingChapter || !currentCatalogItem?.sourceUrl}
@@ -1313,7 +1314,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 								)}
 							</div>
 
-							<form key={`${readerSourceKind}-${chapterNumber}`} onSubmit={handleImportCurrentChapterHtml} style={{ display: "grid", gap: "1rem" }}>
+							<form key={`${readerSourceKind}-${chapterNumber}`} onSubmit={handleImportCurrentChapterHtml} className="grid gap-4">
 								<div className="flex flex-col gap-2">
 									<label className="text-sm font-semibold text-copy">Chapter Page URL</label>
 									<Input type="url"
@@ -1335,8 +1336,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 									/>
 								</div>
 
-								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-									<span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+								<div className="flex flex-wrap items-center justify-between gap-4">
+									<span className="text-[0.85rem] text-copy">
 										{readerSourceKind === "raw" ? "Raw chapter" : "Translated chapter"} {chapterNumber}
 									</span>
 									<Button type="submit" disabled={importingChapterHtml}>
@@ -1346,7 +1347,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 							</form>
 
 							{adminActionMessage && (
-								<p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "1rem" }}>{adminActionMessage}</p>
+								<p className="mt-4 text-[0.9rem] text-copy">{adminActionMessage}</p>
 							)}
 						</div>
 					)}
@@ -1362,28 +1363,43 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	}[readWidth];
 	const readerContentStyle = {
 		fontSize: `${fontSize}px`,
-		"--reader-highlight-paragraph": paragraphHighlightColor,
-		"--reader-highlight-word": wordHighlightColor,
-		"--reader-sentence-opacity": String(sentenceHighlightOpacity),
-	} as React.CSSProperties;
-	const themeClass = `reader-theme-${theme}`;
+	} as CSSProperties;
+
+	type ReaderThemeStyle = CSSProperties & { [key: string]: string };
+
+	const readerThemeStyle: Record<ReaderTheme, ReaderThemeStyle> = {
+		dark: {
+			"--reader-bg": "#10131a",
+			"--reader-text": "#ece7dc",
+			"--reader-border": "#2f3440",
+			"--reader-surface": "#181d27",
+			"--reader-surface-hover": "#222938",
+			"--reader-muted": "#a59c8d",
+			"--reader-accent": "#d08a48",
+		},
+		light: {
+			"--reader-bg": "#fffdf8",
+			"--reader-text": "#24211d",
+			"--reader-border": "#dfd6c8",
+			"--reader-surface": "#fffaf1",
+			"--reader-surface-hover": "#f2ecdf",
+			"--reader-muted": "#756d62",
+			"--reader-accent": "#405f8f",
+		},
+		sepia: {
+			"--reader-bg": "#f7f0df",
+			"--reader-text": "#5c4d3b",
+			"--reader-border": "#e4dac6",
+			"--reader-surface": "#fff8e8",
+			"--reader-surface-hover": "#efe5d0",
+			"--reader-muted": "#8b7b65",
+			"--reader-accent": "#9b5b36",
+		},
+	};
 
 	return (
 		<>
-			<style>{`
-				.reader-content .reader-speaking-block {
-					background-color: var(--reader-highlight-paragraph) !important;
-					border-radius: 4px;
-					box-shadow: 0 0 0 4px var(--reader-highlight-paragraph) !important;
-					transition: background-color 0.15s ease, box-shadow 0.15s ease;
-				}
-				.reader-speaking-word {
-					background-color: var(--reader-highlight-word) !important;
-					color: #000 !important;
-					border-radius: 2px;
-				}
-			`}</style>
-			<div className={cn(themeClass, "flex min-h-screen flex-col")}>
+			<div className={cn("flex min-h-screen flex-col", theme === "light" ? "font-sans" : "font-serif")} style={readerThemeStyle[theme]}>
 				<div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--reader-border)] bg-[var(--reader-bg)]/90 px-5 py-2.5 backdrop-blur-[10px] max-[860px]:gap-2 max-[860px]:px-3 max-[860px]:py-[0.65rem]">
 					<div className="flex w-full flex-wrap items-center justify-between gap-2">
 						<button className="min-h-8 rounded-md border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2.5 py-1.5 text-xs font-bold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setIsCatalogOpen(true)}>
@@ -1477,15 +1493,16 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 						</header>
 
 						<div ref={readerContentRef}
-							className="reader-content"
+							className="text-[var(--reader-text)] [line-break:anywhere] [&_p]:mt-0 [&_p]:mb-[1.2em] [&_p]:cursor-pointer [&_li]:cursor-pointer [&_blockquote]:cursor-pointer [&_h1]:cursor-pointer [&_h2]:cursor-pointer [&_h3]:cursor-pointer [&_h4]:cursor-pointer [&_p]:scroll-mt-28 [&_li]:scroll-mt-28 [&_blockquote]:scroll-mt-28 [&_h1]:scroll-mt-28 [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28 [&_h4]:scroll-mt-28 [&_p]:rounded-sm [&_li]:rounded-sm [&_blockquote]:rounded-sm [&_h1]:rounded-sm [&_h2]:rounded-sm [&_h3]:rounded-sm [&_h4]:rounded-sm [&_p]:transition-[background-color,box-shadow] [&_li]:transition-[background-color,box-shadow] [&_blockquote]:transition-[background-color,box-shadow] [&_h1]:transition-[background-color,box-shadow] [&_h2]:transition-[background-color,box-shadow] [&_h3]:transition-[background-color,box-shadow] [&_h4]:transition-[background-color,box-shadow] [&_p]:duration-[160ms] [&_li]:duration-[160ms] [&_blockquote]:duration-[160ms] [&_h1]:duration-[160ms] [&_h2]:duration-[160ms] [&_h3]:duration-[160ms] [&_h4]:duration-[160ms] [&_p]:ease-[ease] [&_li]:ease-[ease] [&_blockquote]:ease-[ease] [&_h1]:ease-[ease] [&_h2]:ease-[ease] [&_h3]:ease-[ease] [&_h4]:ease-[ease] [&_p:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_9%,transparent)] [&_li:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_9%,transparent)] [&_blockquote:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_9%,transparent)] [&_img]:max-w-full [&_img]:h-auto"
 							style={readerContentStyle}
 							onClick={handleReaderContentClick}
 							dangerouslySetInnerHTML={{ __html: chapter.content }}
 						/>
 
 						<footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--reader-border)] pt-6">
-							<Button variant="secondary"
-								style={{ color: "var(--reader-text)", borderColor: "var(--reader-border)", backgroundColor: "transparent" }}
+							<Button
+								variant="secondary"
+								className="border-[var(--reader-border)] bg-transparent text-[var(--reader-text)]"
 								disabled={!hasPreviousChapter}
 								onClick={() => navigateToChapter(previousChapterNumber)}
 							>

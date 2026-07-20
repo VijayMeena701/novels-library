@@ -54,6 +54,7 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 	const [search, setSearch] = useState(filters.search || "");
 
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setSearch(filters.search || "");
 	}, [filters.search]);
 

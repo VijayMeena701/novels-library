@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { GripVertical, Pause, Play, RotateCcw, Settings2, SkipBack, SkipForward, Square, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { IconButton } from "../ui/icon-button";
@@ -137,7 +136,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 		}
 	}, [clearDragRaf]);
 
-	const handleHeaderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+	const handleHeaderPointerDown = (event: PointerEvent<HTMLDivElement>) => {
 		const rect = panelRef.current?.getBoundingClientRect();
 		const origin = rect
 			? { x: rect.left, y: rect.top }
@@ -156,7 +155,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 		event.currentTarget.setPointerCapture(event.pointerId);
 	};
 
-	const handleHeaderPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+	const handleHeaderPointerMove = (event: PointerEvent<HTMLDivElement>) => {
 		const drag = dragRef.current;
 		if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -179,7 +178,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 		});
 	};
 
-	const handleHeaderPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+	const handleHeaderPointerUp = (event: PointerEvent<HTMLDivElement>) => {
 		const drag = dragRef.current;
 		if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -198,7 +197,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 		event.currentTarget.releasePointerCapture(event.pointerId);
 	};
 
-	const handleHeaderPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+	const handleHeaderPointerCancel = (event: PointerEvent<HTMLDivElement>) => {
 		const drag = dragRef.current;
 		if (!drag || drag.pointerId !== event.pointerId) return;
 		clearDragVisual();

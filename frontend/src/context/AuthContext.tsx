@@ -1,6 +1,5 @@
 "use client";
-
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter, usePathname } from "next/navigation";
 import { Ability } from "@casl/ability";
 import { api, ApiError, User } from "../utils/api";
@@ -36,7 +35,7 @@ function parseJwtPayload(token: string) {
 	}
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [ability, setAbility] = useState<Ability | null>(null);
 	const [loading, setLoading] = useState(true);

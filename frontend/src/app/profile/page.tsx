@@ -1,7 +1,7 @@
 'use client';
 import { cn } from '../../lib/utils';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { api, Book, BookStatus } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -65,7 +65,7 @@ export default function Dashboard() {
   }, [user]);
 
   // Quick increment chaptersRead
-  const handleQuickIncrement = async (e: React.MouseEvent, book: Book) => {
+  const handleQuickIncrement = async (e: MouseEvent, book: Book) => {
     e.preventDefault(); // Prevent navigating to details link
     e.stopPropagation();
     
@@ -92,7 +92,7 @@ export default function Dashboard() {
   };
 
   // Create book submit
-  const handleCreateBook = async (e: React.FormEvent) => {
+  const handleCreateBook = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitError('');
     
@@ -158,10 +158,10 @@ export default function Dashboard() {
 
   if (authLoading || loading) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
           <Spinner size="xl" />
-          <span style={{ color: 'var(--text-secondary)' }}>Loading library database...</span>
+          <span className="text-copy">Loading library database...</span>
         </div>
       </div>
     );
@@ -207,7 +207,7 @@ export default function Dashboard() {
       </div>
 
       <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated flex flex-wrap items-center gap-4 p-3.5">
-        <div style={{ flex: 1, minWidth: '280px' }}>
+        <div className="min-w-[280px] flex-1">
           <Input type="text" 
              
             placeholder="Search title, author, genre, notes, characters..."
@@ -215,7 +215,7 @@ export default function Dashboard() {
             onChange={(e) => setSearch(e.target.value)}
          />
         </div>
-        <div style={{ minWidth: '180px' }}>
+        <div className="min-w-[180px]">
           <Select value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -231,7 +231,7 @@ export default function Dashboard() {
 
       {filteredBooks.length === 0 ? (
         <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
-          <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+          <p className="mb-4 text-[1.2rem] text-copy">
             {search || statusFilter !== 'all' ? 'No books match your filter query.' : 'Your reading library is empty.'}
           </p>
           {hasCapability(CAPABILITY.BOOKS_CREATE) ? (
@@ -269,28 +269,22 @@ export default function Dashboard() {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[8px]">
           <div className="flex w-full max-w-[640px] max-h-[90vh] flex-col gap-5 overflow-auto rounded-lg border border-border bg-card p-5 shadow-lg">
             <div className="flex items-center justify-between gap-4">
-              <h2 style={{ fontSize: '1.5rem' }}>Create Catalog Book</h2>
-              <button onClick={() => { setIsModalOpen(false); setSubmitError(''); }}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
+              <h2 className="text-2xl">Create Catalog Book</h2>
+              <button
+                className="cursor-pointer border-none bg-transparent text-2xl text-copy"
+                onClick={() => { setIsModalOpen(false); setSubmitError(''); }}
               >
                 &times;
               </button>
             </div>
 
             {submitError && (
-              <div style={{ 
-                backgroundColor: 'rgba(239, 68, 68, 0.12)', 
-                border: '1px solid rgba(239, 68, 68, 0.25)', 
-                color: 'var(--danger)', 
-                padding: '0.75rem 1.25rem', 
-                borderRadius: 'var(--radius-md)', 
-                fontSize: '0.875rem' 
-              }}>
+              <div className="rounded-md border border-red-500/25 bg-red-500/12 px-5 py-3 text-sm text-danger">
                 {submitError}
               </div>
             )}
 
-            <form onSubmit={handleCreateBook} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
+            <form onSubmit={handleCreateBook} className="flex flex-col gap-5" noValidate>
               
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-semibold text-copy">Book Web Link (Optional - for automated background scraping)</label>
@@ -300,7 +294,7 @@ export default function Dashboard() {
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
                />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                <span className="mt-1 block text-xs text-muted-copy">
                   If provided, our background crawler will download and archive metadata & chapters automatically.
                 </span>
               </div>
@@ -313,7 +307,7 @@ export default function Dashboard() {
                   value={newCoverUrl}
                   onChange={(e) => setNewCoverUrl(e.target.value)}
                />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                <span className="mt-1 block text-xs text-muted-copy">
                   Add this for manual entries, then use Sync Cover from the book page to cache it locally.
                 </span>
               </div>
@@ -361,7 +355,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
+              <div className="mt-2 flex justify-end gap-4">
                 <Button type="button"
                   variant="secondary"
                   onClick={() => { setIsModalOpen(false); setSubmitError(''); }}

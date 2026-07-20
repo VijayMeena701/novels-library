@@ -1,14 +1,13 @@
 "use client";
-
-import React, { useEffect } from "react";
+import { useEffect, type ReactNode } from 'react';
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface BottomSheetProps {
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
-	children: React.ReactNode;
-	header?: React.ReactNode;
+	children: ReactNode;
+	header?: ReactNode;
 	className?: string;
 	contentClassName?: string;
 	closeLabel?: string;

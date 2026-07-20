@@ -1,11 +1,11 @@
-import React from "react";
+import { type ReactNode } from 'react';
 import { useAuth } from "../context/AuthContext";
 
 interface CanProps {
   action: string;
   subject: string;
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
 export function Can({ action, subject, children, fallback = null }: CanProps) {

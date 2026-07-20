@@ -99,12 +99,14 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
   const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBook(bookProp);
     setChapters(chaptersProp);
   }, [bookProp, chaptersProp]);
 
   useEffect(() => {
     if (!book) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditStatus(book.status ?? 'reading');
     setEditChRead(book.chaptersRead ?? 0);
     setEditCompletedAt(formatDateTimeLocal(book.completedAt));
@@ -333,6 +335,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
               <div className="w-[120px] h-[170px] shrink-0 rounded-md border border-border bg-surface-muted overflow-hidden">
                 {coverSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={coverSrc} alt={book.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-2xl font-black text-primary/50">

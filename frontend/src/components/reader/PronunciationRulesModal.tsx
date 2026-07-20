@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useState } from "react";
+import { useState, type FormEvent } from 'react';
 import { Globe2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { CreatePronunciationRulePayload, PronunciationRule, UpdatePronunciationRulePayload } from "../../utils/api";
@@ -88,7 +87,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 		setFormError("");
 	};
 
-	const handleSubmit = async (event: React.FormEvent) => {
+	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
 		const pattern = form.pattern.trim();
 		if (!pattern) {

@@ -35,14 +35,14 @@ export default function AuthorsPage() {
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,250px))] gap-3.5">
           {authors.map((author) => (
-            <Link key={author._id} href={`/authors/${author._id}`} style={{ textDecoration: 'none' }}>
-              <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated" style={{ padding: '1.25rem', minHeight: '150px', height: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <h3 style={{ fontSize: '1.1rem' }}>{author.displayName}</h3>
-                {author.realName && <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Real name: {author.realName}</p>}
+            <Link key={author._id} href={`/authors/${author._id}`} className="no-underline">
+              <div className="flex h-full min-h-[150px] flex-col gap-3 rounded-lg border border-border bg-card p-5 shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
+                <h3 className="text-[1.1rem]">{author.displayName}</h3>
+                {author.realName && <p className="text-[0.9rem] text-copy">Real name: {author.realName}</p>}
                 {author.alternativeNames.length > 0 && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{author.alternativeNames.slice(0, 3).join(', ')}</p>
+                  <p className="text-[0.82rem] text-muted-copy">{author.alternativeNames.slice(0, 3).join(', ')}</p>
                 )}
-                <span style={{ marginTop: 'auto', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                <span className="mt-auto text-[0.85rem] text-copy">
                   {author.bookCount || 0} linked book{author.bookCount === 1 ? '' : 's'}
                 </span>
               </div>
