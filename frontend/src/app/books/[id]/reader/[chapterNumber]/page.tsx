@@ -26,6 +26,7 @@ import { applyReaderThemeCssVariables, normalizeReaderTheme } from "../../../../
 import { SpeechWidget } from "../../../../../components/reader/SpeechWidget";
 import { ReaderBottomToolbar } from "../../../../../components/reader/ReaderBottomToolbar";
 import { ReaderControlBar } from "../../../../../components/reader/ReaderControlBar";
+import { ReaderCatalog, type ReaderCatalogChapter } from "../../../../../components/reader/ReaderCatalog";
 import { PronunciationRulesModal } from "../../../../../components/reader/PronunciationRulesModal";
 import { Button } from "../../../../../components/ui/button";
 import { Input, Textarea } from "../../../../../components/ui/input";
@@ -47,14 +48,6 @@ const TTS_SESSION_FLAG = "books_reader_user_started_tts";
 interface SpeechChunk {
 	text: string;
 	startOffset: number;
-}
-
-interface CatalogChapter {
-	chapterNumber: number;
-	title: string;
-	archived: boolean;
-	sourceUrl?: string;
-	scrapedAt?: string;
 }
 
 interface SpeechQueueItem {
@@ -284,7 +277,6 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const [ttsStatus, setTtsStatus] = useState<TtsStatus>("idle");
 	const [speechError, setSpeechError] = useState("");
 	const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-	const [catalogSearch, setCatalogSearch] = useState("");
 	const [isReaderPanelOpen, setIsReaderPanelOpen] = useState(false);
 	const [readerPanelTab, setReaderPanelTab] = useState<ReaderPanelTab>("read");
 
@@ -774,12 +766,12 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		activeWordHighlightRef.current = null;
 	}, [chapter?.content, chapterNumber, clearSpeakingHighlights]);
 
-	const catalogItems = useMemo<CatalogChapter[]>(() => {
+	const catalogItems = useMemo<ReaderCatalogChapter[]>(() => {
 		if (!book) return [];
 
 		const archivedByNumber = new Map(chapters.map((item) => [item.chapterNumber, item]));
 		const seen = new Set<number>();
-		const items: CatalogChapter[] = [];
+		const items: ReaderCatalogChapter[] = [];
 
 		const indexedChapters = isRawReader ? book.rawChaptersList || [] : book.translatedChaptersList || [];
 
@@ -810,13 +802,6 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 		return items.sort((a, b) => a.chapterNumber - b.chapterNumber);
 	}, [isRawReader, book, chapters]);
-
-	const filteredCatalogItems = useMemo(() => {
-		const query = catalogSearch.trim().toLowerCase();
-		if (!query) return catalogItems;
-
-		return catalogItems.filter((item) => item.title.toLowerCase().includes(query) || item.chapterNumber.toString().includes(query));
-	}, [catalogItems, catalogSearch]);
 
 	const currentCatalogIndex = useMemo(() => catalogItems.findIndex((item) => item.chapterNumber === chapterNumber), [catalogItems, chapterNumber]);
 	const currentCatalogItem = currentCatalogIndex >= 0 ? catalogItems[currentCatalogIndex] : undefined;
@@ -1465,45 +1450,15 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					</div>
 				</div>
 
-				{isCatalogOpen && (
-					<div className="fixed inset-0 z-[1000] flex items-start justify-start bg-[var(--reader-overlay)]" onClick={() => setIsCatalogOpen(false)}>
-						<aside className="flex min-h-screen w-full max-w-[420px] flex-col gap-5 border-r border-[var(--reader-border)] bg-[var(--reader-bg)] p-5 text-[var(--reader-text)] shadow-[18px_0_48px_rgba(0,0,0,0.16)]" onClick={(event) => event.stopPropagation()}>
-							<div className="flex items-start justify-between gap-4">
-								<div>
-									<h2 className="text-lg font-semibold tracking-tight">Contents</h2>
-									<p className="mt-1 text-xs leading-relaxed text-[var(--reader-muted)]">
-										{isRawReader ? "Raw" : "Translated"} · {catalogItems.length} chapters indexed, {chapters.length} archived.
-									</p>
-								</div>
-								<button className="min-h-8 rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-1.5 text-xs font-medium text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]" onClick={() => setIsCatalogOpen(false)}>
-									Close
-								</button>
-							</div>
-
-							<Input className="min-h-10 border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] placeholder:text-[var(--reader-muted)] focus:border-[var(--reader-accent)] focus:ring-[var(--reader-accent)]"
-								value={catalogSearch}
-								onChange={(event) => setCatalogSearch(event.target.value)}
-								placeholder="Search chapter number or title"
-							/>
-
-							<div className="flex flex-1 flex-col gap-1 overflow-auto pr-1">
-								{filteredCatalogItems.map((item) => (
-									<button key={item.chapterNumber}
-										className={cn("flex w-full flex-col gap-1 rounded-xl border border-transparent px-3.5 py-3 text-left text-[var(--reader-text)] transition hover:border-[var(--reader-border)] hover:bg-[var(--reader-surface)]", item.chapterNumber === chapterNumber && "border-[var(--reader-accent)]/50 bg-[var(--reader-surface)]")}
-										onClick={() => {
-											setIsCatalogOpen(false);
-											navigateToChapter(item.chapterNumber);
-										}}
-									>
-										<span className="text-[0.68rem] font-medium text-[var(--reader-muted)]">Chapter {item.chapterNumber}</span>
-										<strong className="line-clamp-2 text-sm font-medium leading-snug">{item.title}</strong>
-										<small className="text-[0.68rem] text-[var(--reader-muted)]">{item.archived ? "Archived" : "Indexed only"}</small>
-									</button>
-								))}
-							</div>
-						</aside>
-					</div>
-				)}
+				<ReaderCatalog
+					isOpen={isCatalogOpen}
+					onClose={() => setIsCatalogOpen(false)}
+					items={catalogItems}
+					currentChapterNumber={chapterNumber}
+					onSelectChapter={navigateToChapter}
+					isRawReader={isRawReader}
+					archivedCount={chapters.length}
+				/>
 
 				<main className="flex flex-1 justify-center px-5 py-12 pb-40 max-[860px]:px-4 max-[860px]:py-8 max-[860px]:pb-32">
 					<article className="flex w-full flex-col gap-8 leading-[1.9] text-[var(--reader-text)]" style={{ maxWidth: widthStyle }}>
