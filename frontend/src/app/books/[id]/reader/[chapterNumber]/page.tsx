@@ -253,6 +253,32 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	const [speechPitch, setSpeechPitch] = useState(1);
 	const [selectedVoiceURI, setSelectedVoiceURI] = useState("");
 	const [speechPortalPosition, setSpeechPortalPosition] = useState<{ x: number; y: number }>({ x: 20, y: 80 });
+	const [speechTogglePosition, setSpeechTogglePosition] = useState<{ x: number; y: number }>(() => {
+		if (typeof window === "undefined") return { x: 0, y: 0 };
+		try {
+			const saved = window.localStorage.getItem("books_reader_speech_toggle_position");
+			if (saved) {
+				const parsed = JSON.parse(saved) as unknown;
+				if (
+					parsed &&
+					typeof parsed === "object" &&
+					"x" in parsed &&
+					"y" in parsed &&
+					typeof (parsed as { x: unknown }).x === "number" &&
+					typeof (parsed as { y: unknown }).y === "number"
+				) {
+					const point = parsed as { x: number; y: number };
+					return {
+						x: Math.max(8, point.x),
+						y: Math.max(8, point.y),
+					};
+				}
+			}
+		} catch {
+			// Ignore malformed local storage data.
+		}
+		return { x: Math.max(8, window.innerWidth - 64), y: Math.max(8, window.innerHeight - 152) };
+	});
 
 	const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 	const [ttsStatus, setTtsStatus] = useState<TtsStatus>("idle");
@@ -322,9 +348,14 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	}, []);
 
 	const getSpeechBlocks = useCallback((): SpeechBlock[] => {
-		if (speechBlocksRef.current.length > 0) {
+		const root = readerContentRef.current;
+		if (!root) return [];
+
+		const isConnected = (element: HTMLElement) => element.isConnected && root.contains(element);
+		if (speechBlocksRef.current.length > 0 && speechBlocksRef.current.every((block) => isConnected(block.element))) {
 			return speechBlocksRef.current;
 		}
+
 		speechBlocksRef.current = buildSpeechBlocks();
 		return speechBlocksRef.current;
 	}, [buildSpeechBlocks]);
@@ -485,25 +516,6 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		};
 	}, [speechSupported, selectedVoiceURI]);
 
-	const clearSpeakingHighlights = useCallback(() => {
-		if (activeSpeechElementRef.current) {
-			const element = activeSpeechElementRef.current;
-			element.style.backgroundColor = "";
-			element.style.boxShadow = "";
-			element.style.borderRadius = "";
-			element.style.transition = "";
-			activeSpeechElementRef.current = null;
-		}
-		if (activeWordHighlightRef.current) {
-			const parent = activeWordHighlightRef.current.parentNode;
-			if (parent) {
-				const originalText = parent.textContent || "";
-				parent.replaceChild(document.createTextNode(originalText), activeWordHighlightRef.current);
-			}
-			activeWordHighlightRef.current = null;
-		}
-	}, []);
-
 	const clearSpeakingWord = useCallback(() => {
 		if (activeWordHighlightRef.current) {
 			const span = activeWordHighlightRef.current;
@@ -516,6 +528,18 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			activeWordHighlightRef.current = null;
 		}
 	}, []);
+
+	const clearSpeakingHighlights = useCallback(() => {
+		clearSpeakingWord();
+		if (activeSpeechElementRef.current) {
+			const element = activeSpeechElementRef.current;
+			element.style.backgroundColor = "";
+			element.style.boxShadow = "";
+			element.style.borderRadius = "";
+			element.style.transition = "";
+			activeSpeechElementRef.current = null;
+		}
+	}, [clearSpeakingWord]);
 
 	const highlightSpeechBlock = useCallback(
 		(blockIndex: number) => {
@@ -644,6 +668,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				shouldContinueSpeechRef.current = false;
 			}
 			clearSpeakingHighlights();
+			activeSpeechBlockIndexRef.current = null;
+			activeQueueItemRef.current = null;
 			ttsStatusRef.current = "idle";
 			setTtsStatus("idle");
 
@@ -741,10 +767,12 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 	// Instantly clear blocks on navigation or new contents to prevent stale tracking
 	useEffect(() => {
+		clearSpeakingHighlights();
 		speechBlocksRef.current = [];
+		activeSpeechBlockIndexRef.current = null;
 		activeSpeechElementRef.current = null;
 		activeWordHighlightRef.current = null;
-	}, [chapter?.content, chapterNumber]);
+	}, [chapter?.content, chapterNumber, clearSpeakingHighlights]);
 
 	const catalogItems = useMemo<CatalogChapter[]>(() => {
 		if (!book) return [];
@@ -963,6 +991,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			if (activeSpeechBlockIndexRef.current !== speechItem.blockIndex) {
 				highlightSpeechBlock(speechItem.blockIndex);
 			}
+			activeSpeechBlockIndexRef.current = speechItem.blockIndex;
 
 			const utterance = new SpeechSynthesisUtterance(speechItem.spokenText);
 			utterance.rate = speechConfigRef.current.rate;
@@ -976,6 +1005,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 				if (activeSpeechBlockIndexRef.current !== speechItem.blockIndex) {
 					highlightSpeechBlock(speechItem.blockIndex);
 				}
+				activeSpeechBlockIndexRef.current = speechItem.blockIndex;
 			};
 			utterance.onend = () => {
 				if (activeUtteranceRef.current !== utterance) return;
@@ -1248,6 +1278,19 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 			persistReaderSettings({ speechPortalPosition: nextPosition }, options);
 		},
 		[persistReaderSettings],
+	);
+
+	const handleSpeechTogglePositionChange = useCallback(
+		(nextPosition: { x: number; y: number }) => {
+			setSpeechTogglePosition(nextPosition);
+			if (typeof window === "undefined") return;
+			try {
+				window.localStorage.setItem("books_reader_speech_toggle_position", JSON.stringify(nextPosition));
+			} catch {
+				// Storage may be unavailable in restricted contexts.
+			}
+		},
+		[],
 	);
 
 	const handleReaderContentClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -1523,6 +1566,8 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 					onVoiceChange={handleVoiceChange}
 					position={speechPortalPosition}
 					onPositionChange={handleSpeechPortalPositionChange}
+					togglePosition={speechTogglePosition}
+					onTogglePositionChange={handleSpeechTogglePositionChange}
 					onOpenSettings={() => {
 						setReaderPanelTab("speech");
 						setIsReaderPanelOpen(true);
