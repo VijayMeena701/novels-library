@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { useRouter } from 'next/navigation';
 import BooksPage from '@/app/books/page';
@@ -85,7 +86,8 @@ describe('BooksPage', () => {
 
   it('renders loading state then catalog books', async () => {
     mockCatalogApis();
-    render(<BooksPage />);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={queryClient}><BooksPage /></QueryClientProvider>);
 
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
 
@@ -99,17 +101,18 @@ describe('BooksPage', () => {
 
   it('updates the router when a filter changes', async () => {
     mockCatalogApis();
-    const pushSpy = useRouter().push as ReturnType<typeof vi.fn>;
+    const replaceSpy = useRouter().replace as ReturnType<typeof vi.fn>;
 
-    render(<BooksPage />);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={queryClient}><BooksPage /></QueryClientProvider>);
 
     await waitFor(() => expect(screen.getByPlaceholderText('Title, author, pen name...')).toBeInTheDocument());
 
     const searchInput = screen.getByPlaceholderText('Title, author, pen name...');
     fireEvent.change(searchInput, { target: { value: 'mysteries' } });
 
-    await waitFor(() => expect(pushSpy).toHaveBeenCalled());
-    const pushedUrl = pushSpy.mock.calls[pushSpy.mock.calls.length - 1][0] as string;
+    await waitFor(() => expect(replaceSpy).toHaveBeenCalled(), { timeout: 2000 });
+    const pushedUrl = replaceSpy.mock.calls[replaceSpy.mock.calls.length - 1][0] as string;
     expect(pushedUrl).toContain('search=mysteries');
   });
 
@@ -135,7 +138,8 @@ describe('BooksPage', () => {
       }),
     );
 
-    render(<BooksPage />);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={queryClient}><BooksPage /></QueryClientProvider>);
 
     await waitFor(() => {
       expect(screen.getByText('Server down')).toBeInTheDocument();
