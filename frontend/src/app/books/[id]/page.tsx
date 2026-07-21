@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { use, useEffect, useMemo, useState, type FormEvent } from "react";
 import { api, getBookCoverUrl, ApiError, type BackgroundJob, type ChapterContent, type BookReview, type JobType, type Book, type SourceKind, type User } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 import { useToast } from "../../../context/ToastContext";
+import { getLoginHref } from "../../../lib/utils";
 import { CAPABILITY } from "../../../utils/permissions";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -134,6 +136,7 @@ function BookHero({
 	voted,
 	onVote,
 }: HeroProps) {
+	const pathname = usePathname();
 	const translatedChaptersTotal = book.translatedChaptersTotal || chaptersCount || 1;
 	const archivePercentage = Math.min(100, Math.round((chaptersCount / translatedChaptersTotal) * 100));
 	const resumeChapter = continueChapter > 0 ? continueChapter : firstReadableChapter;
@@ -242,7 +245,7 @@ function BookHero({
 						)
 					) : (
 						<Button asChild variant="secondary" className="h-9 font-semibold text-xs">
-							<Link href="/login">Login to Track</Link>
+							<Link href={getLoginHref(pathname)}>Login to Track</Link>
 						</Button>
 					)}
 					{user && (

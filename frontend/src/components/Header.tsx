@@ -7,7 +7,7 @@ import { Menu, X, User, Settings, LogOut, Bell } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useReaderTheme } from "../context/ReaderThemeContext";
 import { applyReaderThemeCssVariables } from "../lib/reader-theme";
-import { cn } from "../lib/utils";
+import { cn, getLoginHref } from "../lib/utils";
 import { Button } from "./ui/button";
 import { CAPABILITY } from "../utils/permissions";
 import { api } from "../utils/api";
@@ -177,7 +177,7 @@ export default function Header() {
 					</>
 				) : (
 						<Button asChild size="sm">
-							<Link href="/login">Login</Link>
+							<Link href={getLoginHref(pathname)}>Login</Link>
 						</Button>
 					)}
 				</div>
@@ -256,7 +256,7 @@ export default function Header() {
 
 						{!user && (
 							<Link
-								href="/login"
+								href={getLoginHref(pathname)}
 								onClick={() => setIsMobileMenuOpen(false)}
 								className="rounded-md bg-primary px-3 py-2.5 text-center text-sm font-bold text-white no-underline transition hover:bg-primary-hover"
 							>

@@ -1,9 +1,9 @@
 'use client';
-import { cn } from '../lib/utils';
+import { cn, getLoginHref } from '../lib/utils';
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BookOpen, BookText, Headphones, Library, Search, Sparkles, TrendingUp, ArrowRight } from 'lucide-react';
 import { api, type Book, type HomeResponse } from '../utils/api';
@@ -67,6 +67,7 @@ const FEATURES = [
 export default function PublicHomePage() {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [libraryBooks, setLibraryBooks] = useState<Book[]>([]);
@@ -242,7 +243,7 @@ export default function PublicHomePage() {
                 <Link href="/books">Browse Catalog</Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <Link href={user ? '/profile' : '/login'}>{user ? 'Open Library' : 'Login to Track'}</Link>
+                <Link href={user ? '/profile' : getLoginHref(pathname)}>{user ? 'Open Library' : 'Login to Track'}</Link>
               </Button>
             </div>
             <div className="flex flex-wrap gap-3 pt-2">

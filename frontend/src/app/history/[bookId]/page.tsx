@@ -1,8 +1,8 @@
 'use client';
-import { cn } from '../../../lib/utils';
+import { cn, getLoginHref } from '../../../lib/utils';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, ChevronLeft, Clock, Library, Pencil } from 'lucide-react';
 import { api, getBookCoverUrl, type Book, type ChapterVisit } from '../../../utils/api';
@@ -42,6 +42,7 @@ type HistoryEvent =
 
 export default function BookHistoryPage() {
   const { user } = useAuth();
+  const pathname = usePathname();
   const params = useParams<{ bookId: string }>();
   const bookId = params?.bookId || '';
 
@@ -124,7 +125,7 @@ export default function BookHistoryPage() {
           <h1 className="font-serif text-2xl font-medium text-foreground">Book History</h1>
           <p className="mt-2 text-sm text-muted-copy">Sign in to view your reading history.</p>
           <Button asChild className="mt-6">
-            <Link href="/login">Sign In</Link>
+            <Link href={getLoginHref(pathname)}>Sign In</Link>
           </Button>
         </Card>
       </div>

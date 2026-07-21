@@ -1,8 +1,9 @@
 'use client';
-import { cn } from '../../lib/utils';
+import { cn, getLoginHref } from '../../lib/utils';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { api, type Notification } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
@@ -10,6 +11,7 @@ import { Button } from '../../components/ui/button';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function NotificationsPage() {
           <h1 className="font-serif text-2xl font-medium text-foreground">Notifications</h1>
           <p className="mt-2 text-sm text-muted-copy">Please log in to view your notifications.</p>
           <Button asChild className="mt-4">
-            <Link href="/login">Go to Login</Link>
+            <Link href={getLoginHref(pathname)}>Go to Login</Link>
           </Button>
         </Card>
       </div>

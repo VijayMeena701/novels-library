@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
+import { getSafeReturnUrl } from '../../lib/utils';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -32,7 +33,9 @@ function LoginContent() {
     const token = searchParams.get('token');
     if (token) {
       api.setToken(token);
-      window.location.href = '/profile';
+      const redirectTarget = sessionStorage.getItem('postLoginRedirect') || searchParams.get('from') || '/profile';
+      sessionStorage.removeItem('postLoginRedirect');
+      window.location.href = getSafeReturnUrl(redirectTarget, '/profile');
     }
   }, [searchParams]);
 
@@ -84,7 +87,14 @@ function LoginContent() {
         )}
 
         <Button asChild variant="secondary" className="w-full border-border-hover">
-          <a href={api.getGoogleLoginUrl()}>Continue with Google</a>
+          <a
+            href={api.getGoogleLoginUrl()}
+            onClick={() => {
+              sessionStorage.setItem('postLoginRedirect', getSafeReturnUrl(searchParams.get('from'), '/profile'));
+            }}
+          >
+            Continue with Google
+          </a>
         </Button>
 
         {showPasswordLogin && (

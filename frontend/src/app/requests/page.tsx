@@ -1,8 +1,9 @@
 'use client';
-import { cn } from '../../lib/utils';
+import { cn, getLoginHref } from '../../lib/utils';
 
 import { useEffect, useState, FormEvent } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { api, type BookRequest } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
@@ -18,6 +19,7 @@ const statusLabels: Record<string, string> = {
 
 export default function RequestsPage() {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [requests, setRequests] = useState<BookRequest[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -75,7 +77,7 @@ export default function RequestsPage() {
           <h1 className="font-serif text-2xl font-medium text-foreground">Book Requests</h1>
           <p className="mt-2 text-sm text-muted-copy">Please log in to view and create book requests.</p>
           <Button asChild className="mt-4">
-            <Link href="/login">Go to Login</Link>
+            <Link href={getLoginHref(pathname)}>Go to Login</Link>
           </Button>
         </Card>
       </div>

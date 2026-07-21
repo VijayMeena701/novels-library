@@ -1,8 +1,9 @@
 'use client';
-import { cn } from '../../lib/utils';
+import { cn, getLoginHref } from '../../lib/utils';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ChevronRight, Clock } from 'lucide-react';
 import { api, getBookCoverUrl, type Book, type ChapterVisit, type HistoryPagination } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -25,6 +26,7 @@ function formatDate(value: string) {
 
 export default function HistoryPage() {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [visits, setVisits] = useState<ChapterVisit[]>([]);
   const [pagination, setPagination] = useState<HistoryPagination | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function HistoryPage() {
           <h1 className="font-serif text-2xl font-medium text-foreground">Reading History</h1>
           <p className="mt-2 text-sm text-muted-copy">Sign in to view your reading history.</p>
           <Button asChild className="mt-6">
-            <Link href="/login">Sign In</Link>
+            <Link href={getLoginHref(pathname)}>Sign In</Link>
           </Button>
         </Card>
       </div>

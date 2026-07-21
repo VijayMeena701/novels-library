@@ -5,6 +5,7 @@ import { Ability } from "@casl/ability";
 import { api, ApiError, User } from "../utils/api";
 import { CAPABILITY } from "../utils/permissions";
 import { buildAbilityFor } from "../utils/ability";
+import { getLoginHref, getSafeReturnUrl } from "../lib/utils";
 
 interface AuthContextType {
 	user: User | null;
@@ -90,9 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		if (!loading) {
 			const isAuthPage = pathname === "/login";
 			if (!user && !isAuthPage && isProtectedRoute(pathname)) {
-				router.push("/login");
+				router.push(getLoginHref(pathname));
 			} else if (user && isAuthPage) {
-				router.push("/profile");
+				const from = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("from") : null;
+				router.push(getSafeReturnUrl(from));
 			} else if (user && pathname.startsWith("/scraper") && !hasCapability(CAPABILITY.JOBS_LIST)) {
 				router.push("/profile");
 			} else if (user && pathname.startsWith("/admin") && !hasCapability(CAPABILITY.ADMIN_ACCESS)) {
@@ -107,12 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			const data = await api.login(email, password);
 			setUserAndAbility(data.user);
 			setLoading(false);
-			router.push("/profile");
 		} catch (err) {
 			setLoading(false);
 			throw err;
 		}
-	}, [setUserAndAbility, router]);
+	}, [setUserAndAbility]);
 
 	const register = useCallback(async (username: string, email: string, password: string) => {
 		setLoading(true);
@@ -120,12 +121,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			const data = await api.register(username, email, password);
 			setUserAndAbility(data.user);
 			setLoading(false);
-			router.push("/profile");
 		} catch (err) {
 			setLoading(false);
 			throw err;
 		}
-	}, [setUserAndAbility, router]);
+	}, [setUserAndAbility]);
 
 	const updateUser = useCallback(async (payload: { username?: string; avatarUrl?: string }) => {
 		const data = await api.updateMe(payload);
@@ -135,8 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const logout = useCallback(() => {
 		api.logout();
 		setUserAndAbility(null);
-		router.push("/login");
-	}, [setUserAndAbility, router]);
+		router.push(getLoginHref(pathname));
+	}, [setUserAndAbility, router, pathname]);
 
 	const value = useMemo(
 		() => ({ user, ability, loading, login, register, updateUser, logout, hasCapability }),

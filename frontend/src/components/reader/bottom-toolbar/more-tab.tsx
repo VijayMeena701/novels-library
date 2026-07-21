@@ -1,9 +1,12 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { getLoginHref } from "../../../lib/utils";
 import { DockButton } from "../../ui/dock-button";
 import type { ReaderBottomToolbarProps } from "./types";
 
 export function MoreTab(props: ReaderBottomToolbarProps) {
+	const pathname = usePathname();
 	return (
 		<div className="flex flex-col gap-5">
 			<div>
@@ -21,7 +24,7 @@ export function MoreTab(props: ReaderBottomToolbarProps) {
 			<DockButton onClick={props.onScrollToTop} label="Top">
 				<span className="text-[0.68rem] text-[var(--reader-muted)]">Return to title</span>
 			</DockButton>
-			<Link href={props.isLoggedIn ? `/books/${props.bookId}` : "/login"} className="contents">
+			<Link href={props.isLoggedIn ? `/books/${props.bookId}` : getLoginHref(pathname)} className="contents">
 				<DockButton label={props.isLoggedIn ? "Profile Details" : "Login"}>
 					<span className="text-[0.68rem] text-[var(--reader-muted)]">
 						{props.isLoggedIn ? "Open your private notes" : "Track reading progress"}
