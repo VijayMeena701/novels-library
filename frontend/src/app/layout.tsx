@@ -5,6 +5,7 @@ import { ToastProvider } from '../context/ToastContext';
 import { ReaderThemeProvider } from '../context/ReaderThemeContext';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import Header from '../components/Header';
+import { QueryProvider } from '../components/providers/QueryProvider';
 
 export const metadata: Metadata = {
   title: 'Books Library',
@@ -25,18 +26,20 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="min-h-screen">
-        <ToastProvider>
-          <AuthProvider>
-            <ReaderThemeProvider>
-              <ErrorBoundary name="Navigation">
-                <Header />
-              </ErrorBoundary>
-              <main className="flex min-h-[calc(100vh-4rem)] flex-col">
-                <ErrorBoundary name="Page content">{children}</ErrorBoundary>
-              </main>
-            </ReaderThemeProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <QueryProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <ReaderThemeProvider>
+                <ErrorBoundary name="Navigation">
+                  <Header />
+                </ErrorBoundary>
+                <main className="flex min-h-[calc(100vh-4rem)] flex-col">
+                  <ErrorBoundary name="Page content">{children}</ErrorBoundary>
+                </main>
+              </ReaderThemeProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </QueryProvider>
       </body>
     </html>
   );
