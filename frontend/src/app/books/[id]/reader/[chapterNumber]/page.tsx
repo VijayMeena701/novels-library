@@ -1,11 +1,8 @@
 "use client";
 
-import { cn } from '../../../../../lib/utils';
-
-import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
-import Link from "next/link";
+import { cn } from "../../../../../lib/utils";
+import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, List, Settings2 } from "lucide-react";
 import {
 	api,
 	type Book,
@@ -13,10 +10,10 @@ import {
 	type JobType,
 	type PronunciationRule,
 	type ReaderSettings,
-	type ReaderAutoScrollBehavior,
-	type ReaderHighlightMode,
 	type ReaderTheme,
 	type ReaderWidth,
+	type ReaderHighlightMode,
+	type ReaderAutoScrollBehavior,
 	type SourceKind,
 } from "../../../../../utils/api";
 import { useAuth } from "../../../../../context/AuthContext";
@@ -28,175 +25,33 @@ import { ReaderBottomToolbar } from "../../../../../components/reader/ReaderBott
 import { ReaderControlBar } from "../../../../../components/reader/ReaderControlBar";
 import { ReaderCatalog, type ReaderCatalogChapter } from "../../../../../components/reader/ReaderCatalog";
 import { PronunciationRulesModal } from "../../../../../components/reader/PronunciationRulesModal";
-import { Button } from "../../../../../components/ui/button";
-import { Input, Textarea } from "../../../../../components/ui/input";
+import { ReaderHeader } from "../../../../../components/reader/ReaderHeader";
+import { ReaderChapterHeader } from "../../../../../components/reader/ReaderChapterHeader";
+import { ReaderChapterContent } from "../../../../../components/reader/ReaderChapterContent";
+import { ReaderErrorState } from "../../../../../components/reader/ReaderErrorState";
 import { Spinner } from "../../../../../components/ui/spinner";
-
-type TtsStatus = "idle" | "playing" | "paused";
-type ReaderPanelTab = "read" | "display" | "speech" | "settings" | "more";
-type ReaderSource = "translated" | "raw";
-
-const SPEECH_RATE_MIN = 0.5;
-const SPEECH_RATE_MAX = 4;
-const SPEECH_PITCH_MIN = 0.5;
-const SPEECH_PITCH_MAX = 2;
-const SPEECH_BLOCK_SELECTOR = "p, li, blockquote, h1, h2, h3, h4, div";
-const DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR = "#f5d67a";
-const DEFAULT_WORD_HIGHLIGHT_COLOR = "#f59e0b";
-const TTS_SESSION_FLAG = "books_reader_user_started_tts";
-
-interface SpeechChunk {
-	text: string;
-	startOffset: number;
-}
-
-interface SpeechQueueItem {
-	text: string;
-	spokenText: string;
-	blockIndex: number;
-	startOffset: number;
-}
-
-interface SpeechBlock {
-	element: HTMLElement;
-	text: string;
-}
-
-function getScrollParent(node: HTMLElement | null): HTMLElement | Window {
-	if (!node) {
-		return window;
-	}
-	let parent = node.parentElement;
-	while (parent) {
-		if (parent.tagName === "BODY" || parent.tagName === "HTML") {
-			return window;
-		}
-		const style = window.getComputedStyle(parent);
-		if (/(auto|scroll)/.test(style.overflow + style.overflowY + style.overflowX)) {
-			return parent;
-		}
-		parent = parent.parentElement;
-	}
-	return window;
-}
-
-function isSpeechLeafBlock(element: HTMLElement): boolean {
-	if (element.tagName !== "DIV") return true;
-
-	// Ignore wrapper containers so playback follows real content blocks.
-	return !Array.from(element.children).some((child) => {
-		if (!(child instanceof HTMLElement)) return false;
-		return ["P", "LI", "BLOCKQUOTE", "H1", "H2", "H3", "H4", "DIV"].includes(child.tagName);
-	});
-}
-
-function normalizeTitle(value: string): string {
-	return value.replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-function isGenericChapterTitle(value: string, bookTitle: string, chapterNumber: number): boolean {
-	const normalized = normalizeTitle(value);
-	return !normalized || normalized === normalizeTitle(bookTitle) || normalized === `chapter ${chapterNumber}` || normalized === `ch ${chapterNumber}`;
-}
-
-function resolveChapterTitle(bookTitle: string, chapterNumber: number, archivedTitle?: string, indexedTitle?: string): string {
-	const archived = archivedTitle?.trim() || "";
-	const indexed = indexedTitle?.trim() || "";
-
-	if (indexed && isGenericChapterTitle(archived, bookTitle, chapterNumber)) {
-		return indexed;
-	}
-
-	return archived || indexed || `Chapter ${chapterNumber}`;
-}
-
-function splitSpeechTextWithOffsets(text: string, maxLength = 1800): SpeechChunk[] {
-	const normalized = text.replace(/\s+/g, " ").trim();
-	if (!normalized) return [];
-
-	const chunks: SpeechChunk[] = [];
-	let remaining = normalized;
-	let consumed = 0;
-
-	while (remaining.length > maxLength) {
-		const punctuationBreak = Math.max(
-			remaining.lastIndexOf(".", maxLength),
-			remaining.lastIndexOf("!", maxLength),
-			remaining.lastIndexOf("?", maxLength),
-			remaining.lastIndexOf(";", maxLength),
-			remaining.lastIndexOf(",", maxLength),
-		);
-		const wordBreak = remaining.lastIndexOf(" ", maxLength);
-		const breakAt = punctuationBreak > maxLength * 0.45 ? punctuationBreak + 1 : wordBreak > maxLength * 0.45 ? wordBreak : maxLength;
-		const chunk = remaining.slice(0, breakAt).trim();
-		if (chunk) {
-			const exactStart = normalized.indexOf(chunk, consumed);
-			chunks.push({
-				text: chunk,
-				startOffset: exactStart !== -1 ? exactStart : consumed,
-			});
-		}
-		consumed += breakAt;
-		remaining = remaining.slice(breakAt).trim();
-	}
-
-	if (remaining) {
-		const exactStart = normalized.indexOf(remaining, consumed);
-		chunks.push({
-			text: remaining,
-			startOffset: exactStart !== -1 ? exactStart : consumed,
-		});
-	}
-
-	return chunks;
-}
-
-function normalizeHexColor(value: string, fallback: string): string {
-	const normalized = value.trim().toLowerCase();
-	return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : fallback;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function isLetter(char: string): boolean {
-	return /^\p{Letter}$/u.test(char);
-}
-
-function buildWholeWordPattern(pattern: string): string {
-	const escaped = escapeRegExp(pattern);
-	const chars = Array.from(pattern);
-	const firstChar = chars[0];
-	const lastChar = chars[chars.length - 1];
-	const prefix = firstChar && isLetter(firstChar) ? "(?<!\\p{Letter})" : "";
-	const suffix = lastChar && isLetter(lastChar) ? "(?!\\p{Letter})" : "";
-	return `${prefix}${escaped}${suffix}`;
-}
-
-/**
- * Rewrites text to speak using the user's pronunciation rules for this book (or their
- * "all books" global rules). Rules with an empty replacement mute/skip the matched text.
- */
-function applyPronunciationRules(text: string, rules: PronunciationRule[]): string {
-	if (!rules.length) return text;
-
-	let result = text;
-	for (const rule of rules) {
-		if (!rule.enabled || !rule.pattern) continue;
-
-		const pattern = rule.wholeWord ? buildWholeWordPattern(rule.pattern) : escapeRegExp(rule.pattern);
-		const flags = rule.caseSensitive ? "gu" : "giu";
-		try {
-			const regex = new RegExp(pattern, flags);
-			result = result.replace(regex, rule.replacement);
-		} catch {
-			// Ignore malformed patterns rather than breaking speech playback.
-		}
-	}
-
-	return result.replace(/\s+/g, " ").trim();
-}
+import {
+	TtsStatus,
+	ReaderPanelTab,
+	ReaderSource,
+	SpeechQueueItem,
+	SpeechBlock,
+	SPEECH_BLOCK_SELECTOR,
+	DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR,
+	DEFAULT_WORD_HIGHLIGHT_COLOR,
+	TTS_SESSION_FLAG,
+	SPEECH_RATE_MIN,
+	SPEECH_RATE_MAX,
+	SPEECH_PITCH_MIN,
+	SPEECH_PITCH_MAX,
+	getScrollParent,
+	isSpeechLeafBlock,
+	normalizeHexColor,
+	splitSpeechTextWithOffsets,
+	applyPronunciationRules,
+	resolveChapterTitle,
+	getErrorMessage,
+} from "../../../../../lib/reader-utils";
 
 export default function ReaderView({ params }: { params: Promise<{ id: string; chapterNumber: string }> | { id: string; chapterNumber: string } }) {
 	const resolvedParams = params instanceof Promise ? use(params) : params;
@@ -1278,30 +1133,7 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		[],
 	);
 
-	const handleReaderContentClick = (event: MouseEvent<HTMLDivElement>) => {
-		const root = readerContentRef.current;
-		const target = event.target as HTMLElement | null;
-		if (!root || !target) return;
-
-		const block = target.closest(SPEECH_BLOCK_SELECTOR) as HTMLElement | null;
-		if (!block || !root.contains(block)) return;
-		if (!isSpeechLeafBlock(block)) return;
-
-		let blocks = getSpeechBlocks();
-		let blockIndex = blocks.findIndex((item) => item.element === block);
-
-		// Rebuild references immediately if they are stale due to React mutations
-		if (blockIndex < 0) {
-			speechBlocksRef.current = buildSpeechBlocks();
-			blocks = speechBlocksRef.current;
-			blockIndex = blocks.findIndex((item) => item.element === block);
-		}
-
-		if (blockIndex < 0) return;
-
-		void startSpeechFromBlock(blockIndex, { continueAcrossChapters: autoOpenNext, fromUserGesture: true });
-	};
-
+	
 	if (loading) {
 		return (
 			<div className="flex flex-1 items-center justify-center bg-background">
@@ -1315,83 +1147,27 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 	if (error || !chapter || !book) {
 		return (
-			<div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
-				<div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
-					<h2 className="mb-4 text-danger">{missingChapterTitle}</h2>
-					<p className="mx-auto mb-8 max-w-[520px] text-copy">
-						{error || "This chapter has not been archived yet."}
-					</p>
-					<div className="flex flex-wrap justify-center gap-4">
-						<Button asChild variant="secondary">
-							<Link href={`/books/${bookId}`}>Back to Book Index</Link>
-						</Button>
-						{currentSourceUrl && (
-							<Button asChild>
-								<a href={currentSourceUrl} target="_blank" rel="noreferrer">Open Source Page</a>
-							</Button>
-						)}
-					</div>
-
-					{hasCapability(CAPABILITY.JOBS_SCRAPE) && book && (
-						<div className="mx-auto mt-8 w-[min(820px,100%)] rounded-lg border border-border bg-card p-6 text-left shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
-							<h3 className="mb-2 text-[1.15rem]">Admin Recovery</h3>
-							<p className="mb-4 text-[0.9rem] text-copy">
-								Archive this {isRawReader ? "raw" : "translated"} chapter now, or paste the saved HTML for this source page.
-							</p>
-
-							<div className="mb-4 flex flex-wrap gap-3">
-								<Button type="button"
-									onClick={handleScrapeCurrentChapterNow}
-									disabled={adminScrapingChapter || !currentCatalogItem?.sourceUrl}
-								>
-									{adminScrapingChapter ? "Scraping..." : "Scrape This Chapter Now"}
-								</Button>
-								{currentSourceUrl && (
-								<Button asChild variant="secondary">
-									<a href={currentSourceUrl} target="_blank" rel="noreferrer">Open Source</a>
-								</Button>
-								)}
-							</div>
-
-							<form key={`${readerSourceKind}-${chapterNumber}`} onSubmit={handleImportCurrentChapterHtml} className="grid gap-4">
-								<div className="flex flex-col gap-2">
-									<label className="text-sm font-semibold text-copy">Chapter Page URL</label>
-									<Input type="url"
-										
-										value={chapterHtmlPageUrl || currentSourceUrl}
-										onChange={(event) => setChapterHtmlPageUrl(event.target.value)}
-										placeholder="https://example.com/chapter"
-										required
-									/>
-								</div>
-
-								<div className="flex flex-col gap-2">
-									<label className="text-sm font-semibold text-copy">Saved Chapter HTML</label>
-									<Textarea rows={10}
-										value={chapterHtmlContent}
-										onChange={(event) => setChapterHtmlContent(event.target.value)}
-										placeholder="<html>..."
-										required
-									/>
-								</div>
-
-								<div className="flex flex-wrap items-center justify-between gap-4">
-									<span className="text-[0.85rem] text-copy">
-										{readerSourceKind === "raw" ? "Raw chapter" : "Translated chapter"} {chapterNumber}
-									</span>
-									<Button type="submit" disabled={importingChapterHtml}>
-										{importingChapterHtml ? "Importing..." : "Import HTML"}
-									</Button>
-								</div>
-							</form>
-
-							{adminActionMessage && (
-								<p className="mt-4 text-[0.9rem] text-copy">{adminActionMessage}</p>
-							)}
-						</div>
-					)}
-				</div>
-			</div>
+			<ReaderErrorState
+				bookId={bookId}
+				book={book}
+				chapterNumber={chapterNumber}
+				isRawReader={isRawReader}
+				error={error}
+				missingChapterTitle={missingChapterTitle}
+				currentSourceUrl={currentSourceUrl}
+				currentCatalogItem={currentCatalogItem}
+				adminActionMessage={adminActionMessage}
+				adminScrapingChapter={adminScrapingChapter}
+				chapterHtmlPageUrl={chapterHtmlPageUrl}
+				chapterHtmlContent={chapterHtmlContent}
+				importingChapterHtml={importingChapterHtml}
+				readerSourceKind={readerSourceKind}
+				canScrape={hasCapability(CAPABILITY.JOBS_SCRAPE)}
+				onScrape={handleScrapeCurrentChapterNow}
+				onImport={handleImportCurrentChapterHtml}
+				onPageUrlChange={setChapterHtmlPageUrl}
+				onContentChange={setChapterHtmlContent}
+			/>
 		);
 	}
 
@@ -1400,9 +1176,6 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 		medium: "720px",
 		wide: "760px",
 	}[readWidth];
-	const readerContentStyle = {
-		fontSize: `${fontSize}px`,
-	} as CSSProperties;
 
 	const readerThemeStyle = applyReaderThemeCssVariables(theme) as CSSProperties;
 	const isSerif = theme !== "paper";
@@ -1414,41 +1187,16 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	return (
 		<>
 			<div className={cn("reader-theme relative flex min-h-screen flex-col bg-[var(--reader-bg)] text-[var(--reader-text)]", isSerif ? "font-serif" : "font-sans")} style={readerThemeStyle}>
-				<div className="sticky top-0 z-50 border-b border-[var(--reader-border)] bg-[var(--reader-bg)]/95 px-4 py-3 backdrop-blur-[14px] max-[860px]:px-3">
-					<div className="mx-auto flex w-full max-w-[1120px] items-center justify-between gap-4">
-						<Link
-							href={`/books/${bookId}`}
-							className="inline-flex min-w-0 items-center gap-2 text-[0.78rem] font-medium text-[var(--reader-muted)] no-underline transition hover:text-[var(--reader-text)]"
-						>
-							<ArrowLeft className="size-4 shrink-0" />
-							<span className="hidden sm:inline">Back to book</span>
-						</Link>
-						<span className="min-w-0 truncate text-center text-[0.78rem] font-medium text-[var(--reader-muted)]">{book.title}</span>
-						<div className="flex shrink-0 items-center gap-1.5">
-							<button
-								type="button"
-								onClick={() => setIsCatalogOpen(true)}
-								className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-1.5 text-[0.72rem] font-medium text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]"
-							>
-								<List className="size-3.5" />
-								<span className="hidden sm:inline">Contents</span>
-								<span className="text-[var(--reader-muted)]">{catalogItems.length}</span>
-							</button>
-							<button
-								type="button"
-								onClick={() => {
-									setReaderPanelTab("display");
-									setIsReaderPanelOpen(true);
-								}}
-								aria-label="Open reader settings"
-								title="Reader settings"
-								className="inline-flex size-8 items-center justify-center rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]"
-							>
-								<Settings2 className="size-4" />
-							</button>
-						</div>
-					</div>
-				</div>
+				<ReaderHeader
+					bookId={bookId}
+					bookTitle={book.title}
+					catalogLength={catalogItems.length}
+					onOpenCatalog={() => setIsCatalogOpen(true)}
+					onOpenSettings={() => {
+						setReaderPanelTab("display");
+						setIsReaderPanelOpen(true);
+					}}
+				/>
 
 				<ReaderCatalog
 					isOpen={isCatalogOpen}
@@ -1462,46 +1210,23 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 
 				<main className="flex flex-1 justify-center px-5 py-12 pb-40 max-[860px]:px-4 max-[860px]:py-8 max-[860px]:pb-32">
 					<article className="flex w-full flex-col gap-8 leading-[1.9] text-[var(--reader-text)]" style={{ maxWidth: widthStyle }}>
-						<header className="border-b border-[var(--reader-border)] pb-8">
-							<h1 className="text-balance text-[1.75rem] font-bold leading-tight tracking-tight max-[860px]:text-[1.45rem]">{displayChapterTitle}</h1>
-							<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8rem] text-[var(--reader-muted)]">
-								<span>{book.title}</span>
-								<span className="hidden sm:inline" aria-hidden="true">·</span>
-								<span>
-									{isRawReader ? "Raw" : "Translated"} chapter {chapter.chapterNumber}
-									{(isRawReader ? book.rawChaptersTotal : book.translatedChaptersTotal)
-										? ` of ${isRawReader ? book.rawChaptersTotal : book.translatedChaptersTotal}`
-										: ""}
-								</span>
-								{chapter.sourceUrl && (
-									<>
-										<span className="hidden sm:inline" aria-hidden="true">·</span>
-										<a href={chapter.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2 transition hover:text-[var(--reader-text)]">
-											Source
-										</a>
-									</>
-								)}
-							</div>
-							{isRawReader && hasCapability(CAPABILITY.CHAPTERS_TRANSLATE) && (
-								<div className="mt-6 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--reader-border)] bg-[var(--reader-bg)] px-4 py-3 text-[0.75rem] font-medium text-[var(--reader-muted)]">
-									<span>Raw source view</span>
-									<button
-										type="button"
-										className="ml-auto min-h-8 rounded-md bg-[var(--reader-accent)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--reader-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-										onClick={handleGenerateTranslation}
-										disabled={translatingRawChapter}
-									>
-										{translatingRawChapter ? "Generating..." : "Generate English"}
-									</button>
-								</div>
-							)}
-						</header>
+						<ReaderChapterHeader
+							book={book}
+							chapter={chapter}
+							displayChapterTitle={displayChapterTitle}
+							isRawReader={isRawReader}
+							translatingRawChapter={translatingRawChapter}
+							onGenerateTranslation={handleGenerateTranslation}
+							canTranslate={hasCapability(CAPABILITY.CHAPTERS_TRANSLATE)}
+						/>
 
-						<div ref={readerContentRef}
-							className="text-[var(--reader-text)] [line-break:anywhere] [&_p]:mt-0 [&_p]:mb-[1.6em] [&_p]:cursor-pointer [&_li]:cursor-pointer [&_blockquote]:cursor-pointer [&_h1]:cursor-pointer [&_h2]:cursor-pointer [&_h3]:cursor-pointer [&_h4]:cursor-pointer [&_p]:scroll-mt-28 [&_li]:scroll-mt-28 [&_blockquote]:scroll-mt-28 [&_h1]:scroll-mt-28 [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28 [&_h4]:scroll-mt-28 [&_p]:rounded-sm [&_li]:rounded-sm [&_blockquote]:rounded-sm [&_h1]:rounded-sm [&_h2]:rounded-sm [&_h3]:rounded-sm [&_h4]:rounded-sm [&_p]:transition-[background-color,box-shadow] [&_li]:transition-[background-color,box-shadow] [&_blockquote]:transition-[background-color,box-shadow] [&_h1]:transition-[background-color,box-shadow] [&_h2]:transition-[background-color,box-shadow] [&_h3]:transition-[background-color,box-shadow] [&_h4]:transition-[background-color,box-shadow] [&_p]:duration-[160ms] [&_li]:duration-[160ms] [&_blockquote]:duration-[160ms] [&_h1]:duration-[160ms] [&_h2]:duration-[160ms] [&_h3]:duration-[160ms] [&_h4]:duration-[160ms] [&_p]:ease-[ease] [&_li]:ease-[ease] [&_blockquote]:ease-[ease] [&_h1]:ease-[ease] [&_h2]:ease-[ease] [&_h3]:ease-[ease] [&_h4]:ease-[ease] [&_p:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_7%,transparent)] [&_li:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_7%,transparent)] [&_blockquote:hover]:bg-[color-mix(in_srgb,var(--reader-accent)_7%,transparent)] [&_img]:max-w-full [&_img]:h-auto"
-							style={readerContentStyle}
-							onClick={handleReaderContentClick}
-							dangerouslySetInnerHTML={{ __html: chapter.content }}
+						<ReaderChapterContent
+							ref={readerContentRef}
+							content={chapter.content}
+							fontSize={fontSize}
+							onClick={(startBlockIndex) =>
+								startSpeechFromBlock(startBlockIndex, { continueAcrossChapters: autoOpenNext, fromUserGesture: true })
+							}
 						/>
 					</article>
 				</main>
@@ -1616,12 +1341,3 @@ export default function ReaderView({ params }: { params: Promise<{ id: string; c
 	);
 }
 
-function getErrorMessage(error: unknown, fallback: string): string {
-	if (error instanceof Error) {
-		return error.message;
-	}
-	if (typeof error === "string") {
-		return error;
-	}
-	return fallback;
-}
