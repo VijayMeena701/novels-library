@@ -87,7 +87,7 @@ export default function Header() {
 			className={cn(
 				"sticky top-0 z-[100] border-b backdrop-blur-[18px]",
 				isThemed
-					? "reader-theme border-[var(--reader-border)] bg-[color-mix(in_srgb,var(--reader-bg)_80%,transparent)]"
+					? "reader-theme border-b border-transparent bg-[color-mix(in_srgb,var(--reader-bg)_80%,transparent)]"
 					: "border-border bg-background/80",
 			)}
 			style={readerThemeStyle}

@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useRef, Suspense, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type CatalogBookFilters } from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
+import { useReaderSettings } from "../../hooks/useReaderSettings";
 import { useBooksCatalog } from "../../hooks/useBooksCatalog";
 import { BookCard } from "../../components/BookCard";
 import { BooksFilterPanel } from "../../components/BooksFilterPanel";
 import { BooksPagination } from "../../components/BooksPagination";
 import { Card } from "../../components/ui/card";
 import { Spinner } from "../../components/ui/spinner";
+import { applyReaderThemeCssVariables } from "../../lib/reader-theme";
 import { cn } from "../../lib/utils";
 
 function useDebouncedCallback(callback: () => void, delay: number) {
@@ -123,6 +126,12 @@ function BooksPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams.toString();
+  const { user } = useAuth();
+  const { theme: readerTheme } = useReaderSettings(user);
+  const readerThemeStyle = useMemo(
+    () => applyReaderThemeCssVariables(readerTheme) as CSSProperties,
+    [readerTheme],
+  );
 
   // searchParamsKey is derived from searchParams and is stable for comparison.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,46 +190,51 @@ function BooksPageContent() {
   const errorMessage = error instanceof Error ? error.message : "Failed to load books.";
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
-      <div className="flex items-end justify-between gap-4 py-1">
-        <div>
-          <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Books</h1>
-          <p className="text-copy max-w-[720px]">Browse and filter the full catalog.</p>
+    <div
+      className="reader-theme min-h-screen w-full bg-background"
+      style={readerThemeStyle}
+    >
+      <div className={cn("mx-auto w-full max-w-[1280px] px-5 pb-16 pt-9 sm:px-6 lg:px-8", "flex flex-col gap-7")}>
+        <div className="flex items-end justify-between gap-4 py-1">
+          <div>
+            <h1 className="text-[2.5rem] font-semibold leading-tight tracking-tight text-foreground">Books</h1>
+            <p className="mt-2 text-[1.0625rem] text-muted-copy max-w-[720px]">Browse and filter the full catalog.</p>
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <aside className="w-full shrink-0 lg:w-72">
-          <BooksFilterPanel filters={filters} options={options} onChange={handleFilterChange} onClear={handleClear} />
-        </aside>
+        <div className="flex flex-col gap-7 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-7">
+          <aside className="w-full shrink-0 lg:sticky lg:top-20">
+            <BooksFilterPanel filters={filters} options={options} onChange={handleFilterChange} onClear={handleClear} />
+          </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col gap-4">
-          {error ? (
-            <Card className="p-6 text-center text-red-700">{errorMessage}</Card>
-          ) : isLoading && !result ? (
-            <div className="flex items-center justify-center py-16">
-              <Spinner size="md" />
-            </div>
-          ) : result?.books.length === 0 ? (
-            <Card className="p-6 text-center text-muted-copy">No books match your filters.</Card>
-          ) : (
-            <>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,230px))] gap-3">
-                {result?.books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
+          <main className="flex min-w-0 flex-1 flex-col gap-5">
+            {error ? (
+              <Card className="rounded-xl border-0 p-6 text-center text-danger">{errorMessage}</Card>
+            ) : isLoading && !result ? (
+              <div className="flex items-center justify-center py-16">
+                <Spinner size="md" />
               </div>
-              {result && (
-                <BooksPagination
-                  page={result.page}
-                  pageSize={result.pageSize}
-                  total={result.total}
-                  totalPages={result.totalPages}
-                  onPageChange={handlePageChange}
-                  onPageSizeChange={handlePageSizeChange}
-                />
-              )}
-            </>
-          )}
-        </main>
+            ) : result?.books.length === 0 ? (
+              <Card className="rounded-xl border-0 p-6 text-center text-muted-copy">No books match your filters.</Card>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {result?.books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
+                </div>
+                {result && (
+                  <BooksPagination
+                    page={result.page}
+                    pageSize={result.pageSize}
+                    total={result.total}
+                    totalPages={result.totalPages}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                  />
+                )}
+              </>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );

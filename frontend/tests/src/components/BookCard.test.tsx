@@ -58,8 +58,8 @@ describe('BookCard', () => {
 
   it('renders catalog metadata and chapter count', () => {
     render(<BookCard book={book} mode="catalog" />);
-    expect(screen.getByText('100 chapters')).toBeInTheDocument();
-    expect(screen.getByText('Ongoing')).toBeInTheDocument();
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getAllByText('Ongoing')).toHaveLength(2);
   });
 
   it('renders custom action slot', () => {

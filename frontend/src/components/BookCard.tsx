@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BookOpen, Star } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { getBookCoverUrl, Book } from '../utils/api';
 import { Badge } from './ui/badge';
@@ -62,20 +63,17 @@ export function BookCard({
   const detailHref = href || `/books/${book._id}`;
 
   return (
-    <Card className="group flex h-full min-w-0 flex-col overflow-hidden transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
+    <Card className="books-card group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl bg-card transition duration-200 ease-out hover:-translate-y-1 hover:bg-card-hover">
       <Link href={detailHref} className="flex min-h-0 flex-1 flex-col text-inherit no-underline">
-        <div className="flex aspect-[3/4] min-h-[230px] items-center justify-center overflow-hidden border-b border-border bg-surface-muted">
+        <div className="books-cover relative flex aspect-[3/4] min-h-[230px] items-center justify-center overflow-hidden bg-surface-muted">
           {coverSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]" src={coverSrc} alt={book.title} />
+            <img className="h-full w-full object-cover transition duration-300 ease-out group-hover:scale-[1.03]" src={coverSrc} alt={book.title} />
           ) : (
             <div
               className="relative flex h-full w-full flex-col justify-end gap-[0.45rem] p-4 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.28)] before:pointer-events-none before:absolute before:left-[0.65rem] before:top-[0.7rem] before:bottom-[0.7rem] before:w-[3px] before:rounded-full before:bg-white/35"
               style={getCoverStyle(book)}
             >
-              <span className="self-start max-w-full overflow-hidden whitespace-nowrap text-ellipsis rounded-full border border-white/30 px-[0.45rem] py-[0.2rem] text-[0.62rem] font-extrabold uppercase text-white/90">
-                {(book.genres || [])[0] || book.publicationStatus || 'Book'}
-              </span>
               <strong className="line-clamp-3 text-[1.08rem] font-black leading-[1.18] text-white">
                 {book.title}
               </strong>
@@ -84,38 +82,63 @@ export function BookCard({
               </small>
             </div>
           )}
-        </div>
-
-        <div className="flex flex-1 flex-col gap-2.5 px-4 py-3">
-          <div>
-            <h3 className="line-clamp-2 break-words text-base font-extrabold leading-snug text-foreground">{book.title}</h3>
-            <p className="mt-1 truncate text-sm text-copy">{authorName}</p>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {isCatalog ? (
-              book.publicationStatus && <Badge>{book.publicationStatus}</Badge>
-            ) : (
-              <Badge variant={getStatusBadgeVariant(book.status)}>{book.status.replace('_', ' ')}</Badge>
-            )}
-            {!isCatalog && book.publicationStatus && <Badge>{book.publicationStatus}</Badge>}
+        {isCatalog && (book.publicationStatus || (book.genres || []).length > 0) && (
+          <div className="books-cover-overlay pointer-events-none absolute inset-x-0 bottom-0 z-10 flex translate-y-1 flex-wrap items-end gap-1.5 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-3 pb-3 pt-12 opacity-0 transition duration-200 ease-out group-hover:translate-y-0 group-hover:opacity-100">
+            {book.publicationStatus && <Badge className="bg-white/90 text-black">{book.publicationStatus}</Badge>}
             {(book.genres || []).slice(0, 2).map((genre) => (
-              <Badge key={genre}>{genre}</Badge>
+              <Badge key={genre} className="bg-white/90 text-black">{genre}</Badge>
             ))}
           </div>
+        )}
+
+        {isCatalog && (book.publicationStatus || typeof book.ratingAverage === 'number') && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-2">
+            {book.publicationStatus && (
+              <span className="inline-flex items-center rounded bg-black/60 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-white">
+                {book.publicationStatus}
+              </span>
+            )}
+            {typeof book.ratingAverage === 'number' && (
+              <span className="inline-flex items-center gap-0.5 rounded bg-black/60 px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">
+                <Star className="size-3 fill-current" />
+                {book.ratingAverage > 0 ? (Number.isInteger(book.ratingAverage) ? book.ratingAverage : book.ratingAverage.toFixed(1)) : '–'}
+              </span>
+            )}
+          </div>
+        )}
+        </div>
+
+        <div className="flex flex-1 flex-col gap-3 px-4 py-3.5">
+          <div>
+            <h3 className="line-clamp-2 break-words text-base font-bold leading-snug tracking-tight text-foreground">{book.title}</h3>
+            <p className="mt-1 truncate text-[0.8125rem] text-copy">{authorName}</p>
+          </div>
+
+          {!isCatalog && (
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant={getStatusBadgeVariant(book.status)}>{book.status.replace('_', ' ')}</Badge>
+              {book.publicationStatus && <Badge>{book.publicationStatus}</Badge>}
+              {(book.genres || []).slice(0, 2).map((genre) => (
+                <Badge key={genre}>{genre}</Badge>
+              ))}
+            </div>
+          )}
 
           {isCatalog ? (
-            <div className="mt-auto flex justify-between gap-2 text-xs text-copy">
-              <span>{book.translatedChaptersTotal || book.translatedChaptersList?.length || '?'} chapters</span>
-              <span className="truncate">{book.originalSource || 'Translated'}</span>
+            <div className="mt-auto flex items-center justify-between gap-2 text-[0.75rem]">
+              <span className="inline-flex items-center gap-1 font-medium text-copy">
+                <BookOpen className="size-3.5 text-muted-copy" />
+                {book.translatedChaptersTotal || book.translatedChaptersList?.length || '?'}
+              </span>
+              <span className="truncate text-muted-copy">{book.originalSource || 'Translated'}</span>
             </div>
           ) : (
             <div>
-              <div className="mb-1 flex justify-between gap-2 text-xs text-copy">
-                <span>Progress</span>
+              <div className="mb-1.5 flex justify-between gap-2 text-[0.8125rem] text-muted-copy">
+                <span className="font-medium text-copy">Progress</span>
                 <span>{book.chaptersRead} / {book.translatedChaptersTotal || '?'} ch</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[#e8dfd1]">
+              <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
                   style={{ width: `${progress}%` }}
@@ -127,12 +150,14 @@ export function BookCard({
         </div>
       </Link>
 
-      <CardFooter className="mt-auto px-4 py-3">
-        <span>
-          {book.rawChaptersTotal > 0 ? `${book.rawChaptersTotal} raw indexed` : `Updated ${new Date(book.updatedAt).toLocaleDateString()}`}
-        </span>
-        {action}
-      </CardFooter>
+      {!isCatalog && (
+        <CardFooter className="mt-auto border-t-0 px-4 py-2.5 text-[0.6875rem] text-muted-copy">
+          <span className="truncate">
+            {book.rawChaptersTotal > 0 ? `${book.rawChaptersTotal} raw indexed` : `Updated ${new Date(book.updatedAt).toLocaleDateString()}`}
+          </span>
+          {action}
+        </CardFooter>
+      )}
     </Card>
   );
 }

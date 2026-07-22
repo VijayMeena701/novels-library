@@ -17,8 +17,8 @@ export function BooksPagination({ page, pageSize, total, totalPages, onPageChang
 	const end = Math.min(page * pageSize, total);
 
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
-			<div className="text-sm text-muted-copy">
+		<div className="flex flex-wrap items-center justify-between gap-5 pt-6">
+			<div className="text-sm font-medium text-muted-copy">
 				{total === 0 ? "No results" : `Showing ${start}-${end} of ${total}`}
 			</div>
 
@@ -29,7 +29,7 @@ export function BooksPagination({ page, pageSize, total, totalPages, onPageChang
 				<Button variant="secondary" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
 					Previous
 				</Button>
-				<span className="px-2 text-sm font-bold text-foreground">
+				<span className="px-2 text-sm font-semibold text-foreground">
 					Page {page} of {totalPages}
 				</span>
 				<Button variant="secondary" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>

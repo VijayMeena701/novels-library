@@ -63,14 +63,14 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 	};
 
 	return (
-		<Card className="h-fit">
-			<CardHeader className="flex flex-row items-center justify-between gap-2">
-				<CardTitle>Filters</CardTitle>
-				{activeCount > 0 && <Badge variant="default">{activeCount}</Badge>}
+		<Card className="books-filter-panel h-fit rounded-2xl bg-surface-muted lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+			<CardHeader className="flex flex-row items-center justify-between gap-2 px-5 py-4">
+				<CardTitle className="text-base font-semibold">Filters</CardTitle>
+				{activeCount > 0 && <Badge className="bg-surface text-foreground">{activeCount}</Badge>}
 			</CardHeader>
-			<CardContent className="flex flex-col gap-5">
-				<div className="grid gap-2">
-					<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Search</label>
+			<CardContent className="flex flex-col gap-5 p-5 pt-0">
+				<div className="grid gap-2.5">
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Search</label>
 					<Input
 						type="text"
 						placeholder="Title, author, pen name..."
@@ -83,8 +83,8 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 					/>
 				</div>
 
-				<div className="grid gap-2">
-					<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Sort by</label>
+				<div className="grid gap-2.5">
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Sort by</label>
 					<div className="flex gap-2">
 						<Select
 							value={filters.sort || "updatedAt"}
@@ -113,8 +113,8 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 					</div>
 				</div>
 
-				<div className="grid gap-2">
-					<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Reading status</label>
+				<div className="grid gap-2.5">
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Reading status</label>
 					<Select
 						value={filters.status || "all"}
 						onChange={(e) => onChange({ status: e.target.value as BookStatus | "all" })}
@@ -128,8 +128,8 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 					</Select>
 				</div>
 
-				<div className="grid gap-2">
-					<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Author</label>
+				<div className="grid gap-2.5">
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Author</label>
 					<Select
 						value={filters.authorId || ""}
 						onChange={(e) => onChange({ authorId: e.target.value || undefined })}
@@ -144,15 +144,15 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 				</div>
 
 				{options.genres.length > 0 && (
-					<div className="grid gap-2">
-						<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Genres</label>
-						<div className="flex max-h-[180px] flex-col gap-1.5 overflow-y-auto pr-1">
+					<div className="grid gap-2.5">
+						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Genres</label>
+						<div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
 							{options.genres.map((genre) => {
 								const selected = getSelectedKeys(filters.genre).includes(genre.key);
 								return (
 									<label
 										key={genre._id}
-										className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition ${selected ? "bg-primary-soft font-bold text-foreground" : "text-copy hover:bg-surface-muted"}`}
+										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-primary-soft font-semibold text-foreground" : "text-copy hover:bg-surface hover:text-foreground"}`}
 									>
 										<input
 											type="checkbox"
@@ -170,15 +170,15 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 					)}
 
 				{options.publicationStatuses.length > 0 && (
-					<div className="grid gap-2">
-						<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Publication status</label>
-						<div className="flex max-h-[180px] flex-col gap-1.5 overflow-y-auto pr-1">
+					<div className="grid gap-2.5">
+						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Publication status</label>
+						<div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
 							{options.publicationStatuses.map((status) => {
 								const selected = getSelectedKeys(filters.publicationStatus).includes(status.key);
 								return (
 									<label
 										key={status._id}
-										className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition ${selected ? "bg-primary-soft font-bold text-foreground" : "text-copy hover:bg-surface-muted"}`}
+										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-primary-soft font-semibold text-foreground" : "text-copy hover:bg-surface hover:text-foreground"}`}
 									>
 										<input
 											type="checkbox"
@@ -196,15 +196,15 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 					)}
 
 				{options.sources.length > 0 && (
-					<div className="grid gap-2">
-						<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Source</label>
-						<div className="flex max-h-[160px] flex-col gap-1.5 overflow-y-auto pr-1">
+					<div className="grid gap-2.5">
+						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Source</label>
+						<div className="flex max-h-[180px] flex-col gap-2 overflow-y-auto pr-1">
 							{options.sources.map((source) => {
 								const selected = getSelectedKeys(filters.source).includes(source.key);
 								return (
 									<label
 										key={source.key}
-										className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition ${selected ? "bg-primary-soft font-bold text-foreground" : "text-copy hover:bg-surface-muted"}`}
+										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-primary-soft font-semibold text-foreground" : "text-copy hover:bg-surface hover:text-foreground"}`}
 									>
 										<input
 											type="checkbox"
@@ -221,9 +221,9 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 						</div>
 					)}
 
-				<div className="grid gap-2">
-					<label className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">Rating</label>
-					<div className="flex gap-2">
+				<div className="grid gap-2.5">
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Rating</label>
+					<div className="flex gap-3">
 						<Input
 							type="number"
 							min={0}

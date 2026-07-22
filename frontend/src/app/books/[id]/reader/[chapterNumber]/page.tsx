@@ -113,8 +113,8 @@ export default function ReaderView({
 		() =>
 			({
 				narrow: "640px",
-				medium: "720px",
-				wide: "760px",
+				medium: "900px",
+				wide: "1280px",
 			}[settings.readWidth]),
 		[settings.readWidth],
 	);

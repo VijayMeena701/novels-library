@@ -42,6 +42,8 @@ export interface IBook extends Document {
   status: BookStatus;
   translatedChaptersTotal: number;
   translatedChaptersList: IChapterIndex[];
+  ratingAverage: number;
+  ratingCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -120,6 +122,8 @@ const BookSchema = new Schema<IBook>(
         chapterType: { type: String, default: 'chapter' },
       },
     ],
+    ratingAverage: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
@@ -148,5 +152,7 @@ BookSchema.index({ authorIds: 1, updatedAt: -1 });
 BookSchema.index({ genreIds: 1, updatedAt: -1 });
 BookSchema.index({ publicationStatusId: 1, updatedAt: -1 });
 BookSchema.index({ addedByUserId: 1, updatedAt: -1 });
+BookSchema.index({ ratingAverage: -1, ratingCount: -1 });
+BookSchema.index({ ratingCount: -1, ratingAverage: -1 });
 
 export const Book = mongoose.model<IBook>('Book', BookSchema);

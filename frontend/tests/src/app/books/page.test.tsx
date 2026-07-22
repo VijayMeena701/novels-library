@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { useRouter } from 'next/navigation';
 import BooksPage from '@/app/books/page';
+import { AuthProvider } from '@/context/AuthContext';
+import { ReaderThemeProvider } from '@/context/ReaderThemeContext';
 import type { Book, Genre, PublicationStatus, Author, Source } from '@/utils/api';
 
 function jsonResponse(body: unknown) {
@@ -87,7 +89,7 @@ describe('BooksPage', () => {
   it('renders loading state then catalog books', async () => {
     mockCatalogApis();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={queryClient}><BooksPage /></QueryClientProvider>);
+    render(<QueryClientProvider client={queryClient}><AuthProvider><ReaderThemeProvider><BooksPage /></ReaderThemeProvider></AuthProvider></QueryClientProvider>);
 
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
 
@@ -96,7 +98,7 @@ describe('BooksPage', () => {
     });
 
     expect(screen.getByText('Browse and filter the full catalog.')).toBeInTheDocument();
-    expect(screen.getByText('100 chapters')).toBeInTheDocument();
+    expect(screen.getByText('100')).toBeInTheDocument();
   });
 
   it('updates the router when a filter changes', async () => {
@@ -104,7 +106,7 @@ describe('BooksPage', () => {
     const replaceSpy = useRouter().replace as ReturnType<typeof vi.fn>;
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={queryClient}><BooksPage /></QueryClientProvider>);
+    render(<QueryClientProvider client={queryClient}><AuthProvider><ReaderThemeProvider><BooksPage /></ReaderThemeProvider></AuthProvider></QueryClientProvider>);
 
     await waitFor(() => expect(screen.getByPlaceholderText('Title, author, pen name...')).toBeInTheDocument());
 
@@ -139,7 +141,7 @@ describe('BooksPage', () => {
     );
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={queryClient}><BooksPage /></QueryClientProvider>);
+    render(<QueryClientProvider client={queryClient}><AuthProvider><ReaderThemeProvider><BooksPage /></ReaderThemeProvider></AuthProvider></QueryClientProvider>);
 
     await waitFor(() => {
       expect(screen.getByText('Server down')).toBeInTheDocument();

@@ -353,14 +353,16 @@ export async function listCatalogBooksHandler(request: FastifyRequest, reply: Fa
       'translatedChaptersTotal',
       'rawChaptersTotal',
       'rating',
+      'ratingAverage',
       'publicationStatus',
       'createdAt',
       'author',
       'originalSource',
     ];
     const sortField = (allowedSortFields.includes(query.sort) ? query.sort : 'updatedAt') as string;
+    const mongoSortField = sortField === 'rating' ? 'ratingAverage' : sortField;
     const sortDir = query.sortDir === 'asc' ? 'asc' : 'desc';
-    const sort: Record<string, 1 | -1> = { [sortField]: sortDir === 'asc' ? 1 : -1 };
+    const sort: Record<string, 1 | -1> = { [mongoSortField]: sortDir === 'asc' ? 1 : -1 };
 
     const page = parseNumber(query.page, query.pageSize ? 1 : undefined, 1);
 
@@ -431,8 +433,6 @@ export async function getCatalogBookHandler(request: FastifyRequest, reply: Fast
 
     return reply.send({
       ...book.toObject(),
-      ratingAverage: bookStats?.ratingAverage || 0,
-      ratingCount: bookStats?.ratingCount || 0,
       reviewCount: bookStats?.reviewCount || 0,
       totalVisits: bookStats?.totalVisits || 0,
       totalVotes: bookStats?.totalVotes || 0,
@@ -740,6 +740,10 @@ async function syncBookStatsAndActivities(
   }
 
   await bookStats.save();
+
+  book.ratingAverage = bookStats.ratingAverage;
+  book.ratingCount = bookStats.ratingCount;
+  await book.save();
 
   const activities: Promise<any>[] = [];
   if (oldRatingNum !== newRatingNum) {
