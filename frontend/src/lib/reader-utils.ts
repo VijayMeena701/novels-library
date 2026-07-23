@@ -1,25 +1,5 @@
-import type { PronunciationRule } from "../utils/api";
-
-export type TtsStatus = "idle" | "playing" | "paused";
 export type ReaderPanelTab = "read" | "display" | "speech" | "settings" | "more";
 export type ReaderSource = "translated" | "raw";
-
-export interface SpeechChunk {
-	text: string;
-	startOffset: number;
-}
-
-export interface SpeechQueueItem {
-	text: string;
-	spokenText: string;
-	blockIndex: number;
-	startOffset: number;
-}
-
-export interface SpeechBlock {
-	element: HTMLElement;
-	text: string;
-}
 
 export const SPEECH_RATE_MIN = 0.5;
 export const SPEECH_RATE_MAX = 4;
@@ -78,50 +58,26 @@ export function resolveChapterTitle(bookTitle: string, chapterNumber: number, ar
 	return archived || indexed || `Chapter ${chapterNumber}`;
 }
 
-export function splitSpeechTextWithOffsets(text: string, maxLength = 1800): SpeechChunk[] {
-	const normalized = text.replace(/\s+/g, " ").trim();
-	if (!normalized) return [];
-
-	const chunks: SpeechChunk[] = [];
-	let remaining = normalized;
-	let consumed = 0;
-
-	while (remaining.length > maxLength) {
-		const punctuationBreak = Math.max(
-			remaining.lastIndexOf(".", maxLength),
-			remaining.lastIndexOf("!", maxLength),
-			remaining.lastIndexOf("?", maxLength),
-			remaining.lastIndexOf(";", maxLength),
-			remaining.lastIndexOf(",", maxLength),
-		);
-		const wordBreak = remaining.lastIndexOf(" ", maxLength);
-		const breakAt = punctuationBreak > maxLength * 0.45 ? punctuationBreak + 1 : wordBreak > maxLength * 0.45 ? wordBreak : maxLength;
-		const chunk = remaining.slice(0, breakAt).trim();
-		if (chunk) {
-			const exactStart = normalized.indexOf(chunk, consumed);
-			chunks.push({
-				text: chunk,
-				startOffset: exactStart !== -1 ? exactStart : consumed,
-			});
-		}
-		consumed += breakAt;
-		remaining = remaining.slice(breakAt).trim();
-	}
-
-	if (remaining) {
-		const exactStart = normalized.indexOf(remaining, consumed);
-		chunks.push({
-			text: remaining,
-			startOffset: exactStart !== -1 ? exactStart : consumed,
-		});
-	}
-
-	return chunks;
-}
-
 export function normalizeHexColor(value: string, fallback: string): string {
 	const normalized = value.trim().toLowerCase();
 	return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : fallback;
+}
+
+function srgbToLinear(channel: number): number {
+	const c = channel / 255;
+	return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function getLuminance(hex: string): number {
+	const normalized = normalizeHexColor(hex, "#000000").slice(1);
+	const r = srgbToLinear(Number.parseInt(normalized.slice(0, 2), 16));
+	const g = srgbToLinear(Number.parseInt(normalized.slice(2, 4), 16));
+	const b = srgbToLinear(Number.parseInt(normalized.slice(4, 6), 16));
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function getContrastTextColor(hex: string): string {
+	return getLuminance(hex) > 0.5 ? "#000000" : "#FFFFFF";
 }
 
 export function escapeRegExp(value: string): string {
@@ -140,30 +96,6 @@ export function buildWholeWordPattern(pattern: string): string {
 	const prefix = firstChar && isLetter(firstChar) ? "(?<!\\p{Letter})" : "";
 	const suffix = lastChar && isLetter(lastChar) ? "(?!\\p{Letter})" : "";
 	return `${prefix}${escaped}${suffix}`;
-}
-
-/**
- * Rewrites text to speak using the user's pronunciation rules for this book (or their
- * "all books" global rules). Rules with an empty replacement mute/skip the matched text.
- */
-export function applyPronunciationRules(text: string, rules: PronunciationRule[]): string {
-	if (!rules.length) return text;
-
-	let result = text;
-	for (const rule of rules) {
-		if (!rule.enabled || !rule.pattern) continue;
-
-		const pattern = rule.wholeWord ? buildWholeWordPattern(rule.pattern) : escapeRegExp(rule.pattern);
-		const flags = rule.caseSensitive ? "gu" : "giu";
-		try {
-			const regex = new RegExp(pattern, flags);
-			result = result.replace(regex, rule.replacement);
-		} catch {
-			// Ignore malformed patterns rather than breaking speech playback.
-		}
-	}
-
-	return result.replace(/\s+/g, " ").trim();
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {

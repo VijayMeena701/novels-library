@@ -88,6 +88,10 @@ function cleanReaderPatch(input: unknown): Partial<IReaderSettings> {
     patch.highlightParagraph = source.highlightParagraph;
   }
 
+  if (typeof source.useCustomHighlight === 'boolean') {
+    patch.useCustomHighlight = source.useCustomHighlight;
+  }
+
   const paragraphHighlightColor = normalizeHexColor(source.paragraphHighlightColor);
   if (paragraphHighlightColor) {
     patch.paragraphHighlightColor = paragraphHighlightColor;

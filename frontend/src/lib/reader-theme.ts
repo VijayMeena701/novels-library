@@ -23,6 +23,10 @@ export interface ReaderThemeTokens {
 	accentHover: string;
 	/** Low-opacity backdrop for modals / overlays. */
 	overlay: string;
+	/** Default paragraph highlight background for TTS. */
+	paragraphHighlight: string;
+	/** Default word highlight background for TTS. */
+	wordHighlight: string;
 }
 
 export const READER_THEME_TOKENS: Record<ReaderTheme, ReaderThemeTokens> = {
@@ -37,6 +41,8 @@ export const READER_THEME_TOKENS: Record<ReaderTheme, ReaderThemeTokens> = {
 		accent: "#A96A4A",
 		accentHover: "#8E563A",
 		overlay: "rgba(46, 43, 39, 0.24)",
+		paragraphHighlight: "#F5D67A",
+		wordHighlight: "#F59E0B",
 	},
 	sepia: {
 		background: "#F0E9C5",
@@ -49,6 +55,8 @@ export const READER_THEME_TOKENS: Record<ReaderTheme, ReaderThemeTokens> = {
 		accent: "#A96A64",
 		accentHover: "#8E554F",
 		overlay: "rgba(59, 51, 32, 0.26)",
+		paragraphHighlight: "#F7E6A8",
+		wordHighlight: "#D97706",
 	},
 	forest: {
 		background: "#182310",
@@ -61,6 +69,8 @@ export const READER_THEME_TOKENS: Record<ReaderTheme, ReaderThemeTokens> = {
 		accent: "#0FA73C",
 		accentHover: "#0C8A30",
 		overlay: "rgba(0, 0, 0, 0.55)",
+		paragraphHighlight: "#3A4A28",
+		wordHighlight: "#A3BE8C",
 	},
 	night: {
 		background: "#111111",
@@ -73,6 +83,8 @@ export const READER_THEME_TOKENS: Record<ReaderTheme, ReaderThemeTokens> = {
 		accent: "#4960FF",
 		accentHover: "#6B7FFF",
 		overlay: "rgba(0, 0, 0, 0.65)",
+		paragraphHighlight: "#3A3A3A",
+		wordHighlight: "#6B7FFF",
 	},
 	amoled: {
 		background: "#000000",
@@ -85,6 +97,8 @@ export const READER_THEME_TOKENS: Record<ReaderTheme, ReaderThemeTokens> = {
 		accent: "#3D8DFF",
 		accentHover: "#68A5FF",
 		overlay: "rgba(0, 0, 0, 0.75)",
+		paragraphHighlight: "#2A2A2A",
+		wordHighlight: "#68A5FF",
 	},
 };
 
@@ -115,5 +129,7 @@ export function applyReaderThemeCssVariables(theme: ReaderTheme): Record<string,
 		"--reader-accent": tokens.accent,
 		"--reader-accent-hover": tokens.accentHover,
 		"--reader-overlay": tokens.overlay,
+		"--reader-paragraph-highlight": tokens.paragraphHighlight,
+		"--reader-word-highlight": tokens.wordHighlight,
 	};
 }

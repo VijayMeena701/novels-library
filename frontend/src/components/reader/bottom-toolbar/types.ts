@@ -49,6 +49,8 @@ export interface ReaderBottomToolbarProps {
 	onHighlightModeChange: (mode: ReaderHighlightMode) => void;
 	highlightParagraph: boolean;
 	onHighlightParagraphChange: (enabled: boolean) => void;
+	useCustomHighlight: boolean;
+	onUseCustomHighlightChange: (enabled: boolean) => void;
 	paragraphColor: string;
 	onParagraphColorChange: (color: string) => void;
 	wordColor: string;

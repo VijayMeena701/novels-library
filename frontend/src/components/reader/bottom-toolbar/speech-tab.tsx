@@ -5,7 +5,23 @@ import { SegmentedControl } from "../../ui/segmented-control";
 import { ToggleRow } from "../../ui/toggle-row";
 import { ColorField } from "../../ui/color-field";
 import { Select } from "../../ui/input";
+import { getThemeTokens } from "../../../lib/reader-theme";
 import type { ReaderBottomToolbarProps } from "./types";
+
+function ThemeDefaultSwatch({ label, color }: { label: string; color: string }) {
+	return (
+		<div className="flex flex-col gap-1.5">
+			<span className="text-[0.68rem] font-medium tracking-wide text-[var(--reader-muted)]">{label}</span>
+			<div className="flex items-center gap-2">
+				<div
+					className="size-9 shrink-0 rounded-lg border border-[var(--reader-border)]"
+					style={{ backgroundColor: color }}
+				/>
+				<span className="text-xs font-mono text-[var(--reader-muted)]">{color.toLowerCase()}</span>
+			</div>
+		</div>
+	);
+}
 
 function formatMultiplier(value: number): string {
 	return `${value.toFixed(2).replace(/\.?0+$/, "")}x`;
@@ -75,10 +91,22 @@ export function SpeechTab(props: ReaderBottomToolbarProps) {
 						checked={props.highlightParagraph}
 						onChange={props.onHighlightParagraphChange}
 					/>
-					<div className="grid gap-3 sm:grid-cols-2">
-						<ColorField label="Paragraph Color" value={props.paragraphColor} onChange={props.onParagraphColorChange} />
-						<ColorField label="Word Color" value={props.wordColor} onChange={props.onWordColorChange} />
-					</div>
+					<ToggleRow
+						label="Use custom highlight colors"
+						checked={props.useCustomHighlight}
+						onChange={props.onUseCustomHighlightChange}
+					/>
+					{props.useCustomHighlight ? (
+						<div className="grid gap-3 sm:grid-cols-2">
+							<ColorField label="Paragraph Color" value={props.paragraphColor} onChange={props.onParagraphColorChange} />
+							<ColorField label="Word Color" value={props.wordColor} onChange={props.onWordColorChange} />
+						</div>
+					) : (
+						<div className="grid gap-3 sm:grid-cols-2">
+							<ThemeDefaultSwatch label="Paragraph" color={getThemeTokens(props.theme).paragraphHighlight} />
+							<ThemeDefaultSwatch label="Word" color={getThemeTokens(props.theme).wordHighlight} />
+						</div>
+					)}
 					<Slider
 						label="Highlight Emphasis"
 						value={props.sentenceHighlightOpacity}

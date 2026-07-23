@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type ChapterContent, type ReaderAutoScrollBehavior, type ReaderHighlightMode, type PronunciationRule } from "../utils/api";
-import { type SpeechConfig } from "./useReaderSettings";
+import { type SpeechConfig, type TtsStatus, type SpeechQueueItem, type SpeechBlock } from "../lib/tts/speechTypes";
+import { findSpeechBlocks, createSpeechQueue } from "../lib/tts/speechQueue";
 import {
-	TtsStatus,
-	SPEECH_BLOCK_SELECTOR,
-	TTS_SESSION_FLAG,
-	type SpeechQueueItem,
-	type SpeechBlock,
-	getScrollParent,
-	isSpeechLeafBlock,
-	splitSpeechTextWithOffsets,
-	applyPronunciationRules,
-} from "../lib/reader-utils";
+	clearWordHighlight,
+	clearParagraphHighlight,
+	applyParagraphHighlight,
+	highlightWordInBlock,
+	updateWordHighlightColor,
+	updateParagraphHighlightColor,
+} from "../lib/tts/speechHighlight";
+import { scrollToElement } from "../lib/tts/speechScroller";
+import { TTS_SESSION_FLAG } from "../lib/reader-utils";
+import { useSpeechEngine } from "./useSpeechEngine";
 
 export interface UseReaderTtsReturn {
 	ttsStatus: TtsStatus;
@@ -77,25 +78,23 @@ export function useReaderTts({
 	authLoading: boolean;
 	speechSupported: boolean;
 }): UseReaderTtsReturn {
-	const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 	const speechStartTimerRef = useRef<number | null>(null);
-	const speechQueueRef = useRef<SpeechQueueItem[]>([]);
-	const speechIndexRef = useRef(0);
+	const playerStateRef = useRef({
+		queue: [] as SpeechQueueItem[],
+		index: 0,
+		activeItem: null as SpeechQueueItem | null,
+		blockIndex: null as number | null,
+	});
 	const speakQueuedChunkRef = useRef<(index: number) => void>(() => {});
 	const ttsStatusRef = useRef<TtsStatus>("idle");
 	const speechBlocksRef = useRef<SpeechBlock[]>([]);
-	const activeSpeechBlockIndexRef = useRef<number | null>(null);
-	const activeQueueItemRef = useRef<SpeechQueueItem | null>(null);
-	const activeSpeechElementRef = useRef<HTMLElement | null>(null);
-	const activeWordHighlightRef = useRef<HTMLElement | null>(null);
+	const domStateRef = useRef({
+		activeElement: null as HTMLElement | null,
+		wordWrapper: null as HTMLElement | null,
+	});
 	const hasUserInteractedRef = useRef(false);
-	const pronunciationRulesRef = useRef<PronunciationRule[]>(pronunciationRules);
-	const speechRestartTimerRef = useRef<number | null>(null);
 	const shouldContinueSpeechRef = useRef(autoOpenNext);
 	const startedAutoSpeechForChapterRef = useRef<number | null>(null);
-
-	const [ttsStatus, setTtsStatus] = useState<TtsStatus>("idle");
-	const [speechError, setSpeechError] = useState("");
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -108,23 +107,30 @@ export function useReaderTts({
 		shouldContinueSpeechRef.current = autoOpenNext;
 	}, [autoOpenNext]);
 
+	const markUserGesture = useCallback(() => {
+		hasUserInteractedRef.current = true;
+		if (typeof window !== "undefined") {
+			window.sessionStorage.setItem(TTS_SESSION_FLAG, "1");
+		}
+	}, []);
+	const pronunciationRulesRef = useRef<PronunciationRule[]>(pronunciationRules);
+	const styleRef = useRef({
+		paragraphColor: paragraphHighlightColor,
+		wordColor: wordHighlightColor,
+	});
+	const speechRestartTimerRef = useRef<number | null>(null);
+
+	const [ttsStatus, setTtsStatus] = useState<TtsStatus>("idle");
+	const [speechError, setSpeechError] = useState("");
+
+	useEffect(() => {
+		styleRef.current = { paragraphColor: paragraphHighlightColor, wordColor: wordHighlightColor };
+	}, [paragraphHighlightColor, wordHighlightColor]);
+
+	const { speak, speakKeepAlive, cancel, pause, resume } = useSpeechEngine({ speechConfigRef, availableVoices });
+
 	const buildSpeechBlocks = useCallback((): SpeechBlock[] => {
-		const root = readerContentRef.current;
-		if (!root) return [];
-
-		const found: SpeechBlock[] = [];
-		const nodes = root.querySelectorAll(SPEECH_BLOCK_SELECTOR);
-
-		nodes.forEach((node) => {
-			if (node instanceof HTMLElement && isSpeechLeafBlock(node)) {
-				const text = node.textContent?.trim() || "";
-				if (text) {
-					found.push({ element: node, text });
-				}
-			}
-		});
-
-		return found;
+		return findSpeechBlocks(readerContentRef.current);
 	}, [readerContentRef]);
 
 	const getSpeechBlocks = useCallback((): SpeechBlock[] => {
@@ -141,69 +147,46 @@ export function useReaderTts({
 	}, [buildSpeechBlocks, readerContentRef]);
 
 	const clearSpeakingWord = useCallback(() => {
-		if (activeWordHighlightRef.current) {
-			const span = activeWordHighlightRef.current;
-			const parent = span.parentNode;
-			if (parent) {
-				const textNode = document.createTextNode(span.textContent || "");
-				parent.replaceChild(textNode, span);
-				parent.normalize();
-			}
-			activeWordHighlightRef.current = null;
+		if (domStateRef.current.wordWrapper) {
+			clearWordHighlight(domStateRef.current.wordWrapper);
+			domStateRef.current.wordWrapper = null;
 		}
 	}, []);
 
 	const clearSpeakingHighlights = useCallback(() => {
 		clearSpeakingWord();
-		if (activeSpeechElementRef.current) {
-			const element = activeSpeechElementRef.current;
-			element.style.backgroundColor = "";
-			element.style.boxShadow = "";
-			element.style.borderRadius = "";
-			element.style.transition = "";
-			activeSpeechElementRef.current = null;
+		if (domStateRef.current.activeElement) {
+			clearParagraphHighlight(domStateRef.current.activeElement);
+			domStateRef.current.activeElement = null;
 		}
 	}, [clearSpeakingWord]);
 
 	const highlightSpeechBlock = useCallback(
-		(blockIndex: number) => {
+		(blockIndex: number, options?: { skipScroll?: boolean }) => {
 			clearSpeakingHighlights();
 
 			const blocks = getSpeechBlocks();
 			const block = blocks[blockIndex];
-			if (!block) return;
+			if (!block) {
+				playerStateRef.current.blockIndex = null;
+				return;
+			}
 
 			if (highlightParagraph) {
-				const element = block.element;
-				element.style.backgroundColor = paragraphHighlightColor;
-				element.style.boxShadow = `0 0 0 4px ${paragraphHighlightColor}`;
-				element.style.borderRadius = "4px";
-				element.style.transition = "background-color 0.15s ease, box-shadow 0.15s ease";
+				applyParagraphHighlight(block.element, { color: styleRef.current.paragraphColor });
 			}
-			activeSpeechElementRef.current = block.element;
+			domStateRef.current.activeElement = block.element;
 
-			if (autoScrollDuringSpeech && typeof window !== "undefined") {
-				const parent = getScrollParent(block.element);
-				if (parent === window) {
-					const rect = block.element.getBoundingClientRect();
-					const targetScrollY = window.scrollY + rect.top - autoScrollOffset;
-					window.scrollTo({
-						top: targetScrollY,
-						behavior: autoScrollBehavior,
-					});
-				} else if (parent instanceof HTMLElement) {
-					const rect = block.element.getBoundingClientRect();
-					const parentRect = parent.getBoundingClientRect();
-					const targetScrollTop = parent.scrollTop + rect.top - parentRect.top - autoScrollOffset;
-					parent.scrollTo({
-						top: targetScrollTop,
-						behavior: autoScrollBehavior,
-					});
-				}
-			}
+			if (options?.skipScroll) return;
+			scrollToElement(block.element, {
+				enabled: autoScrollDuringSpeech,
+				offset: autoScrollOffset,
+				behavior: autoScrollBehavior,
+			});
 		},
-		[getSpeechBlocks, clearSpeakingHighlights, autoScrollDuringSpeech, autoScrollOffset, autoScrollBehavior, highlightParagraph, paragraphHighlightColor],
+		[getSpeechBlocks, clearSpeakingHighlights, autoScrollDuringSpeech, autoScrollOffset, autoScrollBehavior, highlightParagraph],
 	);
+
 
 	const highlightSpeechWord = useCallback(
 		(blockIndex: number, charIndexInBlock: number) => {
@@ -213,67 +196,17 @@ export function useReaderTts({
 			const block = blocks[blockIndex];
 			if (!block || !block.element) return;
 
-			const blockText = block.text;
-			if (charIndexInBlock < 0 || charIndexInBlock >= blockText.length) return;
-
-			let start = charIndexInBlock;
-			while (start > 0 && /\w/.test(blockText[start - 1])) {
-				start--;
-			}
-			let end = charIndexInBlock;
-			while (end < blockText.length && /\w/.test(blockText[end])) {
-				end++;
-			}
-
-			if (start === end) return;
-
-			const before = blockText.slice(0, start);
-			const word = blockText.slice(start, end);
-			const after = blockText.slice(end);
-
-			const element = block.element;
-			element.innerHTML = "";
-
-			if (before) {
-				element.appendChild(document.createTextNode(before));
-			}
-
-			const span = document.createElement("span");
-			span.style.backgroundColor = wordHighlightColor;
-			span.style.color = "#000";
-			span.style.borderRadius = "2px";
-			span.textContent = word;
-			element.appendChild(span);
-			activeWordHighlightRef.current = span;
-
-			if (after) {
-				element.appendChild(document.createTextNode(after));
+			const wrapper = highlightWordInBlock(block, charIndexInBlock, styleRef.current.wordColor);
+			if (wrapper) {
+				domStateRef.current.wordWrapper = wrapper;
 			}
 		},
-		[getSpeechBlocks, clearSpeakingWord, wordHighlightColor],
+		[getSpeechBlocks, clearSpeakingWord],
 	);
 
 	const createSpeechQueueFromBlock = useCallback(
 		(startBlockIndex: number): SpeechQueueItem[] => {
-			const blocks = getSpeechBlocks();
-			const queue: SpeechQueueItem[] = [];
-
-			for (let i = startBlockIndex; i < blocks.length; i++) {
-				const block = blocks[i];
-				const chunks = splitSpeechTextWithOffsets(block.text);
-
-				for (const chunk of chunks) {
-					const spokenText = applyPronunciationRules(chunk.text, pronunciationRulesRef.current);
-					queue.push({
-						text: chunk.text,
-						spokenText,
-						blockIndex: i,
-						startOffset: chunk.startOffset,
-					});
-				}
-			}
-
-			return queue;
+			return createSpeechQueue(getSpeechBlocks(), startBlockIndex, pronunciationRulesRef.current);
 		},
 		[getSpeechBlocks],
 	);
@@ -292,34 +225,28 @@ export function useReaderTts({
 				shouldContinueSpeechRef.current = false;
 			}
 			clearSpeakingHighlights();
-			activeSpeechBlockIndexRef.current = null;
-			activeQueueItemRef.current = null;
+			playerStateRef.current.blockIndex = null;
+			playerStateRef.current.activeItem = null;
 			ttsStatusRef.current = "idle";
 			setTtsStatus("idle");
 
-			if (typeof window !== "undefined" && "speechSynthesis" in window) {
-				// CRITICAL PREVENT autoplay block: Keep the speech engine talking (not cancelled)
-				// when unmounting and transitioning to the next chapter so session remains active.
-				if (!options?.preserveContinuation) {
-					activeUtteranceRef.current = null;
-					window.speechSynthesis.cancel();
-				}
+			if (!options?.preserveContinuation) {
+				cancel();
 			}
 		},
-		[clearSpeakingHighlights],
+		[clearSpeakingHighlights, cancel],
 	);
 
 	const speakQueuedChunk = useCallback(
 		(index: number) => {
 			if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-			const speechItem = speechQueueRef.current[index];
+			const speechItem = playerStateRef.current.queue[index];
 			if (!speechItem) {
-				activeUtteranceRef.current = null;
-				speechIndexRef.current = 0;
-				speechQueueRef.current = [];
-				activeSpeechBlockIndexRef.current = null;
-				activeQueueItemRef.current = null;
+				playerStateRef.current.index = 0;
+				playerStateRef.current.queue = [];
+				playerStateRef.current.blockIndex = null;
+				playerStateRef.current.activeItem = null;
 				clearSpeakingHighlights();
 
 				if (shouldContinueSpeechRef.current && hasNextChapter) {
@@ -328,21 +255,13 @@ export function useReaderTts({
 					// play a transient, natural keep-alive voice indicator. This keeps the global SpeechSynthesis engine
 					// actively talking, meaning when the next page mounts programmatically, the engine can be hijacked
 					// and updated without losing the user gesture authorization boundary or triggering "not-allowed".
-					const transitionalPrompt = new SpeechSynthesisUtterance("Loading next chapter.");
-					transitionalPrompt.rate = speechConfigRef.current.rate;
-					transitionalPrompt.pitch = speechConfigRef.current.pitch;
-					const selectedVoice = availableVoices.find((voice) => voice.voiceURI === speechConfigRef.current.voiceURI);
-					if (selectedVoice) {
-						transitionalPrompt.voice = selectedVoice;
-					}
-					window.speechSynthesis.speak(transitionalPrompt);
-
+					speakKeepAlive("Loading next chapter.");
 					navigateToChapter(nextChapterNumber, { resumeTts: true });
 				} else {
-					speechQueueRef.current = [];
-					speechIndexRef.current = 0;
-					activeSpeechBlockIndexRef.current = null;
-					activeQueueItemRef.current = null;
+					playerStateRef.current.queue = [];
+					playerStateRef.current.index = 0;
+					playerStateRef.current.blockIndex = null;
+					playerStateRef.current.activeItem = null;
 					clearSpeakingHighlights();
 					ttsStatusRef.current = "idle";
 					setTtsStatus("idle");
@@ -352,72 +271,61 @@ export function useReaderTts({
 			}
 
 			if (!speechItem.spokenText) {
-				speechIndexRef.current = index + 1;
+				playerStateRef.current.index = index + 1;
 				speakQueuedChunkRef.current(index + 1);
 				return;
 			}
 
-			activeQueueItemRef.current = speechItem;
+			playerStateRef.current.activeItem = speechItem;
 
-			if (activeSpeechBlockIndexRef.current !== speechItem.blockIndex) {
+			if (playerStateRef.current.blockIndex !== speechItem.blockIndex) {
 				highlightSpeechBlock(speechItem.blockIndex);
 			}
-			activeSpeechBlockIndexRef.current = speechItem.blockIndex;
+			playerStateRef.current.blockIndex = speechItem.blockIndex;
 
-			const utterance = new SpeechSynthesisUtterance(speechItem.spokenText);
-			utterance.rate = speechConfigRef.current.rate;
-			utterance.pitch = speechConfigRef.current.pitch;
-			const selectedVoice = availableVoices.find((voice) => voice.voiceURI === speechConfigRef.current.voiceURI);
-			if (selectedVoice) {
-				utterance.voice = selectedVoice;
-			}
-			utterance.onstart = () => {
-				if (activeUtteranceRef.current !== utterance) return;
-				if (activeSpeechBlockIndexRef.current !== speechItem.blockIndex) {
-					highlightSpeechBlock(speechItem.blockIndex);
-				}
-				activeSpeechBlockIndexRef.current = speechItem.blockIndex;
-			};
-			utterance.onend = () => {
-				if (activeUtteranceRef.current !== utterance) return;
-				if (highlightMode === "word") {
-					clearSpeakingWord();
-				}
-				speechIndexRef.current = index + 1;
-				speakQueuedChunkRef.current(index + 1);
-			};
-			utterance.onboundary = (event) => {
-				if (activeUtteranceRef.current !== utterance) return;
-				if (highlightMode !== "word") return;
-				if (event.name && event.name !== "word") return;
+			speak(speechItem.spokenText, {
+				onStart: () => {
+					if (playerStateRef.current.blockIndex !== speechItem.blockIndex) {
+						highlightSpeechBlock(speechItem.blockIndex);
+					}
+					playerStateRef.current.blockIndex = speechItem.blockIndex;
+				},
+				onEnd: () => {
+					if (highlightMode === "word") {
+						clearSpeakingWord();
+					}
+					playerStateRef.current.index = index + 1;
+					speakQueuedChunkRef.current(index + 1);
+				},
+				onBoundary: (event) => {
+					if (highlightMode !== "word") return;
+					if (event.name && event.name !== "word") return;
 
-				const queueItem = activeQueueItemRef.current;
-				if (!queueItem || queueItem.spokenText !== queueItem.text) return;
-				const absoluteCharIndex = queueItem.startOffset + (event.charIndex || 0);
-				highlightSpeechWord(queueItem.blockIndex, absoluteCharIndex);
-			};
-			utterance.onerror = (event) => {
-				if (activeUtteranceRef.current !== utterance) return;
-				console.error("Speech synthesis error:", event.error);
-				if (event.error === "not-allowed") {
-					setSpeechError("Browser blocked autoplay. Press Play after tapping or clicking anywhere on the page.");
-				} else {
-					setSpeechError("Text to speech stopped in the browser.");
-				}
-				activeUtteranceRef.current = null;
-				activeQueueItemRef.current = null;
-				clearSpeakingHighlights();
-				ttsStatusRef.current = "idle";
-				setTtsStatus("idle");
-			};
+					const queueItem = playerStateRef.current.activeItem;
+					if (!queueItem || queueItem.spokenText !== queueItem.text) return;
+					const absoluteCharIndex = queueItem.startOffset + (event.charIndex || 0);
+					highlightSpeechWord(queueItem.blockIndex, absoluteCharIndex);
+				},
+				onError: (event) => {
+					console.error("Speech synthesis error:", event.error);
+					if (event.error === "not-allowed") {
+						setSpeechError("Browser blocked autoplay. Press Play after tapping or clicking anywhere on the page.");
+					} else {
+						setSpeechError("Text to speech stopped in the browser.");
+					}
+					playerStateRef.current.activeItem = null;
+					clearSpeakingHighlights();
+					ttsStatusRef.current = "idle";
+					setTtsStatus("idle");
+				},
+			});
 
-			activeUtteranceRef.current = utterance;
 			ttsStatusRef.current = "playing";
 			setTtsStatus("playing");
-			window.speechSynthesis.speak(utterance);
 		},
 		[
-			availableVoices,
+			speak,
+			speakKeepAlive,
 			clearSpeakingHighlights,
 			clearSpeakingWord,
 			hasNextChapter,
@@ -426,7 +334,6 @@ export function useReaderTts({
 			highlightSpeechWord,
 			navigateToChapter,
 			nextChapterNumber,
-			speechConfigRef,
 		],
 	);
 
@@ -442,8 +349,7 @@ export function useReaderTts({
 			}
 
 			if (options?.fromUserGesture) {
-				hasUserInteractedRef.current = true;
-				window.sessionStorage.setItem(TTS_SESSION_FLAG, "1");
+				markUserGesture();
 			}
 
 			if (!hasUserInteractedRef.current && !options?.fromUserGesture) {
@@ -458,12 +364,11 @@ export function useReaderTts({
 			}
 
 			shouldContinueSpeechRef.current = Boolean(options?.continueAcrossChapters);
-			activeUtteranceRef.current = null;
-			window.speechSynthesis.cancel();
-			speechQueueRef.current = queue;
-			speechIndexRef.current = 0;
-			activeSpeechBlockIndexRef.current = null;
-			activeQueueItemRef.current = null;
+			cancel();
+			playerStateRef.current.queue = queue;
+			playerStateRef.current.index = 0;
+			playerStateRef.current.blockIndex = null;
+			playerStateRef.current.activeItem = null;
 			setSpeechError("");
 
 			if (speechStartTimerRef.current !== null && typeof window !== "undefined") {
@@ -474,14 +379,14 @@ export function useReaderTts({
 			speakQueuedChunkRef.current(0);
 			return true;
 		},
-		[createSpeechQueueFromBlock, speechSupported],
+		[createSpeechQueueFromBlock, speechSupported, cancel, markUserGesture],
 	);
 
 	const restartSpeechFromCurrentBlock = useCallback(() => {
 		if (!speechSupported || typeof window === "undefined" || !("speechSynthesis" in window)) return;
 		if (ttsStatusRef.current !== "playing") return;
 
-		const startBlockIndex = activeSpeechBlockIndexRef.current ?? 0;
+		const startBlockIndex = playerStateRef.current.blockIndex ?? 0;
 		const continueAcrossChapters = shouldContinueSpeechRef.current;
 
 		if (speechRestartTimerRef.current !== null) {
@@ -506,7 +411,32 @@ export function useReaderTts({
 		if (ttsStatusRef.current === "playing") {
 			restartSpeechFromCurrentBlock();
 		}
-	}, [rate, pitch, voiceURI, paragraphHighlightColor, wordHighlightColor, restartSpeechFromCurrentBlock]);
+	}, [rate, pitch, voiceURI, restartSpeechFromCurrentBlock]);
+
+	useEffect(() => {
+		if (ttsStatusRef.current !== "playing" || playerStateRef.current.blockIndex == null) return;
+		const element = domStateRef.current.activeElement;
+		if (!element || !element.isConnected || !highlightParagraph) {
+			highlightSpeechBlock(playerStateRef.current.blockIndex, { skipScroll: true });
+			return;
+		}
+		updateParagraphHighlightColor(element, paragraphHighlightColor);
+	}, [paragraphHighlightColor, highlightParagraph, highlightSpeechBlock]);
+
+	useEffect(() => {
+		if (ttsStatusRef.current !== "playing" || playerStateRef.current.blockIndex == null) return;
+		highlightSpeechBlock(playerStateRef.current.blockIndex);
+	}, [highlightParagraph, highlightSpeechBlock]);
+
+	useEffect(() => {
+		if (ttsStatusRef.current !== "playing" || playerStateRef.current.blockIndex == null) return;
+		highlightSpeechBlock(playerStateRef.current.blockIndex);
+	}, [autoScrollDuringSpeech, autoScrollOffset, autoScrollBehavior, highlightSpeechBlock]);
+
+	useEffect(() => {
+		if (!domStateRef.current.wordWrapper) return;
+		updateWordHighlightColor(domStateRef.current.wordWrapper, wordHighlightColor);
+	}, [wordHighlightColor]);
 
 	const handlePlaySpeech = useCallback(() => {
 		if (!speechSupported || typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -516,22 +446,22 @@ export function useReaderTts({
 
 		if (ttsStatus === "paused") {
 			shouldContinueSpeechRef.current = autoOpenNext;
-			window.speechSynthesis.resume();
+			resume();
 			ttsStatusRef.current = "playing";
 			setTtsStatus("playing");
 			return;
 		}
 
 		void startSpeechFromBlock(0, { continueAcrossChapters: autoOpenNext, fromUserGesture: true });
-	}, [autoOpenNext, speechSupported, startSpeechFromBlock, ttsStatus]);
+	}, [autoOpenNext, speechSupported, startSpeechFromBlock, ttsStatus, resume]);
 
 	const handlePauseSpeech = useCallback(() => {
 		if (typeof window !== "undefined" && "speechSynthesis" in window && ttsStatus === "playing") {
-			window.speechSynthesis.pause();
+			pause();
 			ttsStatusRef.current = "paused";
 			setTtsStatus("paused");
 		}
-	}, [ttsStatus]);
+	}, [ttsStatus, pause]);
 
 	useEffect(() => {
 		const shouldAutoStartSpeech = shouldResumeTtsFromRoute || shouldContinueSpeechRef.current;
@@ -579,9 +509,9 @@ export function useReaderTts({
 	useEffect(() => {
 		clearSpeakingHighlights();
 		speechBlocksRef.current = [];
-		activeSpeechBlockIndexRef.current = null;
-		activeSpeechElementRef.current = null;
-		activeWordHighlightRef.current = null;
+		playerStateRef.current.blockIndex = null;
+		domStateRef.current.activeElement = null;
+		domStateRef.current.wordWrapper = null;
 	}, [chapter?.content, chapterNumber, clearSpeakingHighlights]);
 
 	// Gracefully shutdown SpeechSynthesis and state timers on teardown

@@ -10,7 +10,7 @@ import {
 	type ReaderAutoScrollBehavior,
 } from "../utils/api";
 import { useReaderTheme } from "../context/ReaderThemeContext";
-import { normalizeReaderTheme, type ReaderTheme } from "../lib/reader-theme";
+import { getThemeTokens, normalizeReaderTheme, type ReaderTheme } from "../lib/reader-theme";
 import {
 	DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR,
 	DEFAULT_WORD_HIGHLIGHT_COLOR,
@@ -21,11 +21,8 @@ import {
 	normalizeHexColor,
 } from "../lib/reader-utils";
 
-export interface SpeechConfig {
-	rate: number;
-	pitch: number;
-	voiceURI: string;
-}
+import { type SpeechConfig } from "../lib/tts/speechTypes";
+export type { SpeechConfig };
 
 export interface UseReaderSettingsReturn {
 	theme: ReaderTheme;
@@ -41,6 +38,8 @@ export interface UseReaderSettingsReturn {
 	onHighlightModeChange: (mode: ReaderHighlightMode) => void;
 	highlightParagraph: boolean;
 	onHighlightParagraphChange: (enabled: boolean) => void;
+	useCustomHighlight: boolean;
+	onUseCustomHighlightChange: (enabled: boolean) => void;
 	paragraphColor: string;
 	onParagraphColorChange: (color: string) => void;
 	wordColor: string;
@@ -78,6 +77,7 @@ export function useReaderSettings(user: User | null): UseReaderSettingsReturn {
 	const [autoOpenNext, setAutoOpenNext] = useState(true);
 	const [highlightMode, setHighlightMode] = useState<ReaderHighlightMode>("paragraph");
 	const [highlightParagraph, setHighlightParagraph] = useState(true);
+	const [useCustomHighlight, setUseCustomHighlight] = useState(false);
 	const [paragraphHighlightColor, setParagraphHighlightColor] = useState(DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR);
 	const [wordHighlightColor, setWordHighlightColor] = useState(DEFAULT_WORD_HIGHLIGHT_COLOR);
 	const [sentenceHighlightOpacity, setSentenceHighlightOpacity] = useState(0.35);
@@ -120,6 +120,16 @@ export function useReaderSettings(user: User | null): UseReaderSettingsReturn {
 	const speechConfigRef = useRef<SpeechConfig>({ rate: 1, pitch: 1, voiceURI: "" });
 	const pendingReaderSettingsRef = useRef<Partial<ReaderSettings>>({});
 	const settingsSaveTimerRef = useRef<number | null>(null);
+
+	const effectiveParagraphColor = useMemo(() => {
+		if (useCustomHighlight) return paragraphHighlightColor;
+		return getThemeTokens(theme).paragraphHighlight;
+	}, [useCustomHighlight, paragraphHighlightColor, theme]);
+
+	const effectiveWordColor = useMemo(() => {
+		if (useCustomHighlight) return wordHighlightColor;
+		return getThemeTokens(theme).wordHighlight;
+	}, [useCustomHighlight, wordHighlightColor, theme]);
 
 	useEffect(() => {
 		setReaderTheme(theme);
@@ -192,6 +202,7 @@ export function useReaderSettings(user: User | null): UseReaderSettingsReturn {
 					}
 					if (reader.highlightMode) setHighlightMode(reader.highlightMode);
 					if (reader.highlightParagraph !== undefined) setHighlightParagraph(reader.highlightParagraph);
+					if (reader.useCustomHighlight !== undefined) setUseCustomHighlight(reader.useCustomHighlight);
 					if (reader.paragraphHighlightColor) setParagraphHighlightColor(reader.paragraphHighlightColor);
 					if (reader.wordHighlightColor) setWordHighlightColor(reader.wordHighlightColor);
 					if (reader.sentenceHighlightOpacity !== undefined) setSentenceHighlightOpacity(reader.sentenceHighlightOpacity);
@@ -294,16 +305,37 @@ export function useReaderSettings(user: User | null): UseReaderSettingsReturn {
 		persistReaderSettings({ highlightParagraph: enabled });
 	};
 
+	const handleUseCustomHighlightChange = (enabled: boolean) => {
+		setUseCustomHighlight(enabled);
+		const updates: Partial<ReaderSettings> = { useCustomHighlight: enabled };
+
+		if (enabled) {
+			const themeTokens = getThemeTokens(theme);
+			if (paragraphHighlightColor === DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR) {
+				setParagraphHighlightColor(themeTokens.paragraphHighlight);
+				updates.paragraphHighlightColor = themeTokens.paragraphHighlight;
+			}
+			if (wordHighlightColor === DEFAULT_WORD_HIGHLIGHT_COLOR) {
+				setWordHighlightColor(themeTokens.wordHighlight);
+				updates.wordHighlightColor = themeTokens.wordHighlight;
+			}
+		}
+
+		persistReaderSettings(updates);
+	};
+
 	const handleParagraphHighlightColorChange = (nextColor: string) => {
 		const normalized = normalizeHexColor(nextColor, DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR);
 		setParagraphHighlightColor(normalized);
-		persistReaderSettings({ paragraphHighlightColor: normalized });
+		setUseCustomHighlight(true);
+		persistReaderSettings({ useCustomHighlight: true, paragraphHighlightColor: normalized });
 	};
 
 	const handleWordHighlightColorChange = (nextColor: string) => {
 		const normalized = normalizeHexColor(nextColor, DEFAULT_WORD_HIGHLIGHT_COLOR);
 		setWordHighlightColor(normalized);
-		persistReaderSettings({ wordHighlightColor: normalized });
+		setUseCustomHighlight(true);
+		persistReaderSettings({ useCustomHighlight: true, wordHighlightColor: normalized });
 	};
 
 	const handleSentenceHighlightOpacityChange = (value: number) => {
@@ -360,9 +392,11 @@ export function useReaderSettings(user: User | null): UseReaderSettingsReturn {
 		onHighlightModeChange: handleHighlightModeChange,
 		highlightParagraph,
 		onHighlightParagraphChange: handleHighlightParagraphChange,
-		paragraphColor: paragraphHighlightColor,
+		useCustomHighlight,
+		onUseCustomHighlightChange: handleUseCustomHighlightChange,
+		paragraphColor: effectiveParagraphColor,
 		onParagraphColorChange: handleParagraphHighlightColorChange,
-		wordColor: wordHighlightColor,
+		wordColor: effectiveWordColor,
 		onWordColorChange: handleWordHighlightColorChange,
 		sentenceHighlightOpacity,
 		onSentenceHighlightOpacityChange: handleSentenceHighlightOpacityChange,

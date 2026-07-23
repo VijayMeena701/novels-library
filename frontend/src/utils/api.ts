@@ -148,6 +148,7 @@ export interface ReaderSettings {
 	};
 	highlightMode: ReaderHighlightMode;
 	highlightParagraph: boolean;
+	useCustomHighlight: boolean;
 	paragraphHighlightColor: string;
 	wordHighlightColor: string;
 	sentenceHighlightOpacity: number;

@@ -21,6 +21,7 @@ export interface IReaderSettings {
   speechPortalPosition: IReaderPortalPosition;
   highlightMode: ReaderHighlightMode;
   highlightParagraph: boolean;
+  useCustomHighlight: boolean;
   paragraphHighlightColor: string;
   wordHighlightColor: string;
   sentenceHighlightOpacity: number;
@@ -51,6 +52,7 @@ export function createDefaultReaderSettings(): IReaderSettings {
     },
     highlightMode: 'paragraph',
     highlightParagraph: true,
+    useCustomHighlight: false,
     paragraphHighlightColor: '#f5d67a',
     wordHighlightColor: '#f59e0b',
     sentenceHighlightOpacity: 0.2,
@@ -83,6 +85,7 @@ const ReaderSettingsSchema = new Schema<IReaderSettings>(
     },
     highlightMode: { type: String, enum: ['off', 'paragraph', 'word'], default: 'paragraph' },
     highlightParagraph: { type: Boolean, default: true },
+    useCustomHighlight: { type: Boolean, default: false },
     paragraphHighlightColor: { type: String, default: '#f5d67a' },
     wordHighlightColor: { type: String, default: '#f59e0b' },
     sentenceHighlightOpacity: { type: Number, default: 0.2, min: 0.05, max: 0.6 },

@@ -306,6 +306,8 @@ export default function ReaderView({
 					onHighlightModeChange={settings.onHighlightModeChange}
 					highlightParagraph={settings.highlightParagraph}
 					onHighlightParagraphChange={settings.onHighlightParagraphChange}
+					useCustomHighlight={settings.useCustomHighlight}
+					onUseCustomHighlightChange={settings.onUseCustomHighlightChange}
 					paragraphColor={settings.paragraphColor}
 					onParagraphColorChange={settings.onParagraphColorChange}
 					wordColor={settings.wordColor}
