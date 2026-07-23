@@ -6,6 +6,7 @@ import { protectedAdminRoleRoutes } from './roles';
 import { protectedAdminGroupRoutes } from './groups';
 import { protectedAdminResourceRoutes } from './resources';
 import { protectedAdminAuditLogRoutes } from './audit-logs';
+import { protectedAdminAppConfigRoutes } from './app-config';
 
 export async function protectedAdminRoutes(fastify: FastifyInstance) {
   fastify.get('/', { preHandler: requireCapability(CAPABILITY.ADMIN_ACCESS) }, getAdminStatsHandler);
@@ -16,4 +17,5 @@ export async function protectedAdminRoutes(fastify: FastifyInstance) {
   fastify.register(protectedAdminGroupRoutes, { prefix: '/groups' });
   fastify.register(protectedAdminResourceRoutes, { prefix: '/resources' });
   fastify.register(protectedAdminAuditLogRoutes, { prefix: '/audit-logs' });
+  fastify.register(protectedAdminAppConfigRoutes, { prefix: '/app-config' });
 }

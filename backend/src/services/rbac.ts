@@ -11,6 +11,11 @@ export const CAPABILITY = {
   SETTINGS_READ: 'settings:read',
   SETTINGS_UPDATE: 'settings:update',
 
+  // App configuration
+  APP_CONFIG_READ: 'app_config:read',
+  APP_CONFIG_UPDATE: 'app_config:update',
+  APP_CONFIG_MANAGE: 'app_config:manage',
+
   // Catalog
   BOOKS_LIST: 'books:list',
   BOOKS_READ: 'books:read',

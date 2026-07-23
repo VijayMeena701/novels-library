@@ -168,6 +168,24 @@ export interface UpdateUserSettingsPayload {
 	reader?: Partial<ReaderSettings>;
 }
 
+export interface AppConfig<T = unknown> {
+	_id: string;
+	name: string;
+	value: T;
+	description: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export type ReaderModeKey = "singlePage" | "infinite" | "oldReader";
+
+export interface ReaderModeEntry {
+	enabled: boolean;
+	label: string;
+}
+
+export type ReaderModesConfig = Record<ReaderModeKey, ReaderModeEntry>;
+
 export type BookStatus = "reading" | "completed" | "on_hold" | "dropped" | "planning";
 
 export interface ChapterIndex {
@@ -658,6 +676,18 @@ class ApiClient {
 		if (query.limit !== undefined) params.set("limit", String(query.limit));
 		const suffix = params.toString() ? `?${params.toString()}` : "";
 		return this.request<{ logs: AdminAuditLog[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/audit-logs${suffix}`);
+	}
+
+	// AppConfig Methods
+	async listAdminAppConfigs(): Promise<{ configs: AppConfig<unknown>[] }> {
+		return this.request<{ configs: AppConfig<unknown>[] }>("/admin/app-config");
+	}
+
+	async updateAdminAppConfig(name: string, value: unknown): Promise<AppConfig<unknown>> {
+		return this.request<AppConfig<unknown>>(`/admin/app-config/${encodeURIComponent(name)}`, {
+			method: "PUT",
+			body: JSON.stringify({ value }),
+		});
 	}
 
 	// User Settings Methods

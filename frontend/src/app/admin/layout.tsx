@@ -16,6 +16,7 @@ import {
   Folder,
   ScrollText,
   FileText,
+  Settings,
   Menu,
   X,
 } from "lucide-react";
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { href: "/admin/roles", label: "Roles", icon: Shield },
   { href: "/admin/groups", label: "Permission Groups", icon: Key },
   { href: "/admin/resources", label: "Resources", icon: Folder },
+  { href: "/admin/app-config", label: "App Config", icon: Settings, guard: CAPABILITY.APP_CONFIG_READ },
   { href: "/admin/logs", label: "Audit Logs", icon: ScrollText },
   { href: "/admin/reports", label: "Reports", icon: FileText, guard: CAPABILITY.BOOKS_MANAGE },
 ];
