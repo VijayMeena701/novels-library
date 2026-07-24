@@ -6,6 +6,8 @@ import { ToggleRow } from "../../ui/toggle-row";
 import { ColorField } from "../../ui/color-field";
 import { Select } from "../../ui/input";
 import { getThemeTokens } from "../../../lib/reader-theme";
+import { ENGINE_OPTIONS } from "./engine-options";
+import type { PlaybackEngineName } from "../../../lib/tts/playback";
 import type { ReaderBottomToolbarProps } from "./types";
 
 function ThemeDefaultSwatch({ label, color }: { label: string; color: string }) {
@@ -28,12 +30,32 @@ function formatMultiplier(value: number): string {
 }
 
 export function SpeechTab(props: ReaderBottomToolbarProps) {
+	const engineOptions = props.localTtsEnabled === false ? ENGINE_OPTIONS.filter((option) => option.value !== "local") : ENGINE_OPTIONS;
+
 	return (
 		<div className="flex flex-col gap-6">
 			<div>
 				<h2 className="text-sm font-semibold text-[var(--reader-text)]">Listening controls</h2>
 				<p className="mt-1 text-xs leading-relaxed text-[var(--reader-muted)]">Tune the voice and optional highlights without leaving the chapter.</p>
 			</div>
+			<Field label="Playback engine" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
+				<Select
+					value={props.playbackEngine}
+					onChange={(event) => {
+						const value = event.target.value as PlaybackEngineName;
+						if (value !== "cloud") {
+							props.onPlaybackEngineChange(value);
+						}
+					}}
+					className="min-h-10 border-[var(--reader-border)] bg-[var(--reader-bg)] text-xs text-[var(--reader-text)] focus:border-[var(--reader-accent)] focus:ring-[var(--reader-accent)]"
+				>
+					{engineOptions.map((option) => (
+						<option key={option.value} value={option.value} disabled={option.disabled}>
+							{option.label}
+						</option>
+					))}
+				</Select>
+			</Field>
 			<Field label="Voice language profile" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
 				<Select
 					value={props.voiceURI}

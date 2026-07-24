@@ -88,6 +88,16 @@ describe('highlightWordInBlock', () => {
 		expect(wrapper?.textContent).toBe('Hello');
 	});
 
+	it('highlights the correct word when raw text has extra whitespace', () => {
+		const element = document.createElement('p');
+		element.textContent = 'Hello   world';
+		const block = { element, text: 'Hello   world' };
+		const wrapper = highlightWordInBlock(block, 6, '#f59e0b');
+		expect(wrapper).not.toBeNull();
+		expect(wrapper?.textContent).toBe('world');
+		expect(element.textContent).toBe('Hello   world');
+	});
+
 	it('returns null for out-of-bounds character indices', () => {
 		const element = document.createElement('p');
 		element.textContent = 'Hello';

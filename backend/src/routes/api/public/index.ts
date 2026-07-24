@@ -6,6 +6,7 @@ import { publicAuthorRoutes } from './authors';
 import { publicGenreRoutes } from './genres';
 import { publicPublicationStatusRoutes } from './publication-statuses';
 import { publicAppConfigRoutes } from './app-config';
+import { publicFeaturesRoutes } from './features';
 
 export async function publicRoutes(fastify: FastifyInstance) {
   fastify.register(publicBookRoutes, { prefix: '/books' });
@@ -15,4 +16,5 @@ export async function publicRoutes(fastify: FastifyInstance) {
   fastify.register(publicGenreRoutes, { prefix: '/genres' });
   fastify.register(publicPublicationStatusRoutes, { prefix: '/publication-statuses' });
   fastify.register(publicAppConfigRoutes, { prefix: '/app-config' });
+  fastify.register(publicFeaturesRoutes, { prefix: '/features' });
 }

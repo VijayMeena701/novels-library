@@ -1,4 +1,4 @@
-import { getContrastTextColor } from "@/lib/reader-utils";
+import { getContrastTextColor, DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR, DEFAULT_WORD_HIGHLIGHT_COLOR } from "@/lib/reader-utils";
 import type { SpeechBlock } from "./speechTypes";
 
 const PARAGRAPH_ACTIVE_ATTR = "data-tts-paragraph-active";
@@ -13,6 +13,38 @@ function getTextNodes(root: Node): Text[] {
 		node = walker.nextNode();
 	}
 	return nodes;
+}
+
+function normalizeText(text: string): string {
+	return text.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Maps an index in a whitespace-collapsed ("normalized") view of `rawText` back
+ * to the corresponding raw text offset. This lets TTS boundary callbacks, which
+ * operate on normalized chunk text, highlight the correct word in the actual DOM
+ * even when the original HTML contains multiple spaces or newlines.
+ */
+function rawOffsetForNormalizedIndex(rawText: string, normalizedIndex: number): number {
+	if (normalizedIndex <= 0) return 0;
+
+	let rawIndex = 0;
+	let normalizedCount = 0;
+	while (rawIndex < rawText.length && normalizedCount < normalizedIndex) {
+		const c = rawText[rawIndex];
+		if (/\s/.test(c)) {
+			// A run of whitespace collapses to a single normalized space.
+			rawIndex++;
+			while (rawIndex < rawText.length && /\s/.test(rawText[rawIndex])) {
+				rawIndex++;
+			}
+		} else {
+			rawIndex++;
+		}
+		normalizedCount++;
+	}
+
+	return rawIndex;
 }
 
 function findRangeForRawOffsets(root: Node, startOffset: number, endOffset: number): Range | null {
@@ -52,8 +84,9 @@ export interface ParagraphHighlightOptions {
 }
 
 export function applyParagraphHighlight(element: HTMLElement, options: ParagraphHighlightOptions): void {
-	element.style.backgroundColor = options.color;
-	element.style.boxShadow = `0 0 0 4px ${options.color}`;
+	const color = options.color || DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR;
+	element.style.backgroundColor = color;
+	element.style.boxShadow = `0 0 0 4px ${color}`;
 	element.classList.add("!rounded", "!duration-150");
 	element.setAttribute(PARAGRAPH_ACTIVE_ATTR, "true");
 }
@@ -73,14 +106,16 @@ export function updateParagraphHighlightColor(element: HTMLElement, color: strin
 
 export function highlightWordInBlock(block: SpeechBlock, charIndex: number, color: string): HTMLElement | null {
 	const { element, text } = block;
-	if (charIndex < 0 || charIndex >= text.length) return null;
+	const safeColor = color || DEFAULT_WORD_HIGHLIGHT_COLOR;
+	const normalizedText = normalizeText(text);
+	if (charIndex < 0 || charIndex >= normalizedText.length) return null;
 
 	let start = charIndex;
-	while (start > 0 && /\w/.test(text[start - 1])) {
+	while (start > 0 && /\w/.test(normalizedText[start - 1])) {
 		start--;
 	}
 	let end = charIndex;
-	while (end < text.length && /\w/.test(text[end])) {
+	while (end < normalizedText.length && /\w/.test(normalizedText[end])) {
 		end++;
 	}
 	if (start === end) return null;
@@ -89,15 +124,15 @@ export function highlightWordInBlock(block: SpeechBlock, charIndex: number, colo
 	const leading = fullText.indexOf(text);
 	if (leading === -1) return null;
 
-	const rawStart = leading + start;
-	const rawEnd = leading + end;
+	const rawStart = leading + rawOffsetForNormalizedIndex(text, start);
+	const rawEnd = leading + rawOffsetForNormalizedIndex(text, end);
 	const range = findRangeForRawOffsets(element, rawStart, rawEnd);
 	if (!range) return null;
 
 	const span = document.createElement("span");
 	span.className = WORD_HIGHLIGHT_CLASS;
-	span.style.backgroundColor = color;
-	span.style.color = getContrastTextColor(color);
+	span.style.backgroundColor = safeColor;
+	span.style.color = getContrastTextColor(safeColor);
 	try {
 		range.surroundContents(span);
 	} catch {

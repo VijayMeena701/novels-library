@@ -6,6 +6,7 @@ import { IconButton } from "../ui/icon-button";
 import { Field } from "../ui/field";
 import { Select } from "../ui/input";
 import { Draggable } from "../ui/draggable";
+import type { PlaybackVoice } from "../../lib/tts/playback";
 
 const WIDGET_WIDTH = 320;
 const WIDGET_MIN_VISIBLE = 48;
@@ -29,7 +30,7 @@ export interface SpeechWidgetProps {
 	hasPrevChapter: boolean;
 	hasNextChapter: boolean;
 
-	voices: SpeechSynthesisVoice[];
+	voices: PlaybackVoice[];
 	voiceURI: string;
 	onVoiceChange: (voiceURI: string) => void;
 

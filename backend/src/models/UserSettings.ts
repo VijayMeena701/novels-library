@@ -4,6 +4,7 @@ export type ReaderTheme = 'paper' | 'sepia' | 'forest' | 'night' | 'amoled';
 export type ReaderWidth = 'narrow' | 'medium' | 'wide';
 export type ReaderHighlightMode = 'off' | 'paragraph' | 'word';
 export type ReaderAutoScrollBehavior = 'smooth' | 'instant';
+export type ReaderPlaybackEngine = 'system' | 'local' | 'cloud';
 
 export interface IReaderPortalPosition {
   x: number;
@@ -18,6 +19,7 @@ export interface IReaderSettings {
   speechRate: number;
   speechPitch: number;
   voiceURI: string;
+  playbackEngine: ReaderPlaybackEngine;
   speechPortalPosition: IReaderPortalPosition;
   highlightMode: ReaderHighlightMode;
   highlightParagraph: boolean;
@@ -46,6 +48,7 @@ export function createDefaultReaderSettings(): IReaderSettings {
     speechRate: 1,
     speechPitch: 1,
     voiceURI: '',
+    playbackEngine: 'system',
     speechPortalPosition: {
       x: 24,
       y: 120,
@@ -79,6 +82,7 @@ const ReaderSettingsSchema = new Schema<IReaderSettings>(
     speechRate: { type: Number, default: 1, min: 0.5, max: 4 },
     speechPitch: { type: Number, default: 1, min: 0.5, max: 2 },
     voiceURI: { type: String, default: '' },
+    playbackEngine: { type: String, enum: ['system', 'local', 'cloud'], default: 'system' },
     speechPortalPosition: {
       type: ReaderPortalPositionSchema,
       default: () => createDefaultReaderSettings().speechPortalPosition,

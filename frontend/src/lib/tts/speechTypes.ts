@@ -11,11 +11,19 @@ export interface SpeechChunk {
 	startOffset: number;
 }
 
+export interface SpeechQueueSegment {
+	blockIndex: number;
+	text: string;
+	startOffset: number;
+	blockStartOffset: number;
+}
+
 export interface SpeechQueueItem {
 	text: string;
 	spokenText: string;
 	blockIndex: number;
 	startOffset: number;
+	segments: SpeechQueueSegment[];
 }
 
 export interface SpeechBlock {

@@ -60,6 +60,7 @@ export const CAPABILITY = {
 
   PRONUNCIATION_READ: "pronunciation:read",
   PRONUNCIATION_MANAGE: "pronunciation:manage",
+  LOCAL_TTS_USE: "local_tts:use",
 
   SESSIONS_READ: "sessions:read",
   SESSIONS_MANAGE: "sessions:manage",

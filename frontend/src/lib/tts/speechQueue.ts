@@ -1,7 +1,7 @@
 import type { PronunciationRule } from "@/utils/api";
 import { SPEECH_BLOCK_SELECTOR, isSpeechLeafBlock } from "@/lib/reader-utils";
 import { buildWholeWordPattern, escapeRegExp } from "@/lib/reader-utils";
-import type { SpeechBlock, SpeechChunk, SpeechQueueItem } from "./speechTypes";
+import type { SpeechBlock, SpeechChunk, SpeechQueueItem, SpeechQueueSegment } from "./speechTypes";
 
 export function findSpeechBlocks(root: HTMLElement | null): SpeechBlock[] {
 	if (!root) return [];
@@ -91,6 +91,10 @@ export function applyPronunciationRules(text: string, rules: PronunciationRule[]
 	return result.replace(/\s+/g, " ").trim();
 }
 
+function normalizeBlockText(text: string): string {
+	return text.replace(/\s+/g, " ").trim();
+}
+
 export function createSpeechQueue(
 	blocks: SpeechBlock[],
 	startBlockIndex: number,
@@ -98,19 +102,75 @@ export function createSpeechQueue(
 	maxChunkLength = 1800,
 ): SpeechQueueItem[] {
 	const queue: SpeechQueueItem[] = [];
+	let i = startBlockIndex;
 
-	for (let i = startBlockIndex; i < blocks.length; i++) {
+	while (i < blocks.length) {
 		const block = blocks[i];
-		const chunks = splitSpeechTextWithOffsets(block.text, maxChunkLength);
+		const normalized = normalizeBlockText(block.text);
 
-		for (const chunk of chunks) {
-			queue.push({
-				text: chunk.text,
-				spokenText: applyPronunciationRules(chunk.text, rules),
-				blockIndex: i,
-				startOffset: chunk.startOffset,
-			});
+		if (!normalized) {
+			i++;
+			continue;
 		}
+
+		if (normalized.length > maxChunkLength) {
+			const chunks = splitSpeechTextWithOffsets(block.text, maxChunkLength);
+			for (const chunk of chunks) {
+				queue.push({
+					text: chunk.text,
+					spokenText: applyPronunciationRules(chunk.text, rules),
+					blockIndex: i,
+					startOffset: chunk.startOffset,
+					segments: [
+						{ blockIndex: i, text: chunk.text, startOffset: 0, blockStartOffset: chunk.startOffset },
+					],
+				});
+			}
+			i++;
+			continue;
+		}
+
+		let currentText = normalized;
+		const segments: SpeechQueueSegment[] = [
+			{ blockIndex: i, text: normalized, startOffset: 0, blockStartOffset: 0 },
+		];
+		let j = i + 1;
+
+		while (j < blocks.length) {
+			const nextBlock = blocks[j];
+			const nextNormalized = normalizeBlockText(nextBlock.text);
+
+			if (!nextNormalized) {
+				j++;
+				continue;
+			}
+
+			if (nextNormalized.length > maxChunkLength) {
+				break;
+			}
+
+			if (currentText.length + 1 + nextNormalized.length > maxChunkLength) {
+				break;
+			}
+
+			segments.push({
+				blockIndex: j,
+				text: nextNormalized,
+				startOffset: currentText.length + 1,
+				blockStartOffset: 0,
+			});
+			currentText = currentText + " " + nextNormalized;
+			j++;
+		}
+
+		queue.push({
+			text: currentText,
+			spokenText: applyPronunciationRules(currentText, rules),
+			blockIndex: i,
+			startOffset: 0,
+			segments,
+		});
+		i = j;
 	}
 
 	return queue;

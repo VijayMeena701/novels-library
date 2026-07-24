@@ -5,6 +5,7 @@ import type {
 	ReaderWidth,
 	SourceKind,
 } from "../../../utils/api";
+import type { PlaybackEngineName, PlaybackVoice } from "../../../lib/tts/playback";
 
 export const TABS = ["read", "display", "speech", "settings", "more"] as const;
 export type ReaderBottomToolbarTab = (typeof TABS)[number];
@@ -38,7 +39,10 @@ export interface ReaderBottomToolbarProps {
 	onReadWidthChange: (width: ReaderWidth) => void;
 
 	// Speech tab
-	voices: SpeechSynthesisVoice[];
+	playbackEngine: PlaybackEngineName;
+	onPlaybackEngineChange: (engine: PlaybackEngineName) => void;
+	localTtsEnabled?: boolean;
+	voices: PlaybackVoice[];
 	voiceURI: string;
 	onVoiceChange: (voiceURI: string) => void;
 	rate: number;

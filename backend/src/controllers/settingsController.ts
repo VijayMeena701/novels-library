@@ -5,6 +5,7 @@ import {
   createDefaultReaderSettings,
   IReaderPortalPosition,
   IReaderSettings,
+  ReaderPlaybackEngine,
   ReaderTheme,
   ReaderWidth,
   UserSettings,
@@ -14,6 +15,7 @@ const READER_THEMES: ReaderTheme[] = ['paper', 'sepia', 'forest', 'night', 'amol
 const READER_WIDTHS: ReaderWidth[] = ['narrow', 'medium', 'wide'];
 const READER_HIGHLIGHT_MODES: ReaderHighlightMode[] = ['off', 'paragraph', 'word'];
 const READER_AUTOSCROLL_BEHAVIORS: ReaderAutoScrollBehavior[] = ['smooth', 'instant'];
+const READER_PLAYBACK_ENGINES: ReaderPlaybackEngine[] = ['system', 'local', 'cloud'];
 
 function normalizeHexColor(value: unknown): string | undefined {
   if (typeof value !== 'string') {
@@ -75,6 +77,13 @@ function cleanReaderPatch(input: unknown): Partial<IReaderSettings> {
 
   if (typeof source.voiceURI === 'string') {
     patch.voiceURI = source.voiceURI.trim().slice(0, 300);
+  }
+
+  if (
+    typeof source.playbackEngine === 'string' &&
+    READER_PLAYBACK_ENGINES.includes(source.playbackEngine as ReaderPlaybackEngine)
+  ) {
+    patch.playbackEngine = source.playbackEngine as ReaderPlaybackEngine;
   }
 
   if (

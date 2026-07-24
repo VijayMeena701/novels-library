@@ -141,11 +141,12 @@ describe('createSpeechQueue', () => {
   it('creates a queue of items from all blocks starting at index 0', () => {
     const blocks = [makeBlock('First.'), makeBlock('Second.')];
     const queue = createSpeechQueue(blocks, 0, []);
-    expect(queue.length).toBe(2);
+    expect(queue.length).toBe(1);
     expect(queue[0].blockIndex).toBe(0);
-    expect(queue[1].blockIndex).toBe(1);
-    expect(queue[0].text).toBe('First.');
-    expect(queue[1].text).toBe('Second.');
+    expect(queue[0].text).toBe('First. Second.');
+    expect(queue[0].segments).toHaveLength(2);
+    expect(queue[0].segments[0].blockIndex).toBe(0);
+    expect(queue[0].segments[1].blockIndex).toBe(1);
   });
 
   it('respects the starting block index', () => {

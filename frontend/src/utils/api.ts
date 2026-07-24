@@ -133,6 +133,7 @@ export type ReaderTheme = "paper" | "sepia" | "forest" | "night" | "amoled";
 export type ReaderWidth = "narrow" | "medium" | "wide";
 export type ReaderHighlightMode = "off" | "paragraph" | "word";
 export type ReaderAutoScrollBehavior = "smooth" | "instant";
+export type ReaderPlaybackEngine = "system" | "local" | "cloud";
 
 export interface ReaderSettings {
 	theme: ReaderTheme;
@@ -142,6 +143,7 @@ export interface ReaderSettings {
 	speechRate: number;
 	speechPitch: number;
 	voiceURI: string;
+	playbackEngine: ReaderPlaybackEngine;
 	speechPortalPosition: {
 		x: number;
 		y: number;
@@ -186,6 +188,18 @@ export interface ReaderModeEntry {
 }
 
 export type ReaderModesConfig = Record<ReaderModeKey, ReaderModeEntry>;
+
+export interface FeatureFlags {
+	localTtsEnabled: boolean;
+	readerModes: {
+		singlePage: boolean;
+		infinite: boolean;
+		oldReader: boolean;
+	};
+	kokoroDebugEnabled: boolean;
+	commentsEnabled: boolean;
+	frontendLoggingEnabled: boolean;
+}
 
 export type BookStatus = "reading" | "completed" | "on_hold" | "dropped" | "planning";
 
@@ -895,6 +909,10 @@ class ApiClient {
 
 	async getPublicPublicationStatuses(): Promise<PublicationStatus[]> {
 		return this.request<PublicationStatus[]>("/public/publication-statuses");
+	}
+
+	async getFeatureFlags(): Promise<FeatureFlags> {
+		return this.request<{ featureFlags: FeatureFlags }>("/public/features").then((res) => res.featureFlags);
 	}
 
 	async getSources(): Promise<Source[]> {

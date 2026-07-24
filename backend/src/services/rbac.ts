@@ -72,6 +72,7 @@ export const CAPABILITY = {
   // TTS
   PRONUNCIATION_READ: 'pronunciation:read',
   PRONUNCIATION_MANAGE: 'pronunciation:manage',
+  LOCAL_TTS_USE: 'local_tts:use',
 
   // Sessions
   SESSIONS_READ: 'sessions:read',
