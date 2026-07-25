@@ -9,6 +9,7 @@ import { useToast } from "../../context/ToastContext";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
+import { Spinner } from "../ui/spinner";
 
 interface BookDetailsSidebarProps {
 	book: Book;
@@ -47,18 +48,18 @@ export function BookDetailsSidebar({ book, chaptersCount, sortedItemsCount }: Bo
 
 	return (
 		<aside className="flex flex-col gap-5">
-			<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-4">
-				<h2 className="text-sm font-extrabold text-[#24211d] uppercase border-b border-[#dfd6c8] pb-1.5">Details</h2>
+			<Card className="p-[1.1rem] bg-surface border-default shadow-elevation-1 flex flex-col gap-4">
+				<h2 className="text-sm font-extrabold text-primary uppercase border-b border-default pb-1.5">Details</h2>
 				<dl className="grid gap-4 text-xs">
 					<div className="grid gap-0.5">
-						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Publication</dt>
-						<dd className="text-xs font-bold text-[#24211d]">{book.publicationStatus || "Unknown"}</dd>
+						<dt className="text-[10px] font-extrabold text-muted uppercase tracking-wide">Publication Status</dt>
+						<dd className="text-xs font-bold text-primary">{book.publicationStatus || "Unknown"}</dd>
 					</div>
 					<div className="grid gap-0.5">
-						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Original source</dt>
-						<dd className="text-xs font-bold text-[#24211d] truncate">
+						<dt className="text-[10px] font-extrabold text-muted uppercase tracking-wide">Original source</dt>
+						<dd className="text-xs font-bold text-primary truncate">
 							{book.originalSource ? (
-								<a href={book.originalSource} target="_blank" rel="noreferrer" className="text-[#405f8f] hover:underline">
+								<a href={book.originalSource} target="_blank" rel="noreferrer" className="text-accent hover:underline">
 									{book.originalSource}
 								</a>
 							) : (
@@ -67,33 +68,33 @@ export function BookDetailsSidebar({ book, chaptersCount, sortedItemsCount }: Bo
 						</dd>
 					</div>
 					<div className="grid gap-0.5">
-						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Language</dt>
-						<dd className="text-xs font-bold text-[#24211d]">{book.rawOriginalLanguage || "Translated"}</dd>
+						<dt className="text-[10px] font-extrabold text-muted uppercase tracking-wide">Language</dt>
+						<dd className="text-xs font-bold text-primary">{book.rawOriginalLanguage || "Translated"}</dd>
 					</div>
 					<div className="grid gap-0.5">
-						<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Archived chapters</dt>
-						<dd className="text-xs font-bold text-[#24211d]">
+						<dt className="text-[10px] font-extrabold text-muted uppercase tracking-wide">Archived chapters</dt>
+						<dd className="text-xs font-bold text-primary">
 							{chaptersCount} / {book.translatedChaptersTotal || sortedItemsCount || "?"}
 						</dd>
 					</div>
 					{book.alternativeNames && book.alternativeNames.length > 0 && (
 						<div className="grid gap-0.5">
-							<dt className="text-[10px] font-extrabold text-[#877d70] uppercase tracking-wide">Alternative names</dt>
-							<dd className="text-xs font-medium text-[#5f584f] leading-relaxed">{book.alternativeNames.join(", ")}</dd>
+							<dt className="text-[10px] font-extrabold text-muted uppercase tracking-wide">Alternative names</dt>
+							<dd className="text-xs font-medium text-secondary leading-relaxed">{book.alternativeNames.join(", ")}</dd>
 						</div>
 					)}
 				</dl>
 			</Card>
 
-			<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-4">
-				<h2 className="text-sm font-extrabold text-[#24211d] uppercase border-b border-[#dfd6c8] pb-1.5">Genres</h2>
+			<Card className="p-[1.1rem] bg-surface border-default shadow-elevation-1 flex flex-col gap-4">
+				<h2 className="text-sm font-extrabold text-primary uppercase border-b border-default pb-1.5">Genres</h2>
 				<div className="flex flex-wrap gap-1.5">
 					{!book.genres || book.genres.length === 0 ? (
-						<span className="text-xs text-[#5f584f] italic">No genres indexed.</span>
+						<span className="text-xs text-secondary italic">No genres indexed.</span>
 					) : (
 						book.genres.map((genre) => (
 							<Link key={genre} href={`/genres/${encodeURIComponent(genre)}`} className="no-underline">
-								<Badge className="bg-[#fffdf8] border-[#dfd6c8] text-[#5d6474] hover:bg-[#f8f5ee] font-bold text-[10px] uppercase tracking-wider py-1">
+								<Badge className="bg-surface border-default text-secondary hover:bg-surface-raised font-bold text-[10px] uppercase tracking-wider py-1">
 									{genre}
 								</Badge>
 							</Link>
@@ -103,11 +104,11 @@ export function BookDetailsSidebar({ book, chaptersCount, sortedItemsCount }: Bo
 			</Card>
 
 			{user && (
-				<Card className="p-[1.1rem] bg-white border-[#dfd6c8] shadow-sm flex flex-col gap-3">
-					<h2 className="text-sm font-extrabold text-[#24211d] uppercase border-b border-[#dfd6c8] pb-1.5">Report</h2>
+				<Card className="p-[1.1rem] bg-surface border-default shadow-elevation-1 flex flex-col gap-3">
+					<h2 className="text-sm font-extrabold text-primary uppercase border-b border-default pb-1.5">Report</h2>
 					<div className="flex flex-col gap-2.5">
 						<select
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none focus:border-[#405f8f] focus:ring-2 focus:ring-[#405f8f]/10"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none focus:border-focus focus:ring-2 focus:ring-focus/20"
 							value={reportReason}
 							onChange={(e) => setReportReason(e.target.value)}
 						>
@@ -118,7 +119,7 @@ export function BookDetailsSidebar({ book, chaptersCount, sortedItemsCount }: Bo
 							))}
 						</select>
 						<textarea
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none focus:border-[#405f8f] focus:ring-2 focus:ring-[#405f8f]/10"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none focus:border-focus focus:ring-2 focus:ring-focus/20"
 							rows={3}
 							placeholder="Optional details..."
 							value={reportDescription}
@@ -132,7 +133,7 @@ export function BookDetailsSidebar({ book, chaptersCount, sortedItemsCount }: Bo
 							className="h-8 font-semibold text-xs"
 						>
 							{reporting ? (
-								<div className="w-4 h-4 border-2 border-slate-300 border-t-[#405f8f] rounded-full animate-spin" />
+								<Spinner size="sm" />
 							) : (
 								"Submit Report"
 							)}

@@ -23,14 +23,13 @@ function TestConsumer() {
 }
 
 describe('AuthProvider', () => {
-  it('throws when useAuth is called outside provider', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const BadComponent = () => {
-      useAuth();
-      return null;
+  it('returns guest context when useAuth is called outside provider', () => {
+    const GuestComponent = () => {
+      const { user, hasCapability } = useAuth();
+      return <div>{user ? 'user' : 'guest'}-{hasCapability('books:read') ? 'yes' : 'no'}</div>;
     };
-    expect(() => render(<BadComponent />)).toThrow();
-    consoleSpy.mockRestore();
+    render(<GuestComponent />);
+    expect(screen.getByText('guest-no')).toBeInTheDocument();
   });
 
   it('sets initial user from a valid JWT token', async () => {

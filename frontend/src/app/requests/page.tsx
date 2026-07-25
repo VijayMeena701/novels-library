@@ -74,8 +74,8 @@ export default function RequestsPage() {
     return (
       <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12")}>
         <Card className="mx-auto max-w-2xl p-8 text-center">
-          <h1 className="font-serif text-2xl font-medium text-foreground">Book Requests</h1>
-          <p className="mt-2 text-sm text-muted-copy">Please log in to view and create book requests.</p>
+          <h1 className="font-serif text-2xl font-medium text-primary">Book Requests</h1>
+          <p className="mt-2 text-sm text-muted">Please log in to view and create book requests.</p>
           <Button asChild className="mt-4">
             <Link href={getLoginHref(pathname)}>Go to Login</Link>
           </Button>
@@ -86,14 +86,14 @@ export default function RequestsPage() {
 
   if (loading) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted-copy")}>Loading requests...</div>
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted")}>Loading requests...</div>
     );
   }
 
   return (
     <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
       <div className="mx-auto max-w-3xl">
-        <h1 className="font-serif text-2xl font-medium text-foreground mb-6">Book Requests</h1>
+        <h1 className="font-serif text-2xl font-medium text-primary mb-6">Book Requests</h1>
 
         <Card className="p-4 mb-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -104,7 +104,7 @@ export default function RequestsPage() {
               required
             />
             <textarea
-              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+              className="w-full bg-app border border-default rounded-md px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10"
               rows={3}
               placeholder="Optional details..."
               value={newDescription}
@@ -118,17 +118,17 @@ export default function RequestsPage() {
 
         <Card className="divide-y divide-border overflow-hidden">
           {requests.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-copy">No requests yet. Be the first to request a book.</div>
+            <div className="p-8 text-center text-sm text-muted">No requests yet. Be the first to request a book.</div>
           ) : (
             requests.map((request) => (
               <div key={request._id} className="p-4 flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{request.title}</p>
-                    <p className="text-xs text-muted-copy">
+                    <p className="text-sm font-semibold text-primary">{request.title}</p>
+                    <p className="text-xs text-muted">
                       Requested by {typeof request.requestedByUserId === 'object' ? request.requestedByUserId.username : 'Unknown'} · {new Date(request.createdAt).toLocaleDateString()}
                     </p>
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-muted text-muted-copy border border-border">
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-raised text-muted border border-default">
                       {statusLabels[request.status] || request.status}
                     </span>
                   </div>
@@ -136,7 +136,7 @@ export default function RequestsPage() {
                     Vote ({request.votes})
                   </Button>
                 </div>
-                {request.description && <p className="text-sm text-muted-copy">{request.description}</p>}
+                {request.description && <p className="text-sm text-muted">{request.description}</p>}
               </div>
             ))
           )}

@@ -5,12 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input, Select } from "./ui/input";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { type CatalogBookFilters, type Genre, type PublicationStatus, type Source, type Author, type BookStatus } from "../utils/api";
-
-interface ReadingStatusOption {
-	value: BookStatus;
-	label: string;
-}
+import { type CatalogBookFilters, type Genre, type PublicationStatus, type Source, type Author } from "../utils/api";
 
 interface BooksFilterPanelProps {
 	filters: CatalogBookFilters;
@@ -19,7 +14,6 @@ interface BooksFilterPanelProps {
 		publicationStatuses: PublicationStatus[];
 		sources: Source[];
 		authors: Author[];
-		readingStatuses: ReadingStatusOption[];
 	};
 	onChange: (filters: Partial<CatalogBookFilters>) => void;
 	onClear: () => void;
@@ -42,7 +36,6 @@ function getActiveFilterCount(filters: CatalogBookFilters): number {
 	if (filters.genre) count += filters.genre.split(",").filter(Boolean).length;
 	if (filters.publicationStatus) count += filters.publicationStatus.split(",").filter(Boolean).length;
 	if (filters.source) count += filters.source.split(",").filter(Boolean).length;
-	if (filters.status && filters.status !== "all") count++;
 	if (filters.authorId) count++;
 	if (filters.minRating !== undefined && filters.minRating !== null) count++;
 	if (filters.maxRating !== undefined && filters.maxRating !== null) count++;
@@ -63,14 +56,14 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 	};
 
 	return (
-		<Card className="books-filter-panel h-fit rounded-2xl bg-surface-muted lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+		<Card className="books-filter-panel h-fit rounded-2xl bg-surface-raised lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
 			<CardHeader className="flex flex-row items-center justify-between gap-2 px-5 py-4">
 				<CardTitle className="text-base font-semibold">Filters</CardTitle>
-				{activeCount > 0 && <Badge className="bg-surface text-foreground">{activeCount}</Badge>}
+				{activeCount > 0 && <Badge className="bg-surface text-primary">{activeCount}</Badge>}
 			</CardHeader>
 			<CardContent className="flex flex-col gap-5 p-5 pt-0">
 				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Search</label>
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Search</label>
 					<Input
 						type="text"
 						placeholder="Title, author, pen name..."
@@ -84,7 +77,7 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 				</div>
 
 				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Sort by</label>
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Sort by</label>
 					<div className="flex gap-2">
 						<Select
 							value={filters.sort || "updatedAt"}
@@ -114,22 +107,7 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 				</div>
 
 				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Reading status</label>
-					<Select
-						value={filters.status || "all"}
-						onChange={(e) => onChange({ status: e.target.value as BookStatus | "all" })}
-					>
-						<option value="all">All</option>
-						{options.readingStatuses.map((s) => (
-							<option key={s.value} value={s.value}>
-								{s.label}
-							</option>
-						))}
-					</Select>
-				</div>
-
-				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Author</label>
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Author</label>
 					<Select
 						value={filters.authorId || ""}
 						onChange={(e) => onChange({ authorId: e.target.value || undefined })}
@@ -145,14 +123,14 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 
 				{options.genres.length > 0 && (
 					<div className="grid gap-2.5">
-						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Genres</label>
+						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Genres</label>
 						<div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
 							{options.genres.map((genre) => {
 								const selected = getSelectedKeys(filters.genre).includes(genre.key);
 								return (
 									<label
 										key={genre._id}
-										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-primary-soft font-semibold text-foreground" : "text-copy hover:bg-surface hover:text-foreground"}`}
+										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface hover:text-primary"}`}
 									>
 										<input
 											type="checkbox"
@@ -161,7 +139,7 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 											className="size-4 accent-primary"
 										/>
 										<span className="flex-1 truncate">{genre.name}</span>
-										{genre.bookCount ? <span className="text-xs text-muted-copy">{genre.bookCount}</span> : null}
+										{genre.bookCount ? <span className="text-xs text-muted">{genre.bookCount}</span> : null}
 									</label>
 								);
 								})}
@@ -171,14 +149,14 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 
 				{options.publicationStatuses.length > 0 && (
 					<div className="grid gap-2.5">
-						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Publication status</label>
+						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Publication status</label>
 						<div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
 							{options.publicationStatuses.map((status) => {
 								const selected = getSelectedKeys(filters.publicationStatus).includes(status.key);
 								return (
 									<label
 										key={status._id}
-										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-primary-soft font-semibold text-foreground" : "text-copy hover:bg-surface hover:text-foreground"}`}
+										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface hover:text-primary"}`}
 									>
 										<input
 											type="checkbox"
@@ -187,7 +165,7 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 											className="size-4 accent-primary"
 										/>
 										<span className="flex-1 truncate">{status.name}</span>
-										{status.bookCount ? <span className="text-xs text-muted-copy">{status.bookCount}</span> : null}
+										{status.bookCount ? <span className="text-xs text-muted">{status.bookCount}</span> : null}
 									</label>
 								);
 								})}
@@ -197,14 +175,14 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 
 				{options.sources.length > 0 && (
 					<div className="grid gap-2.5">
-						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Source</label>
+						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Source</label>
 						<div className="flex max-h-[180px] flex-col gap-2 overflow-y-auto pr-1">
 							{options.sources.map((source) => {
 								const selected = getSelectedKeys(filters.source).includes(source.key);
 								return (
 									<label
 										key={source.key}
-										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-primary-soft font-semibold text-foreground" : "text-copy hover:bg-surface hover:text-foreground"}`}
+										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface hover:text-primary"}`}
 									>
 										<input
 											type="checkbox"
@@ -213,7 +191,7 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 											className="size-4 accent-primary"
 										/>
 										<span className="flex-1 truncate">{source.name}</span>
-										{source.count ? <span className="text-xs text-muted-copy">{source.count}</span> : null}
+										{source.count ? <span className="text-xs text-muted">{source.count}</span> : null}
 									</label>
 								);
 								})}
@@ -222,7 +200,7 @@ export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksF
 					)}
 
 				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-copy">Rating</label>
+					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Rating</label>
 					<div className="flex gap-3">
 						<Input
 							type="number"

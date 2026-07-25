@@ -235,7 +235,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
       <div className="min-h-[50vh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <span className="text-sm text-muted-copy">Loading library details...</span>
+          <span className="text-sm text-muted">Loading library details...</span>
         </div>
       </div>
     );
@@ -326,27 +326,27 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                 <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
                   Edit My Details
                 </Button>
-                <Button variant="danger" size="sm" onClick={handleRemoveClick} disabled={!canRemoveLibrary}>
+                <Button variant="destructive" size="sm" onClick={handleRemoveClick} disabled={!canRemoveLibrary}>
                   Remove from Library
                 </Button>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              <div className="w-[120px] h-[170px] shrink-0 rounded-md border border-border bg-surface-muted overflow-hidden">
+              <div className="w-[120px] h-[170px] shrink-0 rounded-md border border-default bg-surface-raised overflow-hidden">
                 {coverSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={coverSrc} alt={book.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-2xl font-black text-primary/50">
+                  <div className="flex h-full items-center justify-center text-2xl font-black text-accent/50">
                     {book.title.slice(0, 2).toUpperCase()}
                   </div>
                 )}
               </div>
 
               <div className="flex-1 min-w-0 flex flex-col gap-2">
-                <h1 className="text-2xl font-extrabold leading-tight text-foreground">{book.title}</h1>
-                <p className="text-sm text-copy font-semibold">By {displayAuthor}</p>
+                <h1 className="text-2xl font-extrabold leading-tight text-primary">{book.title}</h1>
+                <p className="text-sm text-secondary font-semibold">By {displayAuthor}</p>
 
                 <div className="flex flex-wrap gap-2 items-center">
                   <Badge variant={getStatusBadgeVariant(book.status)}>
@@ -355,11 +355,11 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                   {book.rating > 0 && (
                     <span className="text-sm text-warning font-bold">
                       {'★'.repeat(book.rating)}
-                      <span className="text-xs text-muted-copy ml-1">({book.rating}/5)</span>
+                      <span className="text-xs text-muted ml-1">({book.rating}/5)</span>
                     </span>
                   )}
                   {book.completedAt && (
-                    <span className="text-xs text-muted-copy">
+                    <span className="text-xs text-muted">
                       Completed {new Date(book.completedAt).toLocaleString()}
                     </span>
                   )}
@@ -377,26 +377,26 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
 
                 <div className="mt-1">
                   <div className="flex justify-between text-xs font-bold mb-1">
-                    <span className="text-copy">Reading progress</span>
-                    <span className="text-primary">
+                    <span className="text-secondary">Reading progress</span>
+                    <span className="text-accent">
                       {book.chaptersRead ?? 0} / {book.translatedChaptersTotal || '?'} chapters ({readPercent}%)
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-surface-muted rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-surface-raised rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      className="h-full bg-accent rounded-full transition-all duration-300"
                       style={{ width: `${readPercent}%` }}
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-1">
-                  <Button asChild size="sm" className="bg-primary text-background hover:bg-primary-hover">
+                  <Button asChild size="sm" className="bg-accent text-on-accent hover:bg-accent-hover">
                     <Link href={`/books/${bookId}/reader/${resumeChapter}`}>Continue Reading</Link>
                   </Button>
                   {book.sourceUrl && (
                     <Button asChild variant="ghost" size="sm">
-                      <a href={book.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-hover">
+                      <a href={book.sourceUrl} target="_blank" rel="noreferrer" className="text-accent hover:text-primary-hover">
                         Original Website
                       </a>
                     </Button>
@@ -418,12 +418,12 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {book.authorRealName && (
                   <Field label="Author Real Name" className="sm:col-span-2">
-                    <span className="text-sm font-semibold text-foreground">{book.authorRealName}</span>
+                    <span className="text-sm font-semibold text-primary">{book.authorRealName}</span>
                   </Field>
                 )}
                 {(book.alternativeNames || []).length > 0 && (
                   <Field label="Alternative Names" className="sm:col-span-2">
-                    <span className="text-sm text-copy">{book.alternativeNames.join(', ')}</span>
+                    <span className="text-sm text-secondary">{book.alternativeNames.join(', ')}</span>
                   </Field>
                 )}
                 {(book.genres || []).length > 0 && (
@@ -438,12 +438,12 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                   </Field>
                 )}
                 <Field label="Book Source">
-                  <span className="text-sm text-copy">
+                  <span className="text-sm text-secondary">
                     {book.originalSource || '—'}
                   </span>
                 </Field>
                 <Field label="Publication Status">
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-sm font-semibold text-primary">
                     {book.publicationStatus || '—'}
                   </span>
                 </Field>
@@ -459,7 +459,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
             <CardDescription>A summary of the story.</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
-            <p className="text-sm text-copy leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-secondary leading-relaxed whitespace-pre-line">
               {book.description || 'No description scraped yet.'}
             </p>
           </CardContent>
@@ -475,38 +475,38 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
             {hasNotes ? (
               <div className="space-y-4">
                 {book.review && (
-                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
-                    <h4 className="text-sm font-extrabold text-foreground mb-1">My Review</h4>
-                    <p className="text-sm text-copy italic whitespace-pre-line">&ldquo;{book.review}&rdquo;</p>
+                  <div className="border-t border-default first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-accent mb-1">My Review</h4>
+                    <p className="text-sm text-secondary italic whitespace-pre-line">&ldquo;{book.review}&rdquo;</p>
                   </div>
                 )}
                 {book.personalNotes && (
-                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
-                    <h4 className="text-sm font-extrabold text-foreground mb-1">Personal Reading Notes</h4>
-                    <p className="text-sm text-copy whitespace-pre-line">{book.personalNotes}</p>
+                  <div className="border-t border-default first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-accent mb-1">Personal Reading Notes</h4>
+                    <p className="text-sm text-secondary whitespace-pre-line">{book.personalNotes}</p>
                   </div>
                 )}
                 {book.characterNotes && (
-                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
-                    <h4 className="text-sm font-extrabold text-foreground mb-1">Character Notes</h4>
-                    <p className="text-sm text-copy whitespace-pre-line">{book.characterNotes}</p>
+                  <div className="border-t border-default first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-accent mb-1">Character Notes</h4>
+                    <p className="text-sm text-secondary whitespace-pre-line">{book.characterNotes}</p>
                   </div>
                 )}
                 {book.relationshipNotes && (
-                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
-                    <h4 className="text-sm font-extrabold text-foreground mb-1">Relationship Notes</h4>
-                    <p className="text-sm text-copy whitespace-pre-line">{book.relationshipNotes}</p>
+                  <div className="border-t border-default first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-accent mb-1">Relationship Notes</h4>
+                    <p className="text-sm text-secondary whitespace-pre-line">{book.relationshipNotes}</p>
                   </div>
                 )}
                 {book.rawLegacyEntry && (
-                  <div className="border-t border-border first:border-t-0 pt-4 first:pt-0">
-                    <h4 className="text-sm font-extrabold text-foreground mb-1">Original Legacy Entry</h4>
-                    <p className="text-sm text-copy whitespace-pre-line">{book.rawLegacyEntry}</p>
+                  <div className="border-t border-default first:border-t-0 pt-4 first:pt-0">
+                    <h4 className="text-sm font-extrabold text-accent mb-1">Original Legacy Entry</h4>
+                    <p className="text-sm text-secondary whitespace-pre-line">{book.rawLegacyEntry}</p>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-muted-copy italic">No custom notes stored yet.</p>
+              <p className="text-sm text-muted italic">No custom notes stored yet.</p>
             )}
           </CardContent>
         </Card>
@@ -524,7 +524,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
           </CardHeader>
           <CardContent className="p-4">
             {sessions.length === 0 && standaloneChapterVisits.length === 0 && (
-              <p className="text-sm text-muted-copy italic">No re-read logs or standalone visits exist for this book yet.</p>
+              <p className="text-sm text-muted italic">No re-read logs or standalone visits exist for this book yet.</p>
             )}
 
             {sessions.length > 0 && (
@@ -535,37 +535,37 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                       <Badge variant={sess.completed ? 'completed' : 'reading'}>
                         {sess.completed ? 'Completed' : 'Active Re-read'}
                       </Badge>
-                      <span className="text-xs text-muted-copy">
+                      <span className="text-xs text-muted">
                         {new Date(sess.startDate).toLocaleDateString()}
                         {sess.endDate ? ` - ${new Date(sess.endDate).toLocaleDateString()}` : ''}
                       </span>
                     </div>
 
                     {sess.notes && (
-                      <p className="text-sm text-copy mt-2">
+                      <p className="text-sm text-secondary mt-2">
                         <span className="font-semibold">Notes:</span> {sess.notes}
                       </p>
                     )}
 
                     {(chapterVisitsBySession[sess._id] || []).length > 0 && (
                       <div className="flex flex-col gap-1 mt-2">
-                        <span className="text-xs font-extrabold uppercase text-muted-copy">Chapter Opens</span>
+                        <span className="text-xs font-extrabold uppercase text-muted">Chapter Opens</span>
                         {(chapterVisitsBySession[sess._id] || []).slice(0, 5).map((visit) => (
                           <Link
                             key={visit._id}
                             href={`/books/${bookId}/reader/${visit.chapterNumber}`}
-                            className="text-xs text-copy hover:text-primary transition-colors"
+                            className="text-xs text-secondary hover:text-accent transition-colors"
                           >
                             Ch. {visit.chapterNumber}: {getVisitDisplayTitle(visit)}
-                            <span className="text-muted-copy"> · {new Date(visit.openedAt).toLocaleString()}</span>
+                            <span className="text-muted"> · {new Date(visit.openedAt).toLocaleString()}</span>
                           </Link>
                         ))}
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between border-t border-border pt-2 mt-2">
-                      <span className="text-xs text-muted-copy">
-                        Chapters Read: <strong className="text-foreground">{sess.chaptersRead}</strong>
+                    <div className="flex items-center justify-between border-t border-default pt-2 mt-2">
+                      <span className="text-xs text-muted">
+                        Chapters Read: <strong className="text-accent">{sess.chaptersRead}</strong>
                       </span>
                       {!sess.completed && (
                         <div className="flex gap-2">
@@ -587,7 +587,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                           </Button>
                           <Button
                             size="sm"
-                            className="h-7 bg-success hover:bg-success/90 text-white"
+                            className="h-7 bg-success hover:bg-success/90 text-inverse"
                             onClick={() => handleCompleteSession(sess)}
                           >
                             Complete
@@ -601,17 +601,17 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
             )}
 
             {standaloneChapterVisits.length > 0 && (
-              <div className={sessions.length > 0 ? 'border-t border-border pt-4 mt-4' : ''}>
-                <h4 className="text-sm font-extrabold text-foreground mb-2">Recent Standalone Revisits</h4>
+              <div className={sessions.length > 0 ? 'border-t border-default pt-4 mt-4' : ''}>
+                <h4 className="text-sm font-extrabold text-accent mb-2">Recent Standalone Revisits</h4>
                 <div className="flex flex-col gap-1">
                   {standaloneChapterVisits.slice(0, 8).map((visit) => (
                     <Link
                       key={visit._id}
                       href={`/books/${bookId}/reader/${visit.chapterNumber}`}
-                      className="text-xs text-copy hover:text-primary transition-colors"
+                      className="text-xs text-secondary hover:text-accent transition-colors"
                     >
                       Ch. {visit.chapterNumber}: {getVisitDisplayTitle(visit)}
-                      <span className="text-muted-copy"> · {new Date(visit.openedAt).toLocaleString()}</span>
+                      <span className="text-muted"> · {new Date(visit.openedAt).toLocaleString()}</span>
                     </Link>
                   ))}
                 </div>
@@ -632,7 +632,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
           </CardHeader>
           {chapters.length === 0 ? (
             <CardContent className="p-8 text-center">
-              <p className="text-sm text-muted-copy mb-4">No chapters have been archived locally yet.</p>
+              <p className="text-sm text-muted mb-4">No chapters have been archived locally yet.</p>
               <Button asChild variant="secondary" size="sm">
                 <Link href={`/books/${bookId}`}>View Catalog Page</Link>
               </Button>
@@ -650,18 +650,18 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                       className="block"
                     >
                       <div
-                        className={`flex items-center justify-between gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-surface-muted transition-colors ${
-                          isRead ? 'bg-surface-muted text-copy' : 'bg-card text-foreground'
+                        className={`flex items-center justify-between gap-3 px-4 py-3 border-b border-default last:border-b-0 hover:bg-surface-raised transition-colors ${
+ isRead ? 'bg-surface-raised text-secondary' : 'bg-card text-accent'
                         }`}
                       >
                         <span className={`min-w-0 truncate text-sm ${isRead ? 'font-medium' : 'font-semibold'}`}>
                           {chapterTitle}
                         </span>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-muted-copy">
+                          <span className="text-xs text-muted">
                             {new Date(ch.scrapedAt).toLocaleDateString()}
                           </span>
-                          <span className={`w-2 h-2 rounded-full ${isRead ? 'bg-muted-copy' : 'bg-primary'}`} />
+                          <span className={`w-2 h-2 rounded-full ${isRead ? 'bg-muted' : 'bg-accent'}`} />
                         </div>
                       </div>
                     </Link>
@@ -824,14 +824,14 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
         size="sm"
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-copy">
+          <p className="text-sm text-secondary">
             Remove this book from your profile library? The shared catalog and archived chapters will stay in the system.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setIsRemoveModalOpen(false)} disabled={removing}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleConfirmRemove} disabled={removing}>
+            <Button variant="destructive" onClick={handleConfirmRemove} disabled={removing}>
               {removing ? 'Removing...' : 'Remove'}
             </Button>
           </div>

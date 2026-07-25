@@ -52,9 +52,9 @@ export function ReaderErrorState({
 }: ReaderErrorStateProps) {
 	return (
 		<div className="mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12">
-			<div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
+			<div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-12 text-center text-secondary">
 				<h2 className="mb-4 text-danger">{missingChapterTitle}</h2>
-				<p className="mx-auto mb-8 max-w-[520px] text-copy">{error || "This chapter has not been archived yet."}</p>
+				<p className="mx-auto mb-8 max-w-[520px] text-secondary">{error || "This chapter has not been archived yet."}</p>
 				<div className="flex flex-wrap justify-center gap-4">
 					<Button asChild variant="secondary">
 						<Link href={`/books/${bookId}`}>Back to Book Index</Link>
@@ -69,9 +69,9 @@ export function ReaderErrorState({
 				</div>
 
 				{canScrape && book && (
-					<div className="mx-auto mt-8 w-[min(820px,100%)] rounded-lg border border-border bg-card p-6 text-left shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
+					<div className="mx-auto mt-8 w-[min(820px,100%)] rounded-lg border border-default bg-card p-6 text-left shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4">
 						<h3 className="mb-2 text-[1.15rem]">Admin Recovery</h3>
-						<p className="mb-4 text-[0.9rem] text-copy">
+						<p className="mb-4 text-[0.9rem] text-secondary">
 							Archive this {isRawReader ? "raw" : "translated"} chapter now, or paste the saved HTML for this source page.
 						</p>
 
@@ -90,7 +90,7 @@ export function ReaderErrorState({
 
 						<form key={`${readerSourceKind}-${chapterNumber}`} onSubmit={onImport} className="grid gap-4">
 							<div className="flex flex-col gap-2">
-								<label className="text-sm font-semibold text-copy">Chapter Page URL</label>
+								<label className="text-sm font-semibold text-secondary">Chapter Page URL</label>
 								<Input
 									type="url"
 									value={chapterHtmlPageUrl || currentSourceUrl}
@@ -101,7 +101,7 @@ export function ReaderErrorState({
 							</div>
 
 							<div className="flex flex-col gap-2">
-								<label className="text-sm font-semibold text-copy">Saved Chapter HTML</label>
+								<label className="text-sm font-semibold text-secondary">Saved Chapter HTML</label>
 								<Textarea
 									rows={10}
 									value={chapterHtmlContent}
@@ -112,7 +112,7 @@ export function ReaderErrorState({
 							</div>
 
 							<div className="flex flex-wrap items-center justify-between gap-4">
-								<span className="text-[0.85rem] text-copy">
+								<span className="text-[0.85rem] text-secondary">
 									{readerSourceKind === "raw" ? "Raw chapter" : "Translated chapter"} {chapterNumber}
 								</span>
 								<Button type="submit" disabled={importingChapterHtml}>
@@ -121,7 +121,7 @@ export function ReaderErrorState({
 							</div>
 						</form>
 
-						{adminActionMessage && <p className="mt-4 text-[0.9rem] text-copy">{adminActionMessage}</p>}
+						{adminActionMessage && <p className="mt-4 text-[0.9rem] text-secondary">{adminActionMessage}</p>}
 					</div>
 				)}
 			</div>

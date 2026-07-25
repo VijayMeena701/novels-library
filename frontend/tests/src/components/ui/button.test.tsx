@@ -15,8 +15,8 @@ describe('Button', () => {
   it('applies variant and size classes', () => {
     render(<Button variant="secondary" size="lg">Secondary</Button>);
     const button = screen.getByRole('button', { name: 'Secondary' });
-    expect(button).toHaveClass('bg-surface');
-    expect(button).toHaveClass('min-h-11');
+    expect(button).toHaveClass('bg-surface-raised');
+    expect(button).toHaveClass('h-12');
   });
 
   it('renders as a child element when asChild is true', () => {

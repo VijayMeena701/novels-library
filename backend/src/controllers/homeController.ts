@@ -47,7 +47,7 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
       const userObjectId = new mongoose.Types.ObjectId(userId);
 
       const userStats = await UserBook.aggregate([
-        { $match: { userId: userObjectId } },
+        { $match: { userId: userObjectId, removedAt: null } },
         {
           $group: {
             _id: null,
@@ -73,6 +73,7 @@ export async function getHomeHandler(request: FastifyRequest, reply: FastifyRepl
       const continueReadingEntries = await UserBook.find({
         userId: userObjectId,
         status: { $in: ['reading', 'on_hold'] },
+        removedAt: null,
       })
         .sort({ lastVisitedAt: -1, updatedAt: -1 })
         .limit(HOME_LIMIT)

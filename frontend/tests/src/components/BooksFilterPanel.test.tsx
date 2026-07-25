@@ -2,11 +2,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { BooksFilterPanel } from '@/components/BooksFilterPanel';
-import type { CatalogBookFilters, Genre, PublicationStatus, Source, Author, BookStatus } from '@/utils/api';
+import type { CatalogBookFilters, Genre, PublicationStatus, Source, Author } from '@/utils/api';
 
 const filters: CatalogBookFilters = {
   search: '',
-  status: 'all',
   sort: 'updatedAt',
   sortDir: 'desc',
 };
@@ -24,17 +23,12 @@ const sources: Source[] = [{ key: 'webnovel', name: 'Webnovel', count: 20 }];
 
 const authors: Author[] = [{ _id: 'a1', displayName: 'Cuttlefish', penName: '', realName: '', alternativeNames: [], nameKeys: [], originalLanguage: '', officialUrls: [], notes: '', bookCount: 3, createdAt: '', updatedAt: '' }];
 
-const readingStatuses: { value: BookStatus; label: string }[] = [
-  { value: 'reading', label: 'Reading' },
-  { value: 'completed', label: 'Completed' },
-];
-
 describe('BooksFilterPanel', () => {
   it('renders search input and clear filters button', () => {
     render(
       <BooksFilterPanel
         filters={filters}
-        options={{ genres, publicationStatuses, sources, authors, readingStatuses }}
+        options={{ genres, publicationStatuses, sources, authors }}
         onChange={vi.fn()}
         onClear={vi.fn()}
       />,
@@ -48,7 +42,7 @@ describe('BooksFilterPanel', () => {
     render(
       <BooksFilterPanel
         filters={filters}
-        options={{ genres, publicationStatuses, sources, authors, readingStatuses }}
+        options={{ genres, publicationStatuses, sources, authors }}
         onChange={onChange}
         onClear={vi.fn()}
       />,
@@ -63,7 +57,7 @@ describe('BooksFilterPanel', () => {
     render(
       <BooksFilterPanel
         filters={filters}
-        options={{ genres, publicationStatuses, sources, authors, readingStatuses }}
+        options={{ genres, publicationStatuses, sources, authors }}
         onChange={onChange}
         onClear={vi.fn()}
       />,
@@ -77,7 +71,7 @@ describe('BooksFilterPanel', () => {
     render(
       <BooksFilterPanel
         filters={{ ...filters, publicationStatus: 'ongoing' }}
-        options={{ genres, publicationStatuses, sources, authors, readingStatuses }}
+        options={{ genres, publicationStatuses, sources, authors }}
         onChange={onChange}
         onClear={vi.fn()}
       />,
@@ -91,7 +85,7 @@ describe('BooksFilterPanel', () => {
     render(
       <BooksFilterPanel
         filters={{ ...filters, search: 'x' }}
-        options={{ genres, publicationStatuses, sources, authors, readingStatuses }}
+        options={{ genres, publicationStatuses, sources, authors }}
         onChange={vi.fn()}
         onClear={onClear}
       />,
@@ -103,8 +97,8 @@ describe('BooksFilterPanel', () => {
   it('shows active filter count badge', () => {
     const { container } = render(
       <BooksFilterPanel
-        filters={{ ...filters, search: 'x', genre: 'fantasy,sci-fi', minRating: 4, status: 'reading' }}
-        options={{ genres, publicationStatuses, sources, authors, readingStatuses }}
+        filters={{ ...filters, search: 'x', genre: 'fantasy,sci-fi', minRating: 4, publicationStatus: 'ongoing' }}
+        options={{ genres, publicationStatuses, sources, authors }}
         onChange={vi.fn()}
         onClear={vi.fn()}
       />,

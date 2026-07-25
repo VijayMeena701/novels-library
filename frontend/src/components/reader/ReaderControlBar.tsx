@@ -34,13 +34,13 @@ export function ReaderControlBar(props: ReaderControlBarProps) {
 	const isPlaying = speechStatus === "playing";
 
 	return (
-		<div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--reader-border)] bg-[var(--reader-surface)] px-4 py-3 text-[var(--reader-text)] shadow-[0_-10px_34px_rgba(0,0,0,0.18)] backdrop-blur-md max-[860px]:py-2.5 sm:bottom-4 sm:left-1/2 sm:w-[min(680px,calc(100%-2rem))] sm:-translate-x-1/2 sm:rounded-2xl sm:border">
-			<div className="mb-2 flex items-center justify-between gap-3 text-[0.7rem] font-semibold text-[var(--reader-muted)]">
+		<div className="fixed inset-x-0 bottom-0 z-50 border-t border-reader bg-reader-surface px-4 py-3 text-reader-paragraph shadow-elevation-5 backdrop-blur-md max-[860px]:py-2.5 sm:bottom-4 sm:left-1/2 sm:w-[min(680px,calc(100%-2rem))] sm:-translate-x-1/2 sm:rounded-2xl sm:border">
+			<div className="mb-2 flex items-center justify-between gap-3 text-[0.7rem] font-semibold text-reader-muted">
 				<span>Book progress</span>
 				<span>{progress}%</span>
 			</div>
 			<div
-				className="mb-2 h-1 overflow-hidden rounded-full bg-[var(--reader-bg)]"
+				className="mb-2 h-1 overflow-hidden rounded-full bg-reader"
 				role="progressbar"
 				aria-label="Book progress"
 				aria-valuemin={0}
@@ -48,7 +48,7 @@ export function ReaderControlBar(props: ReaderControlBarProps) {
 				aria-valuenow={progress}
 			>
 				<div
-					className="h-full rounded-full bg-[var(--reader-accent)] transition-[width] duration-300"
+					className="h-full rounded-full bg-reader-accent transition-[width] duration-300"
 					style={{ width: `${progress}%` }}
 				/>
 			</div>
@@ -59,7 +59,7 @@ export function ReaderControlBar(props: ReaderControlBarProps) {
 					onClick={onPreviousChapter}
 					disabled={!hasPreviousChapter}
 					aria-label="Previous chapter"
-					className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[0.8rem] font-semibold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+					className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[0.8rem] font-semibold text-reader-paragraph transition hover:bg-reader-controls disabled:cursor-not-allowed disabled:opacity-40"
 				>
 					<SkipBack className="size-4" />
 					<span className="hidden sm:inline">Previous</span>
@@ -73,14 +73,14 @@ export function ReaderControlBar(props: ReaderControlBarProps) {
 						className={cn(
 							"inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-px active:scale-95",
 							isPlaying
-								? "bg-[var(--reader-accent)] text-[var(--reader-surface)] hover:bg-[var(--reader-accent-hover)]"
-								: "border border-[var(--reader-border)] bg-[var(--reader-bg)] text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)]",
+								? "bg-reader-accent text-reader-surface hover:bg-reader-accent-hover"
+								: "border border-reader bg-reader text-reader-paragraph hover:bg-reader-controls",
 						)}
 					>
 						{isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
 						<span>{isPlaying ? "Pause" : "Listen"}</span>
 					</button>
-					<span className="text-xs font-medium text-[var(--reader-muted)]">
+					<span className="text-xs font-medium text-reader-muted">
 						Chapter {chapterNumber} of {totalChapters}
 						{typeof readingTimeMinutes === "number" && readingTimeMinutes > 0 ? ` · ${readingTimeMinutes} min read` : ""}
 					</span>
@@ -91,7 +91,7 @@ export function ReaderControlBar(props: ReaderControlBarProps) {
 					onClick={onNextChapter}
 					disabled={!hasNextChapter}
 					aria-label="Next chapter"
-					className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[0.8rem] font-semibold text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+					className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[0.8rem] font-semibold text-reader-paragraph transition hover:bg-reader-controls disabled:cursor-not-allowed disabled:opacity-40"
 				>
 					<span className="hidden sm:inline">Next</span>
 					<SkipForward className="size-4" />

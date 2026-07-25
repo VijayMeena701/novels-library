@@ -28,7 +28,7 @@ export function CheckboxGroup({ items, selectedKeys, onToggle, className, maxHei
 						key={item.key}
 						className={cn(
 							"flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition",
-							selected ? "bg-primary-soft font-bold text-foreground" : "text-copy hover:bg-surface-muted",
+							selected ? "bg-accent-subtle font-bold text-primary" : "text-secondary hover:bg-surface-raised",
 						)}
 					>
 						<input
@@ -39,7 +39,7 @@ export function CheckboxGroup({ items, selectedKeys, onToggle, className, maxHei
 						/>
 						<span className="flex-1 truncate">{item.label}</span>
 						{item.count !== undefined && item.count !== null && item.count > 0 ? (
-							<span className="text-xs text-muted-copy">{item.count}</span>
+							<span className="text-xs text-muted">{item.count}</span>
 						) : null}
 					</label>
 				);

@@ -40,7 +40,7 @@ function ToggleChip({ label, checked, onChange }: { label: string; checked: bool
 			aria-pressed={checked}
 			className={cn(
 				"rounded-md border px-2.5 py-1.5 text-[0.7rem] font-bold transition",
-				checked ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-muted-copy hover:text-foreground",
+				checked ? "border-accent bg-accent-subtle text-primary" : "border-default bg-surface text-muted hover:text-primary",
 			)}
 		>
 			{label}
@@ -134,16 +134,16 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 	};
 
 	const renderRuleRow = (rule: PronunciationRule) => (
-		<li key={rule._id} className={cn("flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2.5 transition", !rule.enabled && "opacity-50")}>
+		<li key={rule._id} className={cn("flex flex-col gap-1.5 rounded-md border border-default bg-surface p-2.5 transition", !rule.enabled && "opacity-50")}>
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex min-w-0 flex-col">
-					<span className="truncate text-xs font-bold text-foreground">
-						&ldquo;{rule.pattern}&rdquo; <span className="text-muted-copy">&rarr;</span>{" "}
-						{rule.replacement ? `"${rule.replacement}"` : <em className="text-muted-copy">skip / muted</em>}
+					<span className="truncate text-xs font-bold text-primary">
+						&ldquo;{rule.pattern}&rdquo; <span className="text-muted">&rarr;</span>{" "}
+						{rule.replacement ? `"${rule.replacement}"` : <em className="text-muted">skip / muted</em>}
 					</span>
-					<span className="flex flex-wrap items-center gap-1.5 text-[0.62rem] font-semibold uppercase tracking-wide text-muted-copy">
+					<span className="flex flex-wrap items-center gap-1.5 text-[0.62rem] font-semibold uppercase tracking-wide text-muted">
 						{rule.isGlobal && (
-							<span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-1.5 py-0.5 text-primary">
+							<span className="inline-flex items-center gap-1 rounded-md bg-accent-subtle px-1.5 py-0.5 text-accent">
 								<Globe2 className="size-2.5" /> All books
 							</span>
 						)}
@@ -159,12 +159,12 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 						aria-label={rule.enabled ? "Disable rule" : "Enable rule"}
 						className={cn(
 							"relative inline-flex h-5 w-9 shrink-0 items-center rounded-lg border transition-colors duration-200",
-							rule.enabled ? "border-primary bg-primary" : "border-border bg-surface",
+							rule.enabled ? "border-accent bg-accent" : "border-default bg-surface",
 						)}
 					>
 						<span
 							className={cn(
-								"inline-block size-3.5 transform rounded-lg bg-background shadow-card transition-transform duration-200",
+								"inline-block size-3.5 transform rounded-lg bg-app shadow-elevation-2 transition-transform duration-200",
 								rule.enabled ? "translate-x-4" : "translate-x-1",
 							)}
 						/>
@@ -173,7 +173,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 						type="button"
 						onClick={() => startEdit(rule)}
 						aria-label="Edit rule"
-						className="flex size-7 items-center justify-center rounded-md border border-border text-muted-copy hover:text-foreground"
+						className="flex size-7 items-center justify-center rounded-md border border-default text-muted hover:text-primary"
 					>
 						<Pencil className="size-3.5" />
 					</button>
@@ -182,7 +182,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 						onClick={() => handleDelete(rule._id)}
 						disabled={pendingDeleteId === rule._id}
 						aria-label="Delete rule"
-						className="flex size-7 items-center justify-center rounded-md border border-border text-muted-copy hover:text-red-500 disabled:opacity-40"
+						className="flex size-7 items-center justify-center rounded-md border border-default text-muted hover:text-red-500 disabled:opacity-40"
 					>
 						<Trash2 className="size-3.5" />
 					</button>
@@ -192,16 +192,16 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 	);
 
 	return (
-		<div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--reader-overlay)] p-3" onClick={handleClose}>
+		<div className="fixed inset-0 z-[60] flex items-center justify-center bg-reader-overlay p-3" onClick={handleClose}>
 			<div
-				className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3.5 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-elevated scrollbar-thin"
+				className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3.5 overflow-y-auto rounded-2xl border border-default bg-card p-5 text-primary shadow-elevation-4 scrollbar-thin"
 				onClick={(event) => event.stopPropagation()}
 			>
 				<div className="flex items-start justify-between gap-2">
 					<div>
-						<h2 className="text-sm font-black uppercase tracking-wide text-copy">Pronunciation &amp; TTS Rules</h2>
-						<p className="text-xs text-muted-copy">
-							Customize how the reader speaks words or phrases in <strong className="text-copy">{bookTitle}</strong>. Leave the replacement empty
+						<h2 className="text-sm font-black uppercase tracking-wide text-secondary">Pronunciation &amp; TTS Rules</h2>
+						<p className="text-xs text-muted">
+							Customize how the reader speaks words or phrases in <strong className="text-secondary">{bookTitle}</strong>. Leave the replacement empty
 							to skip a word entirely.
 						</p>
 					</div>
@@ -209,34 +209,34 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 						type="button"
 						onClick={handleClose}
 						aria-label="Close pronunciation rules"
-						className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border text-muted-copy hover:text-foreground"
+						className="flex size-7 shrink-0 items-center justify-center rounded-md border border-default text-muted hover:text-primary"
 					>
 						<X className="size-4" />
 					</button>
 				</div>
 
-				<form onSubmit={handleSubmit} className="flex flex-col gap-2.5 rounded-md border border-border bg-surface-muted p-3">
+				<form onSubmit={handleSubmit} className="flex flex-col gap-2.5 rounded-md border border-default bg-surface-raised p-3">
 					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 						<div className="flex flex-col gap-1">
-							<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">Match</span>
+							<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted">Match</span>
 							<input
 								type="text"
 								value={form.pattern}
 								onChange={(event) => setForm((prev) => ({ ...prev, pattern: event.target.value }))}
 								placeholder='e.g. "hey"'
 								maxLength={200}
-								className="min-h-9 w-full rounded-md border border-border bg-surface px-2 text-xs text-foreground outline-none focus:border-primary focus:shadow-focus"
+								className="min-h-9 w-full rounded-md border border-default bg-surface px-2 text-xs text-primary outline-none focus:border-accent focus:shadow-focus"
 							/>
 						</div>
 						<div className="flex flex-col gap-1">
-							<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">Speak as (blank = skip)</span>
+							<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted">Speak as (blank = skip)</span>
 							<input
 								type="text"
 								value={form.replacement}
 								onChange={(event) => setForm((prev) => ({ ...prev, replacement: event.target.value }))}
 								placeholder='e.g. "hi"'
 								maxLength={500}
-								className="min-h-9 w-full rounded-md border border-border bg-surface px-2 text-xs text-foreground outline-none focus:border-primary focus:shadow-focus"
+								className="min-h-9 w-full rounded-md border border-default bg-surface px-2 text-xs text-primary outline-none focus:border-accent focus:shadow-focus"
 							/>
 						</div>
 					</div>
@@ -265,7 +265,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 						<button
 							type="submit"
 							disabled={submitting}
-							className="flex min-h-8 items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-background transition hover:bg-primary-hover disabled:opacity-50"
+							className="flex min-h-8 items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-bold text-on-accent transition hover:bg-accent-hover disabled:opacity-50"
 						>
 							<Plus className="size-3.5" />
 							{editingId ? "Save changes" : "Add rule"}
@@ -274,7 +274,7 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 							<button
 								type="button"
 								onClick={cancelEdit}
-								className="min-h-8 rounded-md border border-border px-3 py-1.5 text-xs font-bold text-copy hover:bg-surface-muted"
+								className="min-h-8 rounded-md border border-default px-3 py-1.5 text-xs font-bold text-secondary hover:bg-surface-raised"
 							>
 								Cancel
 							</button>
@@ -285,20 +285,20 @@ export function PronunciationRulesModal(props: PronunciationRulesModalProps) {
 				{error && <p className="text-[0.7rem] font-semibold text-red-500">{error}</p>}
 
 				{loading ? (
-					<p className="text-xs text-muted-copy">Loading rules…</p>
+					<p className="text-xs text-muted">Loading rules…</p>
 				) : rules.length === 0 ? (
-					<p className="text-xs text-muted-copy">No pronunciation rules yet. Add one above to customize this book&apos;s TTS.</p>
+					<p className="text-xs text-muted">No pronunciation rules yet. Add one above to customize this book&apos;s TTS.</p>
 				) : (
 					<div className="flex flex-col gap-3">
 						{bookRules.length > 0 && (
 							<div className="flex flex-col gap-1.5">
-								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">This book</span>
+								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted">This book</span>
 								<ul className="flex flex-col gap-1.5">{bookRules.map(renderRuleRow)}</ul>
 							</div>
 						)}
 						{globalRules.length > 0 && (
 							<div className="flex flex-col gap-1.5">
-								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted-copy">All books</span>
+								<span className="text-[0.65rem] font-black uppercase tracking-wider text-muted">All books</span>
 								<ul className="flex flex-col gap-1.5">{globalRules.map(renderRuleRow)}</ul>
 							</div>
 						)}

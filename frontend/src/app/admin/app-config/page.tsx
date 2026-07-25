@@ -21,9 +21,9 @@ function ReaderModesEditor({ modes, disabled, onChange }: ReaderModesEditorProps
 	return (
 		<div className="flex flex-col gap-3">
 			{keys.map((key) => (
-				<div key={key} className="flex items-center justify-between gap-4 rounded-md border border-border p-3">
+				<div key={key} className="flex items-center justify-between gap-4 rounded-md border border-default p-3">
 					<div className="min-w-0 flex-1">
-						<p className="text-sm font-medium text-foreground">{modes[key]?.label ?? key}</p>
+						<p className="text-sm font-medium text-primary">{modes[key]?.label ?? key}</p>
 						<p className="truncate text-xs text-muted-foreground">{key}</p>
 					</div>
 					<div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export default function AdminAppConfigPage() {
 		<div className="space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-2xl font-bold text-foreground">App Configuration</h1>
+					<h1 className="text-2xl font-bold text-primary">App Configuration</h1>
 					<p className="text-sm text-muted-foreground">Manage server-side feature toggles and application settings.</p>
 				</div>
 				<Button variant="secondary" size="sm" onClick={fetchConfigs} disabled={loading}>
@@ -133,7 +133,7 @@ export default function AdminAppConfigPage() {
 										<textarea
 											readOnly={!canUpdate}
 											defaultValue={JSON.stringify(value, null, 2)}
-											className="min-h-32 w-full rounded-md border border-border bg-surface px-3 py-2 font-mono text-xs text-copy focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+											className="min-h-32 w-full rounded-md border border-default bg-surface px-3 py-2 font-mono text-xs text-secondary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
 											onBlur={(event) => {
 												try {
 													const parsed = JSON.parse(event.target.value);

@@ -3,7 +3,6 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import {
   api,
   type Author,
-  type BookStatus,
   type CatalogBookFilters,
   type Genre,
   type PaginatedBooks,
@@ -12,20 +11,11 @@ import {
 } from '../utils/api';
 import { booksCatalogKey, booksCatalogOptionsKey } from '../lib/query-keys';
 
-const READING_STATUSES: { value: BookStatus; label: string }[] = [
-  { value: 'reading', label: 'Reading' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'on_hold', label: 'On Hold' },
-  { value: 'dropped', label: 'Dropped' },
-  { value: 'planning', label: 'Planning' },
-];
-
 interface CatalogOptions {
   genres: Genre[];
   publicationStatuses: PublicationStatus[];
   sources: Source[];
   authors: Author[];
-  readingStatuses: { value: BookStatus; label: string }[];
 }
 
 const EMPTY_OPTIONS: CatalogOptions = {
@@ -33,7 +23,6 @@ const EMPTY_OPTIONS: CatalogOptions = {
   publicationStatuses: [],
   sources: [],
   authors: [],
-  readingStatuses: READING_STATUSES,
 };
 
 export function useBooksCatalog(filters: CatalogBookFilters) {
@@ -56,7 +45,7 @@ export function useBooksCatalog(filters: CatalogBookFilters) {
         api.getPublicAuthors(),
         api.getSources(),
       ]);
-      return { genres, publicationStatuses, authors, sources, readingStatuses: READING_STATUSES };
+      return { genres, publicationStatuses, authors, sources };
     },
     staleTime: 5 * 60 * 1000,
     retry: false,

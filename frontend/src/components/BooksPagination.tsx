@@ -18,7 +18,7 @@ export function BooksPagination({ page, pageSize, total, totalPages, onPageChang
 
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-5 pt-6">
-			<div className="text-sm font-medium text-muted-copy">
+			<div className="text-sm font-medium text-muted">
 				{total === 0 ? "No results" : `Showing ${start}-${end} of ${total}`}
 			</div>
 
@@ -29,7 +29,7 @@ export function BooksPagination({ page, pageSize, total, totalPages, onPageChang
 				<Button variant="secondary" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
 					Previous
 				</Button>
-				<span className="px-2 text-sm font-semibold text-foreground">
+				<span className="px-2 text-sm font-semibold text-primary">
 					Page {page} of {totalPages}
 				</span>
 				<Button variant="secondary" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
@@ -41,7 +41,7 @@ export function BooksPagination({ page, pageSize, total, totalPages, onPageChang
 			</div>
 
 			<div className="flex items-center gap-2">
-				<label className="text-sm text-muted-copy">Per page</label>
+				<label className="text-sm text-muted">Per page</label>
 				<Select
 					value={String(pageSize)}
 					onChange={(e) => onPageSizeChange(Number(e.target.value))}

@@ -106,11 +106,11 @@ describe('ProfilePage', () => {
 
     expect(screen.getByText('Total')).toBeInTheDocument();
     expect(screen.getAllByText('1')).toHaveLength(2);
-    expect(screen.getByText('Reading')).toBeInTheDocument();
+    expect(screen.getAllByText('Reading').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('heading', { name: 'Lord of the Mysteries' })).toBeInTheDocument();
   });
 
-  it('increments chapters read when +1 is clicked', async () => {
+  it('displays reading progress percent', async () => {
     setupMocks();
     render(
       <AuthProvider>
@@ -118,11 +118,7 @@ describe('ProfilePage', () => {
       </AuthProvider>,
     );
 
-    await waitFor(() => expect(screen.getByText('0 / 10 ch')).toBeInTheDocument());
-
-    await userEvent.click(screen.getByRole('button', { name: '+1' }));
-
-    await waitFor(() => expect(screen.getByText('1 / 10 ch')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0%')).toBeInTheDocument());
   });
 
   it('opens create book modal and validates URLs', async () => {

@@ -67,26 +67,26 @@ function LoginContent() {
 
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-8">
-      <Card className="flex w-full max-w-[420px] flex-col gap-5 p-8">
+      <Card className="flex w-full max-w-[420px] flex-col gap-5 rounded-2xl p-8 shadow-elevation-4">
         <div className="text-center">
-          <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-[#263a5c] text-2xl font-black text-white shadow-focus">
+          <div className="mx-auto mb-4 inline-flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-2xl font-black text-inverse shadow-focus">
             N
           </div>
-          <h2 className="mb-1 text-[1.75rem] font-black leading-tight">
+          <h2 className="mb-1 text-[1.75rem] font-black leading-tight text-primary">
             {isRegister ? 'Create Account' : 'Welcome Back'}
           </h2>
-          <p className="text-sm text-copy">
+          <p className="text-sm text-secondary">
             {isRegister ? 'Sign up to track and archive your books' : 'Sign in to access your book library'}
           </p>
         </div>
 
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          <div className="rounded-md border border-danger/20 bg-danger/10 px-4 py-3 text-sm font-semibold text-danger">
             {error}
           </div>
         )}
 
-        <Button asChild variant="secondary" className="w-full border-border-hover">
+        <Button asChild variant="secondary" className="w-full border-hover">
           <a
             href={api.getGoogleLoginUrl()}
             onClick={() => {
@@ -100,7 +100,7 @@ function LoginContent() {
         {showPasswordLogin && (
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border"></div>
-            <span className="text-xs text-muted-copy">Development login</span>
+            <span className="text-xs text-muted">Development login</span>
             <div className="h-px flex-1 bg-border"></div>
           </div>
         )}
@@ -110,7 +110,7 @@ function LoginContent() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
               {isRegister && (
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-copy">Username</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">Username</label>
                   <Input
                     type="text" 
                     placeholder="e.g. book_reader"
@@ -122,7 +122,7 @@ function LoginContent() {
               )}
 
               <div>
-                <label className="mb-2 block text-xs font-bold text-copy">Email Address</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">Email Address</label>
                 <Input
                   type="email" 
                   placeholder="name@example.com"
@@ -133,7 +133,7 @@ function LoginContent() {
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold text-copy">Password</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">Password</label>
                 <Input
                   type="password" 
                   placeholder="Password"
@@ -156,14 +156,14 @@ function LoginContent() {
               </Button>
             </form>
 
-            <div className="mt-2 text-center text-sm text-copy">
+            <div className="mt-2 text-center text-sm text-secondary">
               {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
               <button
                 onClick={() => {
                   setIsRegister(!isRegister);
                   setError('');
                 }}
-                className="cursor-pointer border-0 bg-transparent px-0.5 font-semibold text-primary underline"
+                className="cursor-pointer border-0 bg-transparent px-0.5 font-semibold text-accent hover:text-primary-hover hover:underline"
               >
                 {isRegister ? 'Sign In' : 'Sign Up'}
               </button>

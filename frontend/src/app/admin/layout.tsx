@@ -64,9 +64,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <div className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background px-4 md:hidden">
-        <span className="font-semibold text-foreground">Admin Console</span>
+    <div className="flex min-h-screen bg-app">
+      <div className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-default bg-app px-4 md:hidden">
+        <span className="font-semibold text-accent">Admin Console</span>
         <Button variant="secondary" size="icon" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </Button>
@@ -74,11 +74,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 w-60 transform border-r border-border bg-card transition-transform duration-200 md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 w-60 transform border-r border-default bg-card transition-transform duration-200 md:static md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-14 items-center border-b border-border px-4 font-bold text-foreground">
+        <div className="flex h-14 items-center border-b border-default px-4 font-bold text-primary">
           Admin Console
         </div>
         <nav className="space-y-1 p-3">
@@ -97,8 +97,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition",
                   isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-copy hover:bg-surface-muted hover:text-foreground",
+                    ? "bg-accent text-primary-foreground"
+                    : "text-secondary hover:bg-surface-raised hover:text-accent",
                   disabled && "pointer-events-none opacity-50"
                 )}
               >
@@ -112,7 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-20 bg-foreground/40 md:hidden"
+          className="fixed inset-0 z-20 bg-scrim md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}

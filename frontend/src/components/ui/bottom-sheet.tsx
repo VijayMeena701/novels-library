@@ -41,7 +41,7 @@ export function BottomSheet({
 		<>
 			{isOpen && (
 				<div
-					className="fixed inset-0 z-[51] bg-[var(--reader-overlay)] transition-opacity duration-300"
+					className="fixed inset-0 z-[51] bg-reader-overlay transition-opacity duration-300"
 					role="presentation"
 					aria-hidden="true"
 					onClick={() => onOpenChange(false)}
@@ -54,17 +54,17 @@ export function BottomSheet({
 					className,
 				)}
 			>
-				<div className="flex flex-col rounded-t-2xl border border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] shadow-[0_18px_48px_rgba(0,0,0,0.24)] sm:rounded-b-2xl">
+				<div className="flex flex-col rounded-t-2xl border border-reader bg-reader-surface text-reader-paragraph shadow-elevation-5 sm:rounded-b-2xl">
 					<div className="flex items-center justify-between gap-2 px-4 py-2.5">
 						<div className="flex flex-1 flex-col items-center gap-1 py-1">
 							{showHandle && (
-								<div className="h-1 w-10 rounded-full bg-[var(--reader-muted)]" />
+								<div className="h-1 w-10 rounded-full bg-reader-muted" />
 							)}
 							{showHandle && closeLabel && (
 								<button
 									type="button"
 									onClick={() => onOpenChange(false)}
-									className="text-[0.7rem] font-medium text-[var(--reader-muted)] transition hover:text-[var(--reader-text)]"
+									className="text-[0.7rem] font-medium text-reader-muted transition hover:text-reader-paragraph"
 								>
 									{closeLabel}
 								</button>
@@ -75,16 +75,16 @@ export function BottomSheet({
 								type="button"
 								onClick={() => onOpenChange(false)}
 								aria-label="Close"
-								className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--reader-muted)] transition hover:bg-[var(--reader-surface-hover)] hover:text-[var(--reader-text)]"
+								className="flex size-8 shrink-0 items-center justify-center rounded-lg text-reader-muted transition hover:bg-reader-controls hover:text-reader-paragraph"
 							>
 								<X className="size-4" />
 							</button>
 						)}
 					</div>
 					{header && (
-						<div className="border-t border-[var(--reader-border)] px-4 py-2.5">{header}</div>
+						<div className="border-t border-reader px-4 py-2.5">{header}</div>
 					)}
-					<div className={cn("border-t border-[var(--reader-border)]", contentClassName)}>{children}</div>
+					<div className={cn("border-t border-reader", contentClassName)}>{children}</div>
 				</div>
 			</div>
 		</>

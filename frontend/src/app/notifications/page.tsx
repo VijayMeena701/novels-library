@@ -60,8 +60,8 @@ export default function NotificationsPage() {
     return (
       <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12")}>
         <Card className="mx-auto max-w-2xl p-8 text-center">
-          <h1 className="font-serif text-2xl font-medium text-foreground">Notifications</h1>
-          <p className="mt-2 text-sm text-muted-copy">Please log in to view your notifications.</p>
+          <h1 className="font-serif text-2xl font-medium text-primary">Notifications</h1>
+          <p className="mt-2 text-sm text-muted">Please log in to view your notifications.</p>
           <Button asChild className="mt-4">
             <Link href={getLoginHref(pathname)}>Go to Login</Link>
           </Button>
@@ -72,7 +72,7 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted-copy")}>Loading notifications...</div>
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted")}>Loading notifications...</div>
     );
   }
 
@@ -80,7 +80,7 @@ export default function NotificationsPage() {
     <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between gap-4 mb-6">
-          <h1 className="font-serif text-2xl font-medium text-foreground">Notifications</h1>
+          <h1 className="font-serif text-2xl font-medium text-primary">Notifications</h1>
           {unreadCount > 0 && (
             <Button variant="secondary" onClick={markAllRead} className="text-xs">
               Mark all as read
@@ -90,25 +90,25 @@ export default function NotificationsPage() {
 
         <Card className="divide-y divide-border overflow-hidden">
           {notifications.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-copy">No notifications yet.</div>
+            <div className="p-8 text-center text-sm text-muted">No notifications yet.</div>
           ) : (
             notifications.map((notification) => (
               <div
                 key={notification._id}
-                className={`flex items-start justify-between gap-4 p-4 transition hover:bg-surface-muted ${
-                  notification.read ? 'opacity-70' : 'bg-surface-muted/40'
+                className={`flex items-start justify-between gap-4 p-4 transition hover:bg-surface-raised ${
+ notification.read ? 'opacity-70' : 'bg-surface-raised/40'
                 }`}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{notification.title}</p>
-                  <p className="text-sm text-muted-copy mt-0.5">{notification.message}</p>
-                  <p className="text-xs text-muted-copy mt-1">
+                  <p className="text-sm font-semibold text-primary">{notification.title}</p>
+                  <p className="text-sm text-muted mt-0.5">{notification.message}</p>
+                  <p className="text-xs text-muted mt-1">
                     {new Date(notification.createdAt).toLocaleString()}
                   </p>
                   {notification.link && (
                     <Link
                       href={notification.link}
-                      className="mt-2 inline-block text-xs font-semibold text-primary hover:underline"
+                      className="mt-2 inline-block text-xs font-semibold text-accent hover:underline"
                     >
                       View
                     </Link>

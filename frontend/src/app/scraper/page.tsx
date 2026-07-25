@@ -132,7 +132,7 @@ export default function ScraperMonitor() {
       <div className="flex flex-1 items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Spinner size="xl" />
-          <span className="text-copy">Loading background tasks registry...</span>
+          <span className="text-secondary">Loading background tasks registry...</span>
         </div>
       </div>
     );
@@ -141,9 +141,9 @@ export default function ScraperMonitor() {
   if (!hasCapability(CAPABILITY.JOBS_LIST)) {
     return (
       <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
-        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
+        <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-12 text-center text-secondary">
           <h1>Access Required</h1>
-          <p className="mt-2 text-copy">
+          <p className="mt-2 text-secondary">
             Scraper jobs, raw imports, and archive controls are catalog administration tools.
           </p>
           <Button asChild variant="secondary" className="mt-4">
@@ -161,7 +161,7 @@ export default function ScraperMonitor() {
       <div className="flex items-end justify-between gap-4 py-1">
         <div>
           <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Scraper Dashboard</h1>
-          <p className="text-copy max-w-[720px]">
+          <p className="text-secondary max-w-[720px]">
             Monitor background archiving queues, track crawl progress, and manage failures.
           </p>
         </div>
@@ -172,30 +172,30 @@ export default function ScraperMonitor() {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
-        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
-          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Total Jobs</div>
+        <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted mb-1">Total Jobs</div>
           <div className="text-2xl font-extrabold">{jobs.length}</div>
         </div>
-        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
-          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Active</div>
+        <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted mb-1">Active</div>
           <div className="text-2xl font-extrabold text-info">
             {jobs.filter(j => j.status === 'processing' || j.status === 'pending').length}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
-          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Completed</div>
+        <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted mb-1">Completed</div>
           <div className="text-2xl font-extrabold text-success">
             {jobs.filter(j => j.status === 'completed').length}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
-          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Failed</div>
+        <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted mb-1">Failed</div>
           <div className="text-2xl font-extrabold text-danger">
             {jobs.filter(j => j.status === 'failed').length}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-4">
-          <div className="text-xs font-bold uppercase tracking-normal text-muted-copy mb-1">Needs Manual</div>
+        <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-4">
+          <div className="text-xs font-bold uppercase tracking-normal text-muted mb-1">Needs Manual</div>
           <div className="text-2xl font-extrabold text-amber-700">
             {jobs.filter(j => j.status === 'requires_manual_intervention').length}
           </div>
@@ -203,15 +203,15 @@ export default function ScraperMonitor() {
       </div>
 
       {/* Jobs Log Table */}
-      <div className="overflow-x-auto rounded-lg border border-border bg-card p-6 shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
+      <div className="overflow-x-auto rounded-lg border border-default bg-card p-6 shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4">
         {jobs.length === 0 ? (
-          <div className="p-8 text-center text-copy">
+          <div className="p-8 text-center text-secondary">
             No background crawler jobs have been scheduled yet.
           </div>
         ) : (
           <table className="w-full border-collapse text-left min-w-[800px]">
             <thead>
-              <tr className="border-b border-border text-sm text-copy">
+              <tr className="border-b border-default text-sm text-secondary">
                 <th className="px-4 py-3">Task ID</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Status</th>
@@ -227,21 +227,21 @@ export default function ScraperMonitor() {
                 const percent = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
                 
                 return (
-                  <tr key={job._id} className="border-b border-border text-[0.925rem]">
+                  <tr key={job._id} className="border-b border-default text-[0.925rem]">
                     
                     {/* Job ID / Date */}
                     <td className="p-4">
-                      <div className="font-mono text-[0.8rem] text-copy">
+                      <div className="font-mono text-[0.8rem] text-secondary">
                         {job._id.substring(18)}...
                       </div>
-                      <div className="mt-0.5 text-xs text-muted-copy">
+                      <div className="mt-0.5 text-xs text-muted">
                         {new Date(job.createdAt).toLocaleString()}
                       </div>
                     </td>
 
                     {/* Job Type */}
                     <td className="p-4">
-                      <strong className="capitalize text-foreground">
+                      <strong className="capitalize text-primary">
                         {job.type.replace(/_/g, ' ')}
                       </strong>
                     </td>
@@ -254,13 +254,13 @@ export default function ScraperMonitor() {
                     {/* Progress Bar */}
                     <td className="w-[220px] p-4">
                       <div className="flex flex-col gap-1">
-                        <div className="flex justify-between text-xs text-muted-copy">
+                        <div className="flex justify-between text-xs text-muted">
                           <span>{current} / {total}</span>
                           <span>{percent}%</span>
                         </div>
-                        <div className="h-1 w-full overflow-hidden rounded-sm bg-surface-muted">
+                        <div className="h-1 w-full overflow-hidden rounded-sm bg-surface-raised">
                           <div
-                            className={cn("h-full rounded-sm transition-all duration-300", job.status === 'failed' ? "bg-danger" : job.status === 'requires_manual_intervention' ? "bg-amber-700" : "bg-primary")}
+                            className={cn("h-full rounded-sm transition-all duration-300", job.status === 'failed' ? "bg-danger" : job.status === 'requires_manual_intervention' ? "bg-amber-700" : "bg-accent")}
                             style={{ width: `${percent}%` }}
                           ></div>
                         </div>
@@ -275,13 +275,13 @@ export default function ScraperMonitor() {
                             {job.error.message}
                           </span>
                           {job.error.url && (
-                            <a href={job.error.url} target="_blank" rel="noreferrer" className="break-all text-xs text-copy">
+                            <a href={job.error.url} target="_blank" rel="noreferrer" className="break-all text-xs text-secondary">
                               {job.error.sourceKind === 'raw' ? 'Raw' : 'Translated'} chapter {job.error.chapterNumber || ''}: {job.error.url}
                             </a>
                           )}
                         </div>
                       ) : (
-                        <span className="text-sm text-copy" title={job.progress?.message}>
+                        <span className="text-sm text-secondary" title={job.progress?.message}>
                           {job.progress?.message || 'Queued...'}
                         </span>
                       )}
@@ -332,7 +332,7 @@ export default function ScraperMonitor() {
                           </Button>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-copy">
+                        <span className="text-sm text-muted">
                           {job.status === 'completed' ? 'Synced' : 'Running...'}
                         </span>
                       )}
@@ -348,13 +348,13 @@ export default function ScraperMonitor() {
 
       {chapterHtmlJob && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[8px]">
-          <div className="flex w-full max-w-[720px] max-h-[90vh] flex-col gap-5 overflow-auto rounded-lg border border-border bg-card p-5 shadow-lg">
+          <div className="flex w-full max-w-[720px] max-h-[90vh] flex-col gap-5 overflow-auto rounded-lg border border-default bg-card p-5 shadow-lg">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-[1.4rem]">
                 Import {chapterHtmlJob.error?.sourceKind === 'raw' ? 'Raw ' : ''}Chapter {chapterHtmlJob.error?.chapterNumber || ''}
               </h2>
               <button
-                className="cursor-pointer border-none bg-transparent text-2xl text-copy"
+                className="cursor-pointer border-none bg-transparent text-2xl text-secondary"
                 onClick={() => setChapterHtmlJob(null)}
               >
                 &times;
@@ -363,7 +363,7 @@ export default function ScraperMonitor() {
 
             <form onSubmit={handleImportChapterHtml} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-copy">Chapter Page URL</label>
+                <label className="text-sm font-semibold text-secondary">Chapter Page URL</label>
                 <Input type="url"
                   
                   value={chapterHtmlPageUrl}
@@ -373,7 +373,7 @@ export default function ScraperMonitor() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-copy">Saved Chapter HTML</label>
+                <label className="text-sm font-semibold text-secondary">Saved Chapter HTML</label>
                 <Textarea rows={14}
                   value={chapterHtmlContent}
                   onChange={(e) => setChapterHtmlContent(e.target.value)}

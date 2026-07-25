@@ -18,7 +18,7 @@ describe('IconButton', () => {
 
   it('applies primary variant class', () => {
     render(<IconButton icon={<span />} variant="primary" aria-label="Primary" />);
-    expect(screen.getByRole('button')).toHaveClass('bg-[var(--reader-accent)]');
+    expect(screen.getByRole('button')).toHaveClass('bg-reader-accent');
   });
 
   it('is disabled and does not fire click', async () => {

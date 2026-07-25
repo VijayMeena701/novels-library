@@ -12,10 +12,10 @@ describe('Badge', () => {
 
   it('applies variant-specific classes', () => {
     const { rerender } = render(<Badge variant="completed">Done</Badge>);
-    expect(screen.getByText('Done')).toHaveClass('bg-[#ecf8ef]');
+    expect(screen.getByText('Done')).toHaveClass('bg-success text-inverse border-success');
 
     rerender(<Badge variant="dropped">Dropped</Badge>);
-    expect(screen.getByText('Dropped')).toHaveClass('bg-[#fff0ee]');
+    expect(screen.getByText('Dropped')).toHaveClass('bg-danger text-inverse border-danger');
   });
 
   it('merges custom className', () => {

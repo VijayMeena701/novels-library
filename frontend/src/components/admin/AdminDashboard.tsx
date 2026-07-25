@@ -44,17 +44,17 @@ export default function AdminDashboard() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Admin Console</h1>
+        <h1 className="text-3xl font-bold text-primary">Admin Console</h1>
         <p className="text-sm text-muted-foreground">Manage users, roles, permissions, and audit logs.</p>
       </header>
 
-      <nav className="mb-6 flex flex-wrap gap-2 border-b border-border pb-2">
+      <nav className="mb-6 flex flex-wrap gap-2 border-b border-default pb-2">
         {Object.entries(tabLabels).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key as Tab)}
             className={`rounded-t-md px-4 py-2 text-sm font-semibold ${
-              tab === key ? "bg-primary text-primary-foreground" : "bg-transparent text-foreground hover:bg-muted"
+ tab === key ? "bg-accent text-primary-foreground" : "bg-transparent text-primary hover:bg-muted"
             }`}
           >
             {label}
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
                   };
                   if (map[label]) setTab(map[label]);
                 }}
-                className="cursor-pointer rounded-lg border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
+                className="cursor-pointer rounded-lg border border-default bg-card p-5 shadow-elevation-1 transition hover:shadow-md"
               >
                 <p className="text-sm text-muted-foreground">{label}</p>
                 <p className="text-2xl font-bold text-card-foreground">{value}</p>

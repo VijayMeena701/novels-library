@@ -28,7 +28,7 @@ function SubSection({ title, books }: { title: string; books: Book[] }) {
   if (books.length === 0) return null;
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-copy">{title}</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">{title}</h3>
       <BookCardGrid books={books} />
     </div>
   );
@@ -44,12 +44,12 @@ export function UserLibrarySection({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-serif text-xl font-medium text-foreground">Your Library</h2>
+        <h2 className="font-serif text-xl font-medium text-primary">Your Library</h2>
         <div className="flex items-center gap-4">
-          <Link href="/history" className="text-sm font-semibold text-primary hover:underline">
+          <Link href="/history" className="text-sm font-semibold text-accent hover:underline">
             History
           </Link>
-          <Link href="/profile" className="text-sm font-semibold text-primary hover:underline">
+          <Link href="/profile" className="text-sm font-semibold text-accent hover:underline">
             Open Library <ArrowRight className="inline size-4" />
           </Link>
         </div>
@@ -61,7 +61,7 @@ export function UserLibrarySection({
           <SubSection title="Completed" books={completed} />
           <SubSection title="Top Rated" books={topRated} />
           {libraryEmpty && (
-            <p className="text-sm text-muted-copy">Your library is empty. Browse the catalog to add books.</p>
+            <p className="text-sm text-muted">Your library is empty. Browse the catalog to add books.</p>
           )}
         </div>
       </Card>

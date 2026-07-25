@@ -16,10 +16,10 @@ export function BookSection({ title, books, viewAllHref }: BookSectionProps) {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="font-serif text-xl font-medium text-foreground">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="min-w-0 font-serif text-xl font-medium text-primary">{title}</h2>
         {viewAllHref && (
-          <Link href={viewAllHref} className="text-sm font-semibold text-primary hover:underline">
+          <Link href={viewAllHref} className="whitespace-nowrap text-sm font-semibold text-accent hover:underline">
             View all <ArrowRight className="inline size-4" />
           </Link>
         )}

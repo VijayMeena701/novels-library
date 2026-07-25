@@ -74,7 +74,7 @@ export default function AdminResources() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {resources.map((resource) => (
-            <div key={resource._id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <div key={resource._id} className="rounded-lg border border-default bg-card p-4 shadow-elevation-1">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">{resource.name}</h3>
                 <Can action="manage" subject="resources">

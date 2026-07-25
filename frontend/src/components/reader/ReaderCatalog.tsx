@@ -54,23 +54,23 @@ export function ReaderCatalog(props: ReaderCatalogProps) {
 
 	return (
 		<div
-			className="fixed inset-0 z-[1000] flex items-start justify-start overflow-hidden bg-[var(--reader-overlay)]"
+			className="fixed inset-0 z-[1000] flex items-start justify-start overflow-hidden bg-reader-overlay"
 			onClick={onClose}
 		>
 			<aside
-				className="flex h-dvh max-h-dvh w-full max-w-[420px] flex-col gap-5 overflow-hidden border-r border-[var(--reader-border)] bg-[var(--reader-bg)] p-5 text-[var(--reader-text)] shadow-[18px_0_48px_rgba(0,0,0,0.16)]"
+				className="flex h-dvh max-h-dvh w-full max-w-[420px] flex-col gap-5 overflow-hidden border-r border-reader bg-reader p-5 text-reader-paragraph shadow-elevation-5"
 				onClick={(event) => event.stopPropagation()}
 			>
 				<div className="flex shrink-0 items-start justify-between gap-4">
 					<div>
 						<h2 className="text-lg font-semibold tracking-tight">Contents</h2>
-						<p className="mt-1 text-xs leading-relaxed text-[var(--reader-muted)]">
+						<p className="mt-1 text-xs leading-relaxed text-reader-muted">
 							{sourceLabel} · {items.length} chapters indexed, {archivedTotal} archived.
 						</p>
 					</div>
 					<button
 						type="button"
-						className="min-h-8 rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-1.5 text-xs font-medium text-[var(--reader-text)] transition hover:bg-[var(--reader-surface-hover)]"
+						className="min-h-8 rounded-full border border-reader bg-reader-surface px-3 py-1.5 text-xs font-medium text-reader-paragraph transition hover:bg-reader-controls"
 						onClick={onClose}
 					>
 						Close
@@ -78,7 +78,7 @@ export function ReaderCatalog(props: ReaderCatalogProps) {
 				</div>
 
 				<Input
-					className="shrink-0 min-h-10 border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] placeholder:text-[var(--reader-muted)] focus:border-[var(--reader-accent)] focus:ring-[var(--reader-accent)]"
+					className="shrink-0 min-h-10 border-reader bg-reader-surface text-reader-paragraph placeholder:text-reader-muted focus:border-reader-accent focus:ring-reader-accent"
 					value={search}
 					onChange={(event) => setSearch(event.target.value)}
 					placeholder="Search chapter number or title"
@@ -100,18 +100,18 @@ export function ReaderCatalog(props: ReaderCatalogProps) {
 									<button
 										type="button"
 										className={cn(
-											"flex w-full flex-col gap-1 rounded-xl border border-transparent px-3.5 py-3 text-left text-[var(--reader-text)] transition hover:border-[var(--reader-border)] hover:bg-[var(--reader-surface)]",
+											"flex w-full flex-col gap-1 rounded-xl border border-transparent px-3.5 py-3 text-left text-reader-paragraph transition hover:border-reader hover:bg-reader-surface",
 											item.chapterNumber === currentChapterNumber &&
-												"border-[var(--reader-accent)]/50 bg-[var(--reader-surface)]",
+												"border-reader-accent/50 bg-reader-surface",
 										)}
 										onClick={() => {
 											onClose();
 											onSelectChapter(item.chapterNumber);
 										}}
 									>
-										<span className="text-[0.68rem] font-medium text-[var(--reader-muted)]">Chapter {item.chapterNumber}</span>
+										<span className="text-[0.68rem] font-medium text-reader-muted">Chapter {item.chapterNumber}</span>
 										<strong className="line-clamp-2 text-sm font-medium leading-snug">{item.title}</strong>
-										<small className="text-[0.68rem] text-[var(--reader-muted)]">{item.archived ? "Archived" : "Indexed only"}</small>
+										<small className="text-[0.68rem] text-reader-muted">{item.archived ? "Archived" : "Indexed only"}</small>
 									</button>
 								</div>
 							);

@@ -17,10 +17,10 @@ export function ToggleChip({ label, checked, onChange, className, disabled }: To
 			disabled={disabled}
 			onClick={() => onChange(!checked)}
 			className={cn(
-				"rounded-md border px-2.5 py-1.5 text-[0.7rem] font-bold transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
+				"rounded-md border px-2.5 py-1.5 text-[0.7rem] font-bold transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-2",
 				checked
-					? "border-primary bg-primary-soft text-primary"
-					: "border-border bg-surface text-muted-copy hover:text-foreground",
+					? "border-accent bg-accent-subtle text-primary"
+					: "border-default bg-surface text-muted hover:text-accent",
 				"disabled:cursor-not-allowed disabled:opacity-50",
 				className,
 			)}

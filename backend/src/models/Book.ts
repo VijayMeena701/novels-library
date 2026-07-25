@@ -39,7 +39,6 @@ export interface IBook extends Document {
   rawOriginalLanguage: string;
   rawChaptersTotal: number;
   rawChaptersList: IChapterIndex[];
-  status: BookStatus;
   translatedChaptersTotal: number;
   translatedChaptersList: IChapterIndex[];
   ratingAverage: number;

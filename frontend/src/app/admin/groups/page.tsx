@@ -146,7 +146,7 @@ export default function AdminGroupsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Permission Groups</h1>
+          <h1 className="text-2xl font-bold text-primary">Permission Groups</h1>
           <p className="text-sm text-muted-foreground">Permission groups bundle capabilities (resource:action) that roles can assign.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export default function AdminGroupsPage() {
           <Spinner size="lg" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-default">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -180,21 +180,21 @@ export default function AdminGroupsPage() {
             </thead>
             <tbody>
               {groups.map((group) => (
-                <tr key={group._id} className="border-t border-border">
+                <tr key={group._id} className="border-t border-default">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{group.name}</span>
                       {group.isSystem && <Badge variant="processing">System</Badge>}
                     </div>
                     <div className="font-mono text-xs text-muted-foreground">{group.key}</div>
-                    <div className="text-xs text-copy">{group.description}</div>
+                    <div className="text-xs text-secondary">{group.description}</div>
                   </td>
                   <td className="px-4 py-3">
-                    {group.resource ? <Badge variant="outline">{group.resource.name}</Badge> : <span className="text-xs text-muted-copy">—</span>}
+                    {group.resource ? <Badge variant="outline">{group.resource.name}</Badge> : <span className="text-xs text-muted">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex max-w-md flex-wrap gap-1">
-                      {group.capabilities.length === 0 && <span className="text-xs text-muted-copy">—</span>}
+                      {group.capabilities.length === 0 && <span className="text-xs text-muted">—</span>}
                       {group.capabilities.map((c) => (
                         <Badge key={c._id} variant="outline" className="font-mono text-[0.65rem]">
                           {c.resource.key}:{c.action.key}
@@ -210,7 +210,7 @@ export default function AdminGroupsPage() {
                           Edit
                         </Button>
                         {!group.isSystem && (
-                          <Button size="sm" variant="danger" onClick={() => handleDelete(group)}>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(group)}>
                             <Trash2 className="size-3.5" />
                             Delete
                           </Button>
@@ -228,7 +228,7 @@ export default function AdminGroupsPage() {
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Edit Permission Group" : "Create Permission Group"} size="xl">
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Key</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Key</label>
             <Input
               value={form.key}
               disabled={!!editing}
@@ -238,19 +238,19 @@ export default function AdminGroupsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Name</label>
             <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Description</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Description</label>
             <Textarea value={form.description || ""} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Resource</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Resource</label>
             <select
               value={form.resourceId}
               onChange={(e) => setForm((f) => ({ ...f, resourceId: e.target.value }))}
-              className="min-h-[42px] w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none"
+              className="min-h-[42px] w-full rounded-md border border-default bg-surface px-3 py-2 text-sm text-primary outline-none"
             >
               {resourceOptions.map((r) => (
                 <option key={r._id || "none"} value={r._id}>
@@ -260,8 +260,8 @@ export default function AdminGroupsPage() {
             </select>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Capabilities</label>
-            <div className="max-h-72 space-y-3 overflow-y-auto rounded-md border border-border p-3">
+            <label className="mb-2 block text-sm font-medium text-primary">Capabilities</label>
+            <div className="max-h-72 space-y-3 overflow-y-auto rounded-md border border-default p-3">
               {capabilitiesByResource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No capabilities found.</p>
               ) : (
@@ -277,7 +277,7 @@ export default function AdminGroupsPage() {
                           <label
                             key={cap._id}
                             className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition ${
-                              selected ? "bg-primary-soft font-semibold text-foreground" : "text-copy hover:bg-surface-muted"
+ selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface-raised"
                             }`}
                           >
                             <input

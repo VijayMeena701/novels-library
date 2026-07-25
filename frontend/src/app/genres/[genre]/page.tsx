@@ -24,14 +24,14 @@ export default function GenrePage({ params }: { params: Promise<{ genre: string 
       <div className="flex items-end justify-between gap-4 py-1">
         <div>
           <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">{genre}</h1>
-          <p className="text-copy max-w-[720px]">Books tagged with this genre.</p>
+          <p className="text-secondary max-w-[720px]">Books tagged with this genre.</p>
         </div>
       </div>
 
       {loading ? (
         <Spinner size="md" />
       ) : books.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card shadow-card transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated p-12 text-center text-copy">
+        <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-12 text-center text-secondary">
           No books found for this genre.
         </div>
       ) : (

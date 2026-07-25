@@ -98,7 +98,7 @@ describe('BooksPage', () => {
     });
 
     expect(screen.getByText('Browse and filter the full catalog.')).toBeInTheDocument();
-    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('100 Ch')).toBeInTheDocument();
   });
 
   it('updates the router when a filter changes', async () => {

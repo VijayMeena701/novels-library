@@ -1,17 +1,17 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { ToastProvider, useToast } from '@/context/ToastContext';
 
 describe('ToastProvider', () => {
-  it('throws when useToast is called outside provider', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const BadComponent = () => {
-      useToast();
-      return null;
+  it('returns a no-op toast helper when useToast is called outside provider', () => {
+    const SilentComponent = () => {
+      const { showToast } = useToast();
+      showToast({ message: 'test', variant: 'info' });
+      return <div>ok</div>;
     };
-    expect(() => render(<BadComponent />)).toThrow();
-    consoleSpy.mockRestore();
+    render(<SilentComponent />);
+    expect(screen.getByText('ok')).toBeInTheDocument();
   });
 
   it('displays a toast with the correct variant and title', async () => {

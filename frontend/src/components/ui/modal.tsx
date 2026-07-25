@@ -49,7 +49,7 @@ export function Modal({
 	return (
 		<div
 			className={cn(
-				"fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-[2px]",
+				"fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim backdrop-blur-[2px]",
 				className,
 			)}
 			role="presentation"
@@ -57,14 +57,14 @@ export function Modal({
 		>
 			<Card
 				className={cn(
-					"w-full max-h-[90vh] flex flex-col overflow-hidden",
+					"w-full max-h-[90vh] flex flex-col overflow-hidden shadow-elevation-5",
 					sizeClass[size],
 					contentClassName,
 				)}
 				onClick={(event) => event.stopPropagation()}
 			>
 				{(title || showCloseButton) && (
-					<div className="flex items-start justify-between gap-3 p-4 border-b border-border">
+					<div className="flex items-start justify-between gap-3 p-4 border-b border-default">
 						{title ? (
 							<CardTitle className="text-base">{title}</CardTitle>
 						) : (
@@ -75,7 +75,7 @@ export function Modal({
 								type="button"
 								onClick={onClose}
 								aria-label="Close"
-								className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-copy hover:bg-surface-muted hover:text-foreground transition"
+								className="flex size-8 shrink-0 items-center justify-center rounded-md border border-default text-muted hover:bg-surface-raised hover:text-primary transition"
 							>
 								<X className="size-4" />
 							</button>

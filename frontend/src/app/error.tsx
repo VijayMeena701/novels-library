@@ -9,7 +9,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+      <body className="min-h-screen bg-slate-950 px-6 py-16 text-inverse">
         <main className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-white/10 p-8 shadow-2xl">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-300">Application error</p>
           <h1 className="mt-3 text-3xl font-black">We could not load this page.</h1>

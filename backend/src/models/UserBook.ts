@@ -17,6 +17,7 @@ export interface IUserBook extends Document {
   completedAt?: Date;
   lastVisitedChapterNumber?: number;
   lastVisitedAt?: Date;
+  removedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +62,7 @@ const UserBookSchema = new Schema<IUserBook>(
     completedAt: { type: Date },
     lastVisitedChapterNumber: { type: Number },
     lastVisitedAt: { type: Date },
+    removedAt: { type: Date, default: null, index: true },
   },
   { timestamps: true },
 );

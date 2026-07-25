@@ -51,7 +51,7 @@ export default function AdminAuditLogs() {
         <p className="text-sm text-muted-foreground">Loading audit logs...</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-lg border border-default">
             <table className="w-full text-sm">
               <thead className="bg-muted">
                 <tr>
@@ -66,7 +66,7 @@ export default function AdminAuditLogs() {
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log._id} className="border-t border-border">
+                  <tr key={log._id} className="border-t border-default">
                     <td className="px-4 py-2 text-xs">{new Date(log.timestamp).toLocaleString()}</td>
                     <td className="px-4 py-2 text-xs">{log.action}</td>
                     <td className="px-4 py-2 text-xs">{log.method}</td>
@@ -74,10 +74,10 @@ export default function AdminAuditLogs() {
                     <td className="px-4 py-2 text-xs">
                       <span
                         className={`rounded px-2 py-1 text-xs ${
-                          log.outcome === "allowed"
+ log.outcome === "allowed"
                             ? "bg-green-100 text-green-700"
                             : log.outcome === "denied"
-                            ? "bg-red-100 text-red-700"
+                            ? "bg-red-100 text-danger"
                             : "bg-gray-100 text-gray-700"
                         }`}
                       >
@@ -95,7 +95,7 @@ export default function AdminAuditLogs() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="rounded-md border border-border px-3 py-1 text-sm disabled:opacity-50"
+              className="rounded-md border border-default px-3 py-1 text-sm disabled:opacity-50"
             >
               Previous
             </button>
@@ -105,7 +105,7 @@ export default function AdminAuditLogs() {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="rounded-md border border-border px-3 py-1 text-sm disabled:opacity-50"
+              className="rounded-md border border-default px-3 py-1 text-sm disabled:opacity-50"
             >
               Next
             </button>

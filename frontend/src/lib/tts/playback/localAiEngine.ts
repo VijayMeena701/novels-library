@@ -17,7 +17,7 @@ interface WordBoundary {
 
 function computeWordBoundaries(text: string, duration: number): WordBoundary[] {
     const words: WordBoundary[] = [];
-    const regex = /\S+/g;
+    const regex = /\w+/g;
     let match: RegExpExecArray | null;
     let totalChars = 0;
 
@@ -341,10 +341,11 @@ export class LocalAIEngine implements PlaybackEngine {
 
         this.currentSource = source;
         this.startTime = this.audioContext.currentTime;
+        this.callbacks = callbacks;
         debugLog("LocalAIEngine: source.start(0) at currentTime=", this.startTime, "scheduled=0, duration=", buffer.duration);
         source.start(0);
         this._state = "playing";
-        this.startBoundaryTimer();
+        this.startBoundaryTimer(callbacks);
         callbacks.onStart?.();
     }
 
@@ -413,10 +414,15 @@ export class LocalAIEngine implements PlaybackEngine {
             return;
         }
 
+        if (!this.callbacks) {
+            this._state = "idle";
+            return;
+        }
+
         await this.audioContext.resume();
         this.startTime = this.audioContext.currentTime - this.elapsedAtPause;
         this._state = "playing";
-        this.startBoundaryTimer();
+        this.startBoundaryTimer(this.callbacks);
     }
 
     stop(): void {
@@ -446,7 +452,7 @@ export class LocalAIEngine implements PlaybackEngine {
         this.currentBuffer = null;
     }
 
-    private startBoundaryTimer(): void {
+    private startBoundaryTimer(callbacks: PlaybackEngineCallbacks): void {
         if (!this.audioContext || this.wordBoundaries.length === 0) return;
 
         this.clearBoundaryTimer();
@@ -458,7 +464,7 @@ export class LocalAIEngine implements PlaybackEngine {
                 elapsed >= this.wordBoundaries[this.nextBoundaryIndex].time
             ) {
                 const boundary = this.wordBoundaries[this.nextBoundaryIndex];
-                this.callbacks?.onBoundary?.({
+                callbacks.onBoundary?.({
                     name: "word",
                     charIndex: boundary.charIndex,
                     charLength: boundary.charLength,

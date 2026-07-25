@@ -39,6 +39,6 @@ describe('Textarea', () => {
     render(<Textarea aria-label="Notes" />);
     const textarea = screen.getByLabelText('Notes');
     expect(textarea.tagName).toBe('TEXTAREA');
-    expect(textarea).toHaveClass('min-h-28');
+    expect(textarea).toHaveClass('min-h-24');
   });
 });

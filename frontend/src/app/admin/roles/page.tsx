@@ -125,7 +125,7 @@ export default function AdminRolesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Roles</h1>
+          <h1 className="text-2xl font-bold text-primary">Roles</h1>
           <p className="text-sm text-muted-foreground">Roles bundle permission groups together.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -147,7 +147,7 @@ export default function AdminRolesPage() {
           <Spinner size="lg" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-default">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -159,15 +159,15 @@ export default function AdminRolesPage() {
             </thead>
             <tbody>
               {roles.map((role) => (
-                <tr key={role._id} className="border-t border-border">
+                <tr key={role._id} className="border-t border-default">
                   <td className="px-4 py-3">
                     <div className="font-semibold">{role.name}</div>
                     <div className="font-mono text-xs text-muted-foreground">{role.key}</div>
-                    <div className="text-xs text-copy">{role.description}</div>
+                    <div className="text-xs text-secondary">{role.description}</div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {role.groups.length === 0 && <span className="text-xs text-muted-copy">—</span>}
+                      {role.groups.length === 0 && <span className="text-xs text-muted">—</span>}
                       {role.groups.map((g) => (
                         <Badge key={g._id} variant="outline">
                           {g.name}
@@ -189,7 +189,7 @@ export default function AdminRolesPage() {
                           Edit
                         </Button>
                         {!role.isSystem && (
-                          <Button size="sm" variant="danger" onClick={() => handleDelete(role)}>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(role)}>
                             <Trash2 className="size-3.5" />
                             Delete
                           </Button>
@@ -207,7 +207,7 @@ export default function AdminRolesPage() {
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Edit Role" : "Create Role"} size="lg">
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Key</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Key</label>
             <Input
               value={form.key}
               disabled={!!editing}
@@ -217,11 +217,11 @@ export default function AdminRolesPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Name</label>
             <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Description</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Description</label>
             <Textarea value={form.description || ""} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </div>
           <div className="flex items-center gap-2">
@@ -232,12 +232,12 @@ export default function AdminRolesPage() {
               checked={form.isSuperuser}
               onChange={(e) => setForm((f) => ({ ...f, isSuperuser: e.target.checked }))}
             />
-            <label htmlFor="isSuperuser" className="text-sm font-medium text-foreground">
+            <label htmlFor="isSuperuser" className="text-sm font-medium text-primary">
               Superuser
             </label>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Access Groups</label>
+            <label className="mb-2 block text-sm font-medium text-primary">Access Groups</label>
             <CheckboxGroup
               items={groupOptions}
               selectedKeys={form.groupIds || []}

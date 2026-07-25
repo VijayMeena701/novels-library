@@ -89,13 +89,13 @@ export function CatalogEditModal({ book, isOpen, onClose, onSaved }: CatalogEdit
 	}
 
 	return (
-		<div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/45 backdrop-blur-[6px]">
-			<Card className="w-full max-w-[760px] p-5 flex flex-col gap-4 bg-[#fffdf8] border-[#dfd6c8] shadow-2xl overflow-auto max-h-[90vh]">
-				<div className="flex justify-between items-center border-b border-[#dfd6c8] pb-2">
-					<h2 className="text-lg font-bold text-[#24211d]">Edit Catalog Metadata</h2>
+		<div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-scrim backdrop-blur-[6px]">
+			<Card className="w-full max-w-[760px] p-5 flex flex-col gap-4 bg-surface border-default shadow-elevation-5 overflow-auto max-h-[90vh]">
+				<div className="flex justify-between items-center border-b border-default pb-2">
+					<h2 className="text-lg font-bold text-primary">Edit Catalog Metadata</h2>
 					<button
 						onClick={onClose}
-						className="bg-transparent border-0 text-[#877d70] text-2xl cursor-pointer hover:text-[#24211d]"
+						className="bg-transparent border-0 text-muted text-2xl cursor-pointer hover:text-primary"
 					>
 						&times;
 					</button>
@@ -103,10 +103,10 @@ export function CatalogEditModal({ book, isOpen, onClose, onSaved }: CatalogEdit
 
 				<form onSubmit={handleSubmit} className="flex flex-col gap-3">
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Title</label>
+						<label className="text-xs font-bold text-secondary">Title</label>
 						<input
 							type="text"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white focus:border-[#405f8f]"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus focus:border-focus"
 							value={editTitle}
 							onChange={(e) => setEditTitle(e.target.value)}
 							required
@@ -115,19 +115,19 @@ export function CatalogEditModal({ book, isOpen, onClose, onSaved }: CatalogEdit
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
 						<div className="flex flex-col gap-1.5">
-							<label className="text-xs font-bold text-[#5f584f]">Author</label>
+							<label className="text-xs font-bold text-secondary">Author</label>
 							<input
 								type="text"
-								className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white focus:border-[#405f8f]"
+								className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus focus:border-focus"
 								value={editAuthor}
 								onChange={(e) => setEditAuthor(e.target.value)}
 							/>
 						</div>
 						<div className="flex flex-col gap-1.5">
-							<label className="text-xs font-bold text-[#5f584f]">Author Pen Name</label>
+							<label className="text-xs font-bold text-secondary">Author Pen Name</label>
 							<input
 								type="text"
-								className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white focus:border-[#405f8f]"
+								className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus focus:border-focus"
 								value={editAuthorPenName}
 								onChange={(e) => setEditAuthorPenName(e.target.value)}
 							/>
@@ -135,30 +135,30 @@ export function CatalogEditModal({ book, isOpen, onClose, onSaved }: CatalogEdit
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Author Real Name</label>
+						<label className="text-xs font-bold text-secondary">Author Real Name</label>
 						<input
 							type="text"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							value={editAuthorRealName}
 							onChange={(e) => setEditAuthorRealName(e.target.value)}
 						/>
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Alternative Names (comma-separated)</label>
+						<label className="text-xs font-bold text-secondary">Alternative Names (comma-separated)</label>
 						<input
 							type="text"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							value={editAlternativeNames}
 							onChange={(e) => setEditAlternativeNames(e.target.value)}
 						/>
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Genres (comma-separated)</label>
+						<label className="text-xs font-bold text-secondary">Genres (comma-separated)</label>
 						<input
 							type="text"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							value={editGenres}
 							onChange={(e) => setEditGenres(e.target.value)}
 						/>
@@ -166,19 +166,19 @@ export function CatalogEditModal({ book, isOpen, onClose, onSaved }: CatalogEdit
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
 						<div className="flex flex-col gap-1.5">
-							<label className="text-xs font-bold text-[#5f584f]">Publication Status</label>
+							<label className="text-xs font-bold text-secondary">Publication Status</label>
 							<input
 								type="text"
-								className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+								className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 								value={editPublicationStatus}
 								onChange={(e) => setEditPublicationStatus(e.target.value)}
 							/>
 						</div>
 						<div className="flex flex-col gap-1.5">
-							<label className="text-xs font-bold text-[#5f584f]">Raw Original Language</label>
+							<label className="text-xs font-bold text-secondary">Raw Original Language</label>
 							<input
 								type="text"
-								className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+								className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 								value={editRawOriginalLanguage}
 								onChange={(e) => setEditRawOriginalLanguage(e.target.value)}
 							/>
@@ -186,60 +186,60 @@ export function CatalogEditModal({ book, isOpen, onClose, onSaved }: CatalogEdit
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Original Source</label>
+						<label className="text-xs font-bold text-secondary">Original Source</label>
 						<input
 							type="url"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							value={editOriginalSource}
 							onChange={(e) => setEditOriginalSource(e.target.value)}
 						/>
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Source URL</label>
+						<label className="text-xs font-bold text-secondary">Source URL</label>
 						<input
 							type="url"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							value={editSourceUrl}
 							onChange={(e) => setEditSourceUrl(e.target.value)}
 						/>
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Raw Source URL</label>
+						<label className="text-xs font-bold text-secondary">Raw Source URL</label>
 						<input
 							type="url"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							value={editRawSourceUrl}
 							onChange={(e) => setEditRawSourceUrl(e.target.value)}
 						/>
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Cover URL</label>
+						<label className="text-xs font-bold text-secondary">Cover URL</label>
 						<input
 							type="url"
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							value={editCoverUrl}
 							onChange={(e) => setEditCoverUrl(e.target.value)}
 						/>
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs font-bold text-[#5f584f]">Description</label>
+						<label className="text-xs font-bold text-secondary">Description</label>
 						<textarea
-							className="w-full bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-white"
+							className="w-full bg-input-bg border border-input rounded-md px-3 py-2 text-xs outline-none transition-all focus:bg-input-bg-focus"
 							rows={4}
 							value={editDescription}
 							onChange={(e) => setEditDescription(e.target.value)}
 						/>
 					</div>
 
-					<div className="flex justify-end gap-2.5 border-t border-[#dfd6c8] pt-3 mt-2">
+					<div className="flex justify-end gap-2.5 border-t border-default pt-3 mt-2">
 						<Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={editingCatalog}>
 							Cancel
 						</Button>
-						<Button type="submit" size="sm" className="bg-[#405f8f] hover:bg-[#304a72] text-white" disabled={editingCatalog}>
+						<Button type="submit" size="sm" className="bg-accent hover:bg-accent-hover text-inverse" disabled={editingCatalog}>
 							{editingCatalog ? "Saving..." : "Save Changes"}
 						</Button>
 					</div>

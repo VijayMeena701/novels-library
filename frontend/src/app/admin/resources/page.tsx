@@ -53,7 +53,7 @@ export default function AdminResourcesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Resources</h1>
+          <h1 className="text-2xl font-bold text-primary">Resources</h1>
           <p className="text-sm text-muted-foreground">Enable or disable resources and view their available actions.</p>
         </div>
         <Button variant="secondary" size="sm" onClick={fetchResources} disabled={loading}>
@@ -83,7 +83,7 @@ export default function AdminResourcesPage() {
                 />
               </CardHeader>
               <CardContent>
-                <p className="mb-3 text-sm text-copy">{resource.description || "No description."}</p>
+                <p className="mb-3 text-sm text-secondary">{resource.description || "No description."}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={resource.isEnabled ? "completed" : "default"}>
                     {resource.isEnabled ? "Enabled" : "Disabled"}
@@ -91,9 +91,9 @@ export default function AdminResourcesPage() {
                   <Badge variant="outline">{resource.category}</Badge>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-1">
-                  {resource.actions.length === 0 && <span className="text-xs text-muted-copy">No actions defined.</span>}
+                  {resource.actions.length === 0 && <span className="text-xs text-muted">No actions defined.</span>}
                   {resource.actions.map((action) => (
-                    <span key={action._id} className="rounded-md bg-surface px-2 py-1 text-xs font-medium text-copy">
+                    <span key={action._id} className="rounded-md bg-surface px-2 py-1 text-xs font-medium text-secondary">
                       {action.key}
                     </span>
                   ))}

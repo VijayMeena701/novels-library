@@ -1,17 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, Suspense, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type CatalogBookFilters } from "../../utils/api";
-import { useAuth } from "../../context/AuthContext";
-import { useReaderSettings } from "../../hooks/useReaderSettings";
 import { useBooksCatalog } from "../../hooks/useBooksCatalog";
 import { BookCard } from "../../components/BookCard";
 import { BooksFilterPanel } from "../../components/BooksFilterPanel";
 import { BooksPagination } from "../../components/BooksPagination";
 import { Card } from "../../components/ui/card";
 import { Spinner } from "../../components/ui/spinner";
-import { applyReaderThemeCssVariables } from "../../lib/reader-theme";
 import { cn } from "../../lib/utils";
 
 function useDebouncedCallback(callback: () => void, delay: number) {
@@ -63,7 +60,6 @@ const DEFAULT_FILTERS: CatalogBookFilters = {
   genre: undefined,
   source: undefined,
   publicationStatus: undefined,
-  status: "all",
   authorId: undefined,
   minRating: undefined,
   maxRating: undefined,
@@ -91,7 +87,6 @@ function parseFilters(searchParams: URLSearchParams): CatalogBookFilters {
     genre: searchParams.get("genre") || undefined,
     source: searchParams.get("source") || undefined,
     publicationStatus: searchParams.get("publicationStatus") || undefined,
-    status: (searchParams.get("status") as CatalogBookFilters["status"]) || "all",
     authorId: searchParams.get("authorId") || undefined,
     minRating: parseOptionalNumberParam(searchParams.get("minRating")),
     maxRating: parseOptionalNumberParam(searchParams.get("maxRating")),
@@ -109,7 +104,6 @@ function buildQueryString(filters: CatalogBookFilters): string {
   if (filters.genre) params.set("genre", filters.genre);
   if (filters.source) params.set("source", filters.source);
   if (filters.publicationStatus) params.set("publicationStatus", filters.publicationStatus);
-  if (filters.status && filters.status !== "all") params.set("status", filters.status);
   if (filters.authorId) params.set("authorId", filters.authorId);
   if (filters.minRating !== undefined && filters.minRating !== null) params.set("minRating", String(filters.minRating));
   if (filters.maxRating !== undefined && filters.maxRating !== null) params.set("maxRating", String(filters.maxRating));
@@ -126,12 +120,6 @@ function BooksPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams.toString();
-  const { user } = useAuth();
-  const { theme: readerTheme } = useReaderSettings(user);
-  const readerThemeStyle = useMemo(
-    () => applyReaderThemeCssVariables(readerTheme) as CSSProperties,
-    [readerTheme],
-  );
 
   // searchParamsKey is derived from searchParams and is stable for comparison.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,14 +179,13 @@ function BooksPageContent() {
 
   return (
     <div
-      className="reader-theme min-h-screen w-full bg-background"
-      style={readerThemeStyle}
+      className="min-h-screen w-full bg-app"
     >
       <div className={cn("mx-auto w-full max-w-[1280px] px-5 pb-16 pt-9 sm:px-6 lg:px-8", "flex flex-col gap-7")}>
         <div className="flex items-end justify-between gap-4 py-1">
           <div>
-            <h1 className="text-[2.5rem] font-semibold leading-tight tracking-tight text-foreground">Books</h1>
-            <p className="mt-2 text-[1.0625rem] text-muted-copy max-w-[720px]">Browse and filter the full catalog.</p>
+            <h1 className="text-[2.5rem] font-semibold leading-tight tracking-tight text-primary">Books</h1>
+            <p className="mt-2 text-[1.0625rem] text-muted max-w-[720px]">Browse and filter the full catalog.</p>
           </div>
         </div>
 
@@ -215,7 +202,7 @@ function BooksPageContent() {
                 <Spinner size="md" />
               </div>
             ) : result?.books.length === 0 ? (
-              <Card className="rounded-xl border-0 p-6 text-center text-muted-copy">No books match your filters.</Card>
+              <Card className="rounded-xl border-0 p-6 text-center text-muted">No books match your filters.</Card>
             ) : (
               <>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

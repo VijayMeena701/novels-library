@@ -14,8 +14,7 @@ import { deleteCoverImageFile } from '../services/coverImage';
 import { resolveAuthorIds, toAuthorObjectId, toAuthorObjectIds } from '../services/authors';
 import { resolveGenres, resolvePublicationStatus } from '../services/taxonomy';
 import { hasCapability, CAPABILITY } from '../services/rbac';
-
-const VALID_BOOK_STATUSES = new Set<BookStatus>(['reading', 'completed', 'on_hold', 'dropped', 'planning']);
+import { VALID_BOOK_STATUSES, deriveUserBookStatus, isStatusTransitionAllowed } from '../services/readingStatus';
 
 const PERSONAL_LIBRARY_FIELDS = [
   'status',
@@ -72,12 +71,24 @@ function pickSharedBookUpdates(updates: Record<string, any>) {
   return picked;
 }
 
+function isUserBookActive(userBook?: any): boolean {
+  if (!userBook) return false;
+  const personal = typeof userBook.toObject === 'function' ? userBook.toObject() : userBook;
+  return !personal.removedAt;
+}
+
+function activeUserBookQuery(userId: string | mongoose.Types.ObjectId, bookId?: string | mongoose.Types.ObjectId) {
+  const query: Record<string, any> = { userId, removedAt: null };
+  if (bookId) query.bookId = bookId;
+  return query;
+}
+
 function serializeBookForUser(book: any, userBook?: any) {
   const serialized = typeof book.toObject === 'function' ? book.toObject() : { ...book };
   if (!serialized.authorId && Array.isArray(serialized.authorIds) && serialized.authorIds.length > 0) {
     serialized.authorId = serialized.authorIds[0];
   }
-  if (!userBook) {
+  if (!isUserBookActive(userBook)) {
     return serialized;
   }
 
@@ -181,17 +192,6 @@ function applySharedBookFilters(andFilters: any[], query: Record<string, any>) {
     pushFilter(andFilters, { publicationStatusId });
   } else if (publicationStatusKeys.length > 0) {
     pushFilter(andFilters, { publicationStatusKey: { $in: publicationStatusKeys } });
-  }
-
-  const statusValues =
-    typeof query.status === 'string'
-      ? query.status
-          .split(',')
-          .map((s: string) => s.trim())
-          .filter((s: string) => VALID_BOOK_STATUSES.has(s as BookStatus))
-      : [];
-  if (statusValues.length > 0) {
-    pushFilter(andFilters, { status: { $in: statusValues } });
   }
 
   const authorIds = toObjectIds(query.authorId);
@@ -310,8 +310,8 @@ export async function listBooksHandler(request: FastifyRequest, reply: FastifyRe
   const { status } = request.query as any;
 
   try {
-    const userBookFilter: Record<string, any> = { userId };
-    if (typeof status === 'string' && status !== 'all' && VALID_BOOK_STATUSES.has(status as BookStatus)) {
+    const userBookFilter: Record<string, any> = { userId, removedAt: null };
+    if (typeof status === 'string' && status !== 'all' && VALID_BOOK_STATUSES.includes(status as BookStatus)) {
       userBookFilter.status = status;
     }
 
@@ -541,23 +541,40 @@ export async function addBookToLibraryHandler(request: FastifyRequest, reply: Fa
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const userBook = await UserBook.findOneAndUpdate(
-      { userId, bookId: book._id },
-      {
-        $setOnInsert: {
-          status: 'planning',
-          chaptersRead: 0,
-          rating: 0,
-          review: '',
-          personalNotes: '',
-          rawLegacyEntry: '',
-          characterNotes: '',
-          relationshipNotes: '',
-          personalTags: [],
-        },
-      },
-      { new: true, upsert: true },
-    );
+    const totalChapters = book.translatedChaptersTotal || (book.translatedChaptersList || []).length || 0;
+
+    let userBook = await UserBook.findOne({ userId, bookId: book._id });
+    if (userBook) {
+      const nextStatus = deriveUserBookStatus({
+        currentStatus: userBook.status,
+        chaptersRead: userBook.chaptersRead || 0,
+        totalChapters,
+        action: 'add',
+      });
+
+      userBook.removedAt = null;
+      userBook.status = nextStatus;
+      if (nextStatus === 'completed' && !userBook.completedAt) {
+        userBook.completedAt = new Date();
+      } else if (nextStatus !== 'completed') {
+        userBook.completedAt = undefined;
+      }
+      await userBook.save();
+    } else {
+      userBook = await UserBook.create({
+        userId: new mongoose.Types.ObjectId(userId),
+        bookId: book._id,
+        status: 'planning',
+        chaptersRead: 0,
+        rating: 0,
+        review: '',
+        personalNotes: '',
+        rawLegacyEntry: '',
+        characterNotes: '',
+        relationshipNotes: '',
+        personalTags: [],
+      });
+    }
 
     return reply.status(201).send(serializeBookForUser(book, userBook));
   } catch (err: any) {
@@ -580,7 +597,7 @@ export async function getBookHandler(request: FastifyRequest, reply: FastifyRepl
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const userBook = await UserBook.findOne({ bookId: id, userId });
+    const userBook = await UserBook.findOne(activeUserBookQuery(userId, id));
     if (!userBook) {
       return reply.status(404).send({ error: 'Book not found in your library.' });
     }
@@ -645,7 +662,7 @@ export async function updateBookHandler(request: FastifyRequest, reply: FastifyR
       return reply.status(404).send({ error: 'Book not found or unauthorized.' });
     }
 
-    const userBook = await UserBook.findOne({ bookId: id, userId });
+    const userBook = await UserBook.findOne(activeUserBookQuery(userId, id));
     if (!userBook) {
       return reply.status(404).send({ error: 'Book not found in your library.' });
     }
@@ -653,6 +670,16 @@ export async function updateBookHandler(request: FastifyRequest, reply: FastifyR
     const isAdmin = await hasCapability(request, CAPABILITY.BOOKS_MANAGE);
     const personalUpdates = pickPersonalLibraryUpdates(updates);
     const sharedUpdates = pickSharedBookUpdates(updates);
+
+    // Validate manual status against the state machine values and allowed transitions.
+    const originalStatus: BookStatus = userBook.status || 'planning';
+    const requestedStatus = personalUpdates.status as BookStatus | undefined;
+    if (requestedStatus !== undefined && !VALID_BOOK_STATUSES.includes(requestedStatus)) {
+      return reply.status(400).send({ error: 'Invalid reading status.' });
+    }
+    if (requestedStatus !== undefined && !isStatusTransitionAllowed(originalStatus, requestedStatus)) {
+      return reply.status(400).send({ error: `Cannot transition reading status from ${originalStatus} to ${requestedStatus}.` });
+    }
 
     const oldRating = Number(userBook.rating) || 0;
     const oldReview = String(userBook.review || '');
@@ -669,23 +696,34 @@ export async function updateBookHandler(request: FastifyRequest, reply: FastifyR
       book.coverImageSyncedAt = undefined;
     }
 
+    const originalChaptersRead = Number(userBook.chaptersRead) || 0;
+    const requestedChaptersRead = personalUpdates.chaptersRead !== undefined ? Number(personalUpdates.chaptersRead) || 0 : originalChaptersRead;
+
     Object.assign(userBook, personalUpdates);
 
     if (isAdmin && Object.keys(sharedUpdates).length > 0) {
       await applySharedBookUpdates(book, sharedUpdates);
     }
 
-    // Auto-mark completed if chaptersRead matches translatedChaptersTotal and translatedChaptersTotal > 0
-    if (
-      book.translatedChaptersTotal > 0 &&
-      userBook.chaptersRead >= book.translatedChaptersTotal &&
-      userBook.status !== 'completed'
-    ) {
-      userBook.status = 'completed';
-    }
+    // State-machine: resolve final reading status from progress, action and allowed transitions.
+    const totalChapters = book.translatedChaptersTotal || (book.translatedChaptersList || []).length || 0;
+    const nextStatus = deriveUserBookStatus({
+      currentStatus: originalStatus,
+      chaptersRead: requestedChaptersRead,
+      totalChapters,
+      action: requestedChaptersRead !== originalChaptersRead ? 'read' : 'manual',
+      requestedStatus,
+    });
 
-    if (userBook.status === 'completed' && !userBook.completedAt) {
-      userBook.completedAt = new Date();
+    userBook.status = nextStatus;
+    userBook.chaptersRead = requestedChaptersRead;
+
+    if (userBook.status === 'completed') {
+      userBook.completedAt = personalUpdates.completedAt
+        ? new Date(personalUpdates.completedAt)
+        : (userBook.completedAt || new Date());
+    } else {
+      userBook.completedAt = undefined;
     }
 
     await userBook.save();
@@ -932,14 +970,13 @@ export async function deleteBookHandler(request: FastifyRequest, reply: FastifyR
       return reply.status(404).send({ error: 'Book not found.' });
     }
 
-    const userBook = await UserBook.findOne({ bookId: id, userId });
+    const userBook = await UserBook.findOne(activeUserBookQuery(userId, id));
     if (!userBook) {
       return reply.status(404).send({ error: 'Book not found in your library.' });
     }
 
-    await UserBook.deleteOne({ _id: userBook._id });
-    await ReadingSession.deleteMany({ bookId: id, userId });
-    await ChapterVisit.deleteMany({ bookId: id, userId });
+    userBook.removedAt = new Date();
+    await userBook.save();
 
     return reply.send({ success: true, message: 'Book removed from your library.' });
   } catch (err: any) {
@@ -1001,7 +1038,10 @@ export async function startReadingSessionHandler(request: FastifyRequest, reply:
   const { notes, chaptersRead } = request.body as any;
 
   try {
-    const [book, userBook] = await Promise.all([Book.findById(bookId), UserBook.findOne({ bookId, userId })]);
+    const [book, userBook] = await Promise.all([
+      Book.findById(bookId),
+      UserBook.findOne(activeUserBookQuery(userId, bookId)),
+    ]);
     if (!book || !userBook) {
       return reply.status(404).send({ error: 'Book not found.' });
     }

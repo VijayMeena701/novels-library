@@ -132,6 +132,37 @@ export async function deleteUserHandler(request: FastifyRequest, reply: FastifyR
   }
 }
 
+export async function resetUserPasswordHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const actor = (request as any).user as any;
+    const { id } = request.params as any;
+    const body = request.body as any;
+    const newPassword = typeof body.password === 'string' ? body.password.trim() : '';
+
+    if (!newPassword || newPassword.length < 8) {
+      return reply.status(400).send({ error: 'Password must be at least 8 characters.' });
+    }
+
+    const user = await User.findById(id).populate('roles');
+    if (!user) return reply.status(404).send({ error: 'User not found.' });
+    if (actor?.id !== id && !(await canManageTarget(actor, user))) {
+      return reply.status(403).send({ error: 'Forbidden. Cannot manage this user.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    user.passwordHash = passwordHash;
+    if (user.authProvider === 'google') {
+      user.authProvider = 'both';
+    }
+    await user.save();
+
+    return reply.send({ success: true, message: 'Password reset successfully.' });
+  } catch (err: any) {
+    request.log.error(err);
+    return reply.status(500).send({ error: 'Server error resetting password.' });
+  }
+}
+
 export async function listRolesHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const roles = await Role.find().populate('groups', 'key name').sort({ key: 1 }).lean();

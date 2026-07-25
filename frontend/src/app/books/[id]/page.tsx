@@ -8,6 +8,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { CAPABILITY } from "../../../utils/permissions";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
+import { Spinner } from "../../../components/ui/spinner";
 import { BookLibraryPanel } from "../../../components/BookLibraryPanel";
 import { BookHero } from "../../../components/book/BookHero";
 import { BookAdminConsole } from "../../../components/book/BookAdminConsole";
@@ -349,8 +350,8 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 	if (loading) {
 		return (
 			<div className="w-full max-w-[1520px] mx-auto px-5 py-8">
-				<Card className="p-12 text-center flex flex-col items-center justify-center border-[#dfd6c8] bg-[#fffdf8]">
-					<div className="w-10 h-10 border-4 border-slate-200 border-t-[#405f8f] rounded-full animate-spin" />
+				<Card className="p-12 text-center flex flex-col items-center justify-center border-default bg-surface">
+					<Spinner size="xl" />
 				</Card>
 			</div>
 		);
@@ -359,9 +360,9 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 	if (!book) {
 		return (
 			<div className="w-full max-w-[1520px] mx-auto px-5 py-8">
-				<Card className="p-12 text-center border-[#dfd6c8] bg-[#fffdf8]">
-					<h1 className="text-xl font-extrabold text-[#24211d]">Book Not Found</h1>
-					<Button asChild variant="secondary" className="mt-4 text-xs font-bold border-[#dfd6c8] hover:bg-slate-50">
+				<Card className="p-12 text-center border-default bg-surface">
+					<h1 className="text-xl font-extrabold text-primary">Book Not Found</h1>
+					<Button asChild variant="secondary" className="mt-4 text-xs font-bold border-default hover:bg-surface-hover">
 						<Link href="/">Back Home</Link>
 					</Button>
 				</Card>
@@ -390,12 +391,12 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 			/>
 
 			{(canAdmin || isUserBook) && (
-				<div className="flex gap-6 border-b-2 border-[#dfd6c8] mt-2 pb-0.5">
+				<div className="flex gap-6 border-b-2 border-default mt-2 pb-0.5">
 					<button
 						className={`relative pb-2.5 text-sm font-bold transition-all ${
 							activeTab === "read"
-								? "text-[#405f8f] after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-[#405f8f] after:rounded-full"
-								: "text-[#877d70] hover:text-[#24211d]"
+								? "text-accent after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-accent after:rounded-full"
+								: "text-muted hover:text-primary"
 						}`}
 						onClick={() => setActiveTab("read")}
 					>
@@ -405,8 +406,8 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 						<button
 							className={`relative pb-2.5 text-sm font-bold transition-all ${
 								activeTab === "library"
-									? "text-[#405f8f] after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-[#405f8f] after:rounded-full"
-									: "text-[#877d70] hover:text-[#24211d]"
+									? "text-accent after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-accent after:rounded-full"
+									: "text-muted hover:text-primary"
 							}`}
 							onClick={() => setActiveTab("library")}
 						>
@@ -417,8 +418,8 @@ export default function PublicBookDetails({ params }: { params: Promise<{ id: st
 						<button
 							className={`relative pb-2.5 text-sm font-bold transition-all ${
 								activeTab === "admin"
-									? "text-[#405f8f] after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-[#405f8f] after:rounded-full"
-									: "text-[#877d70] hover:text-[#24211d]"
+									? "text-accent after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[3px] after:bg-accent after:rounded-full"
+									: "text-muted hover:text-primary"
 							}`}
 							onClick={() => setActiveTab("admin")}
 						>

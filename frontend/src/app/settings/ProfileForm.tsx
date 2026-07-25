@@ -42,7 +42,7 @@ export function ProfileForm({ user, updateUser }: ProfileFormProps) {
 			<div className="flex items-end justify-between gap-4 py-1">
 				<div>
 					<h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Settings</h1>
-					<p className="text-copy max-w-[720px]">Manage your profile and preferences.</p>
+					<p className="text-secondary max-w-[720px]">Manage your profile and preferences.</p>
 				</div>
 				<Button variant="secondary" onClick={() => router.push("/profile")}>
 					Back to Profile
@@ -58,7 +58,7 @@ export function ProfileForm({ user, updateUser }: ProfileFormProps) {
 						{message && (
 							<div
 								className={`rounded-md px-3 py-2 text-sm font-bold ${
-									message.includes("success") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+									message.includes("success") ? "bg-green-50 text-green-700" : "bg-danger/10 text-danger"
 								}`}
 							>
 								{message}
@@ -66,7 +66,7 @@ export function ProfileForm({ user, updateUser }: ProfileFormProps) {
 						)}
 
 						<div className="grid gap-2">
-							<label htmlFor="username" className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">
+							<label htmlFor="username" className="text-xs font-extrabold uppercase tracking-wide text-muted">
 								Username
 							</label>
 							<Input
@@ -78,14 +78,14 @@ export function ProfileForm({ user, updateUser }: ProfileFormProps) {
 						</div>
 
 						<div className="grid gap-2">
-							<label htmlFor="email" className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">
+							<label htmlFor="email" className="text-xs font-extrabold uppercase tracking-wide text-muted">
 								Email
 							</label>
 							<Input id="email" type="email" value={user.email} disabled />
 						</div>
 
 						<div className="grid gap-2">
-							<label htmlFor="avatar" className="text-xs font-extrabold uppercase tracking-wide text-muted-copy">
+							<label htmlFor="avatar" className="text-xs font-extrabold uppercase tracking-wide text-muted">
 								Avatar URL
 							</label>
 							<Input

@@ -215,12 +215,12 @@ export function BookAdminConsole({
 	].filter((action): action is CommonAdminAction => action !== null);
 
 	return (
-		<Card className="p-[1.1rem] bg-gradient-to-b from-[#fffdf8] to-[#faf6ee] border-[#dfd6c8] flex flex-col gap-6 shadow-sm">
+		<Card className="p-[1.1rem] bg-gradient-to-b from-surface to-surface-raised border-default flex flex-col gap-6 shadow-elevation-1">
 			<div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 				<div>
-					<span className="block text-[10px] font-black tracking-wider text-[#877d70] uppercase mb-1">Catalog administration</span>
-					<h2 className="text-xl font-bold uppercase text-[#24211d]">{book.title}</h2>
-					<p className="text-sm text-[#5f584f] mt-1">
+					<span className="block text-[10px] font-black tracking-wider text-muted uppercase mb-1">Catalog administration</span>
+					<h2 className="text-xl font-bold uppercase text-primary">{book.title}</h2>
+					<p className="text-sm text-secondary mt-1">
 						Manage this shared book record, queue indexing jobs, import chapter index HTML, and update catalog metadata.
 					</p>
 				</div>
@@ -230,51 +230,51 @@ export function BookAdminConsole({
 			</div>
 
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-				<div className="p-4 border border-[#dfd6c8] rounded-md bg-[#f8f5ee] flex flex-col">
+				<div className="p-4 border border-default rounded-md bg-surface-raised flex flex-col">
 					<div className="flex justify-between items-center mb-1">
-						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Active jobs</span>
+						<span className="text-[10px] font-bold tracking-wider text-muted uppercase">Active jobs</span>
 						<span
-							className={`w-2.5 h-2.5 rounded-full transition-all ${activeJobTypes.size > 0 ? "bg-[#d97706] shadow-[0_0_8px_rgba(217,119,6,0.5)] animate-pulse" : "bg-[#877d70]/40"}`}
+							className={`w-2.5 h-2.5 rounded-full transition-all ${activeJobTypes.size > 0 ? "bg-warning shadow-elevation-4 animate-pulse" : "bg-muted/40"}`}
 						></span>
 					</div>
-					<strong className="text-2xl font-extrabold text-[#24211d]">{activeJobTypes.size}</strong>
+					<strong className="text-2xl font-extrabold text-primary">{activeJobTypes.size}</strong>
 				</div>
 
-				<div className="p-4 border border-[#dfd6c8] rounded-md bg-[#f8f5ee] flex flex-col">
+				<div className="p-4 border border-default rounded-md bg-surface-raised flex flex-col">
 					<div className="flex justify-between items-center mb-1">
-						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Queued / Processing</span>
+						<span className="text-[10px] font-bold tracking-wider text-muted uppercase">Queued / Processing</span>
 						<span
-							className={`w-2.5 h-2.5 rounded-full transition-all ${processingJobCount > 0 ? "bg-[#d97706] shadow-[0_0_8px_rgba(217,119,6,0.5)] animate-pulse" : "bg-[#877d70]/40"}`}
+							className={`w-2.5 h-2.5 rounded-full transition-all ${processingJobCount > 0 ? "bg-warning shadow-elevation-4 animate-pulse" : "bg-muted/40"}`}
 						></span>
 					</div>
-					<strong className="text-2xl font-extrabold text-[#24211d]">{processingJobCount}</strong>
+					<strong className="text-2xl font-extrabold text-primary">{processingJobCount}</strong>
 				</div>
 
-				<div className="p-4 border border-[#dfd6c8] rounded-md bg-[#f8f5ee] flex flex-col justify-between">
+				<div className="p-4 border border-default rounded-md bg-surface-raised flex flex-col justify-between">
 					<div className="flex justify-between items-center mb-1">
-						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Indexed chapters</span>
-						<span className="text-xs font-bold text-[#405f8f]">{translatedArchivePercent}%</span>
+						<span className="text-[10px] font-bold tracking-wider text-muted uppercase">Indexed chapters</span>
+						<span className="text-xs font-bold text-accent">{translatedArchivePercent}%</span>
 					</div>
-					<strong className="text-lg font-extrabold text-[#24211d]">
+					<strong className="text-lg font-extrabold text-primary">
 						{book.translatedChaptersList?.length || 0} / {book.translatedChaptersTotal || "?"}
 					</strong>
-					<div className="w-full h-1.5 bg-[#e8dfd1] rounded-full overflow-hidden mt-2">
-						<div className="h-full bg-[#405f8f] rounded-full transition-all duration-300" style={{ width: `${translatedArchivePercent}%` }}></div>
+					<div className="w-full h-1.5 bg-surface-raised rounded-full overflow-hidden mt-2">
+						<div className="h-full bg-accent rounded-full transition-all duration-300" style={{ width: `${translatedArchivePercent}%` }}></div>
 					</div>
 				</div>
 			</div>
 
 			<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 				{/* Translated data pipeline */}
-				<section className="p-4 border border-[#b9aa95]/40 rounded-lg bg-[#fffcf6] shadow-sm flex flex-col gap-4">
-					<div className="border-b border-[#dfd6c8] pb-2">
-						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Translated data pipeline</span>
-						<h3 className="text-sm font-black text-[#24211d] uppercase">Translated Flow</h3>
+				<section className="p-4 border border-strong/40 rounded-lg bg-surface shadow-elevation-1 flex flex-col gap-4">
+					<div className="border-b border-default pb-2">
+						<span className="text-[10px] font-bold tracking-wider text-muted uppercase">Translated data pipeline</span>
+						<h3 className="text-sm font-black text-primary uppercase">Translated Flow</h3>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						{translatedPipelineSections.map((section) => (
-							<div key={section.key} className="p-4 border border-[#dfd6c8] rounded-md bg-white flex flex-col gap-3">
-								<h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#5f584f]">{section.title}</h4>
+							<div key={section.key} className="p-4 border border-default rounded-md bg-surface flex flex-col gap-3">
+								<h4 className="text-[11px] font-extrabold uppercase tracking-wider text-secondary">{section.title}</h4>
 								<div className="flex flex-col gap-2">
 									{section.actions.map((action) => (
 										<Button
@@ -295,15 +295,15 @@ export function BookAdminConsole({
 				</section>
 
 				{/* Raw data pipeline */}
-				<section className="p-4 border border-[#b9aa95]/40 rounded-lg bg-[#fffcf6] shadow-sm flex flex-col gap-4">
-					<div className="border-b border-[#dfd6c8] pb-2">
-						<span className="text-[10px] font-bold tracking-wider text-[#877d70] uppercase">Raw data pipeline</span>
-						<h3 className="text-sm font-black text-[#24211d] uppercase">Raw Flow</h3>
+				<section className="p-4 border border-strong/40 rounded-lg bg-surface shadow-elevation-1 flex flex-col gap-4">
+					<div className="border-b border-default pb-2">
+						<span className="text-[10px] font-bold tracking-wider text-muted uppercase">Raw data pipeline</span>
+						<h3 className="text-sm font-black text-primary uppercase">Raw Flow</h3>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						{rawPipelineSections.map((section) => (
-							<div key={section.key} className="p-4 border border-[#dfd6c8] rounded-md bg-white flex flex-col gap-3">
-								<h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#5f584f]">{section.title}</h4>
+							<div key={section.key} className="p-4 border border-default rounded-md bg-surface flex flex-col gap-3">
+								<h4 className="text-[11px] font-extrabold uppercase tracking-wider text-secondary">{section.title}</h4>
 								<div className="flex flex-col gap-2">
 									{section.actions.map((action) => (
 										<Button
@@ -324,8 +324,8 @@ export function BookAdminConsole({
 				</section>
 			</div>
 
-			<div className="p-4 border border-[#dfd6c8] rounded-md bg-[#fffdf8] flex flex-col gap-3">
-				<h4 className="text-xs font-extrabold uppercase tracking-wider text-[#5f584f]">Common Catalog Tools</h4>
+			<div className="p-4 border border-default rounded-md bg-surface flex flex-col gap-3">
+				<h4 className="text-xs font-extrabold uppercase tracking-wider text-secondary">Common Catalog Tools</h4>
 				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
 					{commonAdminActions.map((action) => {
 						if (!action) return null;
@@ -335,7 +335,7 @@ export function BookAdminConsole({
 								asChild
 								variant="secondary"
 								size="sm"
-								className="text-xs font-semibold py-2 w-full border-[#dfd6c8] hover:bg-white"
+								className="text-xs font-semibold py-2 w-full border-default hover:bg-surface-hover"
 							>
 								<a href={action.href} target="_blank" rel="noreferrer">
 									{action.label}
@@ -346,7 +346,7 @@ export function BookAdminConsole({
 								key={action.key}
 								variant="secondary"
 								size="sm"
-								className="text-xs font-semibold py-2 w-full border-[#dfd6c8] hover:bg-white"
+								className="text-xs font-semibold py-2 w-full border-default hover:bg-surface-hover"
 								onClick={action.onClick}
 								disabled={action.disabled}
 							>
@@ -357,40 +357,33 @@ export function BookAdminConsole({
 				</div>
 			</div>
 
-			{adminMessage && <div className="p-3.5 border border-[#405f8f]/20 rounded-md bg-[#e9eef8]/80 text-[#24211d] text-sm">{adminMessage}</div>}
+			{adminMessage && <div className="p-3.5 border border-info/20 rounded-md bg-info/10 text-primary text-sm">{adminMessage}</div>}
 
-			<section className="p-4 border border-[#dfd6c8] rounded-md bg-white flex flex-col gap-4">
-				<div className="flex justify-between items-baseline border-b border-[#dfd6c8] pb-2">
-					<h3 className="text-sm font-bold text-[#24211d] uppercase">Recent Activity</h3>
-					<span className="text-[10px] font-black text-[#877d70] tracking-wider uppercase">Scrape log</span>
+			<section className="p-4 border border-default rounded-md bg-surface flex flex-col gap-4">
+				<div className="flex justify-between items-baseline border-b border-default pb-2">
+					<h3 className="text-sm font-bold text-primary uppercase">Recent Activity</h3>
+					<span className="text-[10px] font-black text-muted tracking-wider uppercase">Scrape log</span>
 				</div>
 				{recentJobs.length > 0 ? (
-					<div className="grid border border-[#dfd6c8]/80 rounded-md overflow-hidden bg-[#fffdf8]">
+					<div className="grid border border-default/80 rounded-md overflow-hidden bg-surface">
 						{recentJobs.map((job) => (
 							<div
 								key={job._id}
-								className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-3 items-start p-3 border-b border-[#dfd6c8]/70 last:border-0 hover:bg-[#f8f5ee]/40 transition-colors"
+								className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-3 items-start p-3 border-b border-default/70 last:border-0 hover:bg-surface-raised/40 transition-colors"
 							>
-								<span className="text-[11px] font-extrabold text-[#877d70] tracking-tight whitespace-nowrap">
+								<span className="text-[11px] font-extrabold text-muted tracking-tight whitespace-nowrap">
 									[{formatActivityTime(job.updatedAt)}]
 								</span>
 								<div className="grid gap-0.5 min-w-0">
-									<strong className="text-xs font-extrabold capitalize text-[#24211d]">{formatJobTypeLabel(job.type)}</strong>
-									<small className="text-xs text-[#5f584f]">
+									<strong className="text-xs font-extrabold capitalize text-primary">{formatJobTypeLabel(job.type)}</strong>
+									<small className="text-xs text-secondary">
 										{job.error?.message || job.progress?.message || formatJobStatusLabel(job.status)}
 									</small>
 								</div>
 								<span className="md:ml-auto">
 									<Badge
-										className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border border-solid ${
-											getJobBadgeVariant(job.status) === "completed"
-												? "bg-[#ecf8ef] text-[#207346] border-[#c7e8d0]"
-												: getJobBadgeVariant(job.status) === "processing"
-													? "bg-[#e9eef8] text-[#31517d] border-[#c8d5eb] animate-pulse"
-													: getJobBadgeVariant(job.status) === "hold"
-														? "bg-[#fff5df] text-[#9b5a10] border-[#f2d7a5]"
-														: "bg-[#fff0ee] text-[#a73b2f] border-[#f3c7bf]"
-										}`}
+										variant={getJobBadgeVariant(job.status)}
+										className="text-[9px]"
 									>
 										{formatJobStatusLabel(job.status)}
 									</Badge>
@@ -399,7 +392,7 @@ export function BookAdminConsole({
 						))}
 					</div>
 				) : (
-					<p className="text-xs text-[#877d70] italic">No recent admin activity for this book yet.</p>
+					<p className="text-xs text-muted italic">No recent admin activity for this book yet.</p>
 				)}
 			</section>
 		</Card>

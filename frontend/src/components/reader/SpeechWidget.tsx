@@ -86,7 +86,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 
 	const isPlaying = status === "playing";
 	const isPaused = status === "paused";
-	const statusDotClass = isPlaying ? "bg-success" : isPaused ? "bg-warning" : "bg-muted-copy";
+	const statusDotClass = isPlaying ? "bg-success" : isPaused ? "bg-warning" : "bg-muted";
 
 	const safePanelPosition = useMemo(() => {
 		if (typeof window === "undefined") return position;
@@ -111,13 +111,13 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 				aria-expanded={isOpen}
 				aria-label={isOpen ? "Hide listening controls" : "Show listening controls"}
 				className={cn(
-					"z-40 flex size-10 cursor-grab items-center justify-center rounded-full border shadow-[0_8px_24px_rgba(0,0,0,0.16)] transition duration-200 hover:-translate-y-0.5 active:cursor-grabbing active:scale-95",
+					"z-40 flex size-10 cursor-grab items-center justify-center rounded-full border shadow-elevation-4 transition duration-200 hover:-translate-y-0.5 active:cursor-grabbing active:scale-95",
 					isOpen
-						? "border-[var(--reader-accent)] bg-[var(--reader-surface-hover)] text-[var(--reader-text)]"
-						: "border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] hover:bg-[var(--reader-surface-hover)]",
+						? "border-reader-accent bg-reader-controls text-reader-paragraph"
+						: "border-reader bg-reader-surface text-reader-paragraph hover:bg-reader-controls",
 				)}
 			>
-				<span className={cn("absolute right-2 top-2 size-2.5 rounded-full border-2 border-[var(--reader-bg)]", statusDotClass)} />
+				<span className={cn("absolute right-2 top-2 size-2.5 rounded-full border-2 border-reader-bg", statusDotClass)} />
 				{isPlaying ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
 			</Draggable>
 
@@ -129,7 +129,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 					onPositionChange={onPositionChange}
 					handle="[data-speech-widget-header]"
 					className={cn(
-						"flex w-[320px] max-w-[calc(100vw-24px)] flex-col gap-3 rounded-2xl border border-[var(--reader-border)] bg-[var(--reader-surface)] p-3.5 text-[var(--reader-text)] shadow-[0_18px_48px_rgba(0,0,0,0.24)] font-sans",
+						"flex w-[320px] max-w-[calc(100vw-24px)] flex-col gap-3 rounded-2xl border border-reader bg-reader-surface p-3.5 text-reader-paragraph shadow-elevation-5 font-sans",
 						isBottomToolbarOpen ? "z-40" : "z-50",
 						"max-h-[70vh] overflow-y-auto",
 					)}
@@ -139,9 +139,9 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 						data-speech-widget-header
 						className="flex cursor-grab touch-none items-center gap-2 py-1 select-none active:cursor-grabbing"
 					>
-						<GripVertical className="size-4 shrink-0 text-[var(--reader-muted)]" />
+						<GripVertical className="size-4 shrink-0 text-reader-muted" />
 						<span className={cn("size-2 shrink-0 rounded-full", statusDotClass)} />
-						<span className="flex-1 text-[0.7rem] font-semibold tracking-wide text-[var(--reader-text)]">
+						<span className="flex-1 text-[0.7rem] font-semibold tracking-wide text-reader-paragraph">
 							{status === "idle" ? "Ready" : isPaused ? "Paused" : "Reading"}
 						</span>
 
@@ -154,7 +154,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 								onOpenSettings();
 							}}
 							aria-label="Open reader settings"
-							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--reader-border)] text-[var(--reader-muted)] transition hover:bg-[var(--reader-surface-hover)] hover:text-[var(--reader-text)]"
+							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-reader text-reader-muted transition hover:bg-reader-controls hover:text-reader-paragraph"
 						>
 							<Settings2 className="size-4" />
 						</button>
@@ -168,7 +168,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 								setIsOpen(false);
 							}}
 							aria-label="Close listening controls"
-							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--reader-border)] text-[var(--reader-muted)] transition hover:bg-[var(--reader-surface-hover)] hover:text-[var(--reader-text)]"
+							className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-reader text-reader-muted transition hover:bg-reader-controls hover:text-reader-paragraph"
 						>
 							<X className="size-4" />
 						</button>
@@ -182,11 +182,11 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 					)}
 
 					{/* Voice Selector */}
-					<Field label="Voice" labelClassName="normal-case font-medium tracking-wide text-[var(--reader-muted)]">
+					<Field label="Voice" labelClassName="normal-case font-medium tracking-wide text-reader-muted">
 						<Select
 							value={voiceURI}
 							onChange={(event) => onVoiceChange(event.target.value)}
-							className="min-h-10 border-[var(--reader-border)] bg-[var(--reader-bg)] text-xs text-[var(--reader-text)] focus:border-[var(--reader-accent)] focus:ring-[var(--reader-accent)]"
+							className="min-h-10 border-reader bg-reader text-xs text-reader-paragraph focus:border-reader-accent focus:ring-reader-accent"
 						>
 							<option value="">System Default Voice</option>
 							{voices.map((voice) => (

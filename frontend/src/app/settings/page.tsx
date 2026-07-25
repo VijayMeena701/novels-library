@@ -20,7 +20,7 @@ export default function SettingsPage() {
 	if (!user) {
 		return (
 			<div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5 flex flex-1 items-center justify-center")}>
-				<p className="text-muted-copy">Please log in to view your settings.</p>
+				<p className="text-muted">Please log in to view your settings.</p>
 			</div>
 		);
 	}

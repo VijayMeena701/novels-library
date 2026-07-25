@@ -37,10 +37,10 @@ export default function PublicHomePage() {
 
   if (loading) {
     return (
-      <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'flex flex-1 items-center justify-center py-24')}>
+      <div className={cn('mx-auto w-full max-w-[1520px] px-4 sm:px-5 pt-9 pb-16', 'flex flex-1 items-center justify-center py-24')}>
         <div className="flex flex-col items-center gap-4">
           <Spinner size="xl" />
-          <span className="text-sm text-muted-copy">Loading the library...</span>
+          <span className="text-sm text-muted">Loading the library...</span>
         </div>
       </div>
     );
@@ -48,10 +48,10 @@ export default function PublicHomePage() {
 
   if (!books.length) {
     return (
-      <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'py-12')}>
-        <Card className="mx-auto max-w-2xl p-8 text-center">
-          <h1 className="font-serif text-3xl font-medium text-foreground">Books Library</h1>
-          <p className="mt-2 text-base text-muted-copy">The catalog is empty right now.</p>
+      <div className={cn('mx-auto w-full max-w-[1520px] px-4 sm:px-5 pt-9 pb-16', 'py-12')}>
+        <Card className="mx-auto max-w-2xl rounded-2xl p-8 text-center shadow-elevation-4">
+          <h1 className="font-serif text-3xl font-medium text-accent">Books Library</h1>
+          <p className="mt-2 text-base text-muted">The catalog is empty right now.</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg">
               <Link href="/books">Browse Catalog</Link>
@@ -68,9 +68,9 @@ export default function PublicHomePage() {
   }
 
   return (
-    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12')}>
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] items-start">
-        <main className="flex flex-col gap-6">
+    <div className={cn('mx-auto w-full max-w-[1520px] px-4 sm:px-5 pt-9 pb-16')}>
+      <div className="grid gap-7 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] items-start">
+        <main className="flex flex-col gap-7">
           <HomeHero
             user={user}
             pathname={pathname ?? ''}

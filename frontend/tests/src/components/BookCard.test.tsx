@@ -51,20 +51,15 @@ describe('BookCard', () => {
     expect(screen.getByRole('link')).toHaveAttribute('href', `/books/${book._id}`);
   });
 
-  it('shows profile progress and chapters read', () => {
+  it('shows profile progress percent', () => {
     render(<BookCard book={book} mode="profile" />);
-    expect(screen.getByText('25 / 100 ch')).toBeInTheDocument();
+    expect(screen.getByText('25%')).toBeInTheDocument();
   });
 
   it('renders catalog metadata and chapter count', () => {
     render(<BookCard book={book} mode="catalog" />);
-    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('100 Ch')).toBeInTheDocument();
     expect(screen.getAllByText('Ongoing')).toHaveLength(2);
-  });
-
-  it('renders custom action slot', () => {
-    render(<BookCard book={book} action={<button data-testid="action">+1</button>} />);
-    expect(screen.getByTestId('action')).toBeInTheDocument();
   });
 
   it('renders fallback when no cover is available', () => {

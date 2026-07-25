@@ -122,8 +122,8 @@ export default function BookHistoryPage() {
     return (
       <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto flex flex-1 items-center justify-center py-24")}>
         <Card className="mx-auto max-w-md p-8 text-center">
-          <h1 className="font-serif text-2xl font-medium text-foreground">Book History</h1>
-          <p className="mt-2 text-sm text-muted-copy">Sign in to view your reading history.</p>
+          <h1 className="font-serif text-2xl font-medium text-primary">Book History</h1>
+          <p className="mt-2 text-sm text-muted">Sign in to view your reading history.</p>
           <Button asChild className="mt-6">
             <Link href={getLoginHref(pathname)}>Sign In</Link>
           </Button>
@@ -147,7 +147,7 @@ export default function BookHistoryPage() {
         </div>
       ) : error ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-copy">{error}</p>
+          <p className="text-muted">{error}</p>
           <Button asChild className="mt-4">
             <Link href="/history">Back to history</Link>
           </Button>
@@ -163,19 +163,19 @@ export default function BookHistoryPage() {
                     <img
                       src={getBookCoverUrl(book)}
                       alt={book.title}
-                      className="h-32 w-24 rounded-md border border-border object-cover"
+                      className="h-32 w-24 rounded-md border border-default object-cover"
                     />
                   ) : (
-                    <div className="flex h-32 w-24 flex-col items-center justify-center rounded-md border border-border bg-surface-muted p-2 text-center text-xs">
-                      <span className="line-clamp-2 font-bold text-foreground">{book.title}</span>
+                    <div className="flex h-32 w-24 flex-col items-center justify-center rounded-md border border-default bg-surface-raised p-2 text-center text-xs">
+                      <span className="line-clamp-2 font-bold text-accent">{book.title}</span>
                     </div>
                   )}
                 </Link>
                 <div className="flex flex-col justify-center gap-1">
-                  <Link href={`/books/${book._id}`} className="font-serif text-2xl font-bold text-foreground hover:underline">
+                  <Link href={`/books/${book._id}`} className="font-serif text-2xl font-bold text-primary hover:underline">
                     {book.title}
                   </Link>
-                  <p className="text-sm text-muted-copy">
+                  <p className="text-sm text-muted">
                     {book.authorPenName || book.author || book.authorRealName || 'Unknown Author'}
                   </p>
                   <Badge variant={getStatusBadgeVariant(book.status)}>
@@ -195,18 +195,18 @@ export default function BookHistoryPage() {
           </Card>
 
           <div className="mt-6">
-            <h2 className="mb-4 font-serif text-xl font-medium text-foreground">Activity</h2>
+            <h2 className="mb-4 font-serif text-xl font-medium text-primary">Activity</h2>
             <div className="grid gap-3">
               {events.map((event, index) => {
                 const Icon = event.icon;
                 const content = (
                   <div className="flex items-center gap-4 p-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-muted">
-                      <Icon className="size-5 text-muted-copy" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-raised">
+                      <Icon className="size-5 text-muted" />
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="text-sm font-medium text-foreground">{event.label}</span>
-                      <span className="flex items-center gap-1.5 text-xs text-muted-copy">
+                      <span className="text-sm font-medium text-primary">{event.label}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-muted">
                         <Clock className="size-3.5" />
                         {formatDate(event.date)}
                       </span>
@@ -221,7 +221,7 @@ export default function BookHistoryPage() {
                       href={`/books/${book._id}/reader/${event.visit.chapterNumber}`}
                       className="block"
                     >
-                      <Card className="transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
+                      <Card className="transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4">
                         {content}
                       </Card>
                     </Link>

@@ -173,7 +173,7 @@ describe('api request layer', () => {
     await api.getPublicCatalogBooksPaginated({
       search: 'lord',
       genre: 'fantasy',
-      status: 'reading',
+      publicationStatus: 'ongoing',
       sort: 'rating',
       sortDir: 'desc',
       page: 2,
@@ -183,7 +183,7 @@ describe('api request layer', () => {
     const parsed = new URL(url as string);
     expect(parsed.searchParams.get('search')).toBe('lord');
     expect(parsed.searchParams.get('genre')).toBe('fantasy');
-    expect(parsed.searchParams.get('status')).toBe('reading');
+    expect(parsed.searchParams.get('publicationStatus')).toBe('ongoing');
     expect(parsed.searchParams.get('sort')).toBe('rating');
     expect(parsed.searchParams.get('sortDir')).toBe('desc');
     expect(parsed.searchParams.get('page')).toBe('2');

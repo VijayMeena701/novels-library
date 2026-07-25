@@ -65,7 +65,7 @@ export default function AdminGroups() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Access Groups</h2>
         <Can action="manage" subject="groups">
-          <button className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground" onClick={() => alert("Create group UI not implemented yet")}>
+          <button className="rounded-md bg-accent px-3 py-1.5 text-sm text-primary-foreground" onClick={() => alert("Create group UI not implemented yet")}>
             + Group
           </button>
         </Can>
@@ -74,7 +74,7 @@ export default function AdminGroups() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading groups...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-default">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -87,7 +87,7 @@ export default function AdminGroups() {
             </thead>
             <tbody>
               {groups.map((group) => (
-                <tr key={group._id} className="border-t border-border">
+                <tr key={group._id} className="border-t border-default">
                   <td className="px-4 py-2 font-mono text-xs">{group.key}</td>
                   <td className="px-4 py-2">
                     <div className="font-semibold">{group.name}</div>
@@ -98,7 +98,7 @@ export default function AdminGroups() {
                   <td className="px-4 py-2">
                     <Can action="manage" subject="groups">
                       {!group.isSystem && (
-                        <button onClick={() => deleteGroup(group._id)} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+                        <button onClick={() => deleteGroup(group._id)} className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted">
                           Delete
                         </button>
                       )}

@@ -8,6 +8,7 @@ import { ChapterVisit } from '../models/ChapterVisit';
 import { UserBook } from '../models/UserBook';
 import { translateChapterHtml } from '../services/translation';
 import { hasCapability, CAPABILITY } from '../services/rbac';
+import { deriveUserBookStatus } from '../services/readingStatus';
 
 function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -43,7 +44,7 @@ async function findUserLibraryBook(bookId: string, userId: string) {
   const book = await Book.findById(bookId);
   if (!book) return null;
 
-  const userBook = await UserBook.findOne({ bookId, userId });
+  const userBook = await UserBook.findOne({ bookId, userId, removedAt: null });
   return userBook ? book : null;
 }
 
@@ -524,12 +525,29 @@ export async function recordChapterVisitHandler(request: FastifyRequest, reply: 
       openedAt: new Date(),
     });
 
+    const totalChapters = book.translatedChaptersTotal || (book.translatedChaptersList || []).length || 0;
+
+    const existingUserBook = await UserBook.findOne({
+      userId: new mongoose.Types.ObjectId(userId),
+      bookId: book._id,
+    });
+    const previousChaptersRead = existingUserBook?.chaptersRead || 0;
+    const nextChaptersRead = Math.max(previousChaptersRead, parsedChapterNumber);
+    const currentStatus = existingUserBook?.status || 'planning';
+
+    const nextStatus = deriveUserBookStatus({
+      currentStatus,
+      chaptersRead: nextChaptersRead,
+      totalChapters,
+      action: 'visit',
+    });
+
+    const completedAt = nextStatus === 'completed' ? (existingUserBook?.completedAt || new Date()) : undefined;
+
     await UserBook.findOneAndUpdate(
       { userId: new mongoose.Types.ObjectId(userId), bookId: book._id },
       {
         $setOnInsert: {
-          status: 'reading',
-          chaptersRead: 0,
           rating: 0,
           review: '',
           personalNotes: '',
@@ -538,17 +556,16 @@ export async function recordChapterVisitHandler(request: FastifyRequest, reply: 
           relationshipNotes: '',
           personalTags: [],
         },
+        $max: { chaptersRead: nextChaptersRead },
+        $set: {
+          status: nextStatus,
+          removedAt: null,
+          lastVisitedChapterNumber: parsedChapterNumber,
+          lastVisitedAt: new Date(),
+          completedAt,
+        },
       },
       { new: true, upsert: true },
-    );
-
-    await UserBook.findOneAndUpdate(
-      { userId: new mongoose.Types.ObjectId(userId), bookId: book._id },
-      {
-        $max: { chaptersRead: parsedChapterNumber },
-        $set: { lastVisitedChapterNumber: parsedChapterNumber, lastVisitedAt: new Date() },
-      },
-      { new: true },
     );
 
     return reply.status(201).send(visit);

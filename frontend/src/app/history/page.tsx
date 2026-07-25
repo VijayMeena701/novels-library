@@ -79,8 +79,8 @@ export default function HistoryPage() {
     return (
       <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto flex flex-1 items-center justify-center py-24")}>
         <Card className="mx-auto max-w-md p-8 text-center">
-          <h1 className="font-serif text-2xl font-medium text-foreground">Reading History</h1>
-          <p className="mt-2 text-sm text-muted-copy">Sign in to view your reading history.</p>
+          <h1 className="font-serif text-2xl font-medium text-primary">Reading History</h1>
+          <p className="mt-2 text-sm text-muted">Sign in to view your reading history.</p>
           <Button asChild className="mt-6">
             <Link href={getLoginHref(pathname)}>Sign In</Link>
           </Button>
@@ -92,8 +92,8 @@ export default function HistoryPage() {
   return (
     <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto py-8")}>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-serif text-2xl font-medium text-foreground">Reading History</h1>
-        <p className="text-sm text-muted-copy">
+        <h1 className="font-serif text-2xl font-medium text-primary">Reading History</h1>
+        <p className="text-sm text-muted">
           {pagination ? `${books.length} books · ${pagination.total} visits` : ''}
         </p>
       </div>
@@ -104,7 +104,7 @@ export default function HistoryPage() {
         </div>
       ) : books.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-copy">No reading history yet. Start reading a book!</p>
+          <p className="text-muted">No reading history yet. Start reading a book!</p>
           <Button asChild className="mt-4">
             <Link href="/books">Browse Catalog</Link>
           </Button>
@@ -117,26 +117,26 @@ export default function HistoryPage() {
 
             return (
               <Link key={book._id} href={`/history/${book._id}`} className="group block">
-                <Card className="flex items-center gap-4 p-4 transition hover:border-border-hover hover:bg-card-hover hover:shadow-elevated">
+                <Card className="flex items-center gap-4 p-4 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4">
                   {coverSrc ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={coverSrc}
                       alt={book.title}
-                      className="h-24 w-16 shrink-0 rounded-md border border-border object-cover"
+                      className="h-24 w-16 shrink-0 rounded-md border border-default object-cover"
                     />
                   ) : (
-                    <div className="flex h-24 w-16 shrink-0 flex-col items-center justify-center rounded-md border border-border bg-surface-muted p-2 text-center text-xs">
-                      <span className="line-clamp-2 font-bold text-foreground">{book.title}</span>
+                    <div className="flex h-24 w-16 shrink-0 flex-col items-center justify-center rounded-md border border-default bg-surface-raised p-2 text-center text-xs">
+                      <span className="line-clamp-2 font-bold text-accent">{book.title}</span>
                     </div>
                   )}
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <h2 className="font-serif text-lg font-bold text-foreground group-hover:underline">
+                    <h2 className="font-serif text-lg font-bold text-primary group-hover:underline">
                       {book.title}
                     </h2>
-                    <p className="text-sm text-muted-copy">{authorName}</p>
-                    <div className="flex items-center gap-2 text-sm text-muted-copy">
+                    <p className="text-sm text-muted">{authorName}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted">
                       <Clock className="size-3.5" />
                       <span>
                         Latest: Chapter {latestVisit.chapterNumber}
@@ -145,7 +145,7 @@ export default function HistoryPage() {
                     </div>
                   </div>
 
-                  <ChevronRight className="size-5 shrink-0 text-muted-copy transition group-hover:translate-x-1 group-hover:text-foreground" />
+                  <ChevronRight className="size-5 shrink-0 text-muted transition group-hover:translate-x-1 group-hover:text-primary" />
                 </Card>
               </Link>
             );
@@ -162,7 +162,7 @@ export default function HistoryPage() {
           >
             Previous
           </Button>
-          <span className="text-sm text-muted-copy">
+          <span className="text-sm text-muted">
             Page {pagination.page} of {pagination.totalPages}
           </span>
           <Button

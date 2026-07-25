@@ -106,6 +106,27 @@ describe('LocalAIEngine', () => {
 		expect(callbacks.onEnd).toHaveBeenCalled();
 	});
 
+	it('fires onBoundary callbacks for word boundaries', async () => {
+		const onBoundary = vi.fn();
+		const callbacks: PlaybackEngineCallbacks = {
+			onStart: vi.fn(),
+			onEnd: vi.fn(),
+			onError: vi.fn(),
+			onBoundary,
+		};
+
+		engine.play('Hello world.', { rate: 1, pitch: 1, voiceURI: 'af_heart' }, callbacks);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+
+		// Advance the fake AudioContext so the boundary timer sees elapsed time.
+		audioContext.currentTime = 10;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		expect(onBoundary).toHaveBeenCalled();
+		const firstBoundary = onBoundary.mock.calls[0]?.[0];
+		expect(firstBoundary).toMatchObject({ name: 'word', charIndex: 0 });
+	});
+
 	it('reuses a preloaded buffer instead of synthesizing twice', async () => {
 		const config: PlaybackConfig = { rate: 1, pitch: 1, voiceURI: 'af_heart' };
 		engine.preload('Hello world.', config);

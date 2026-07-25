@@ -6,8 +6,8 @@ export const SPEECH_RATE_MAX = 4;
 export const SPEECH_PITCH_MIN = 0.5;
 export const SPEECH_PITCH_MAX = 2;
 export const SPEECH_BLOCK_SELECTOR = "p, li, blockquote, h1, h2, h3, h4, div";
-export const DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR = "#f5d67a";
-export const DEFAULT_WORD_HIGHLIGHT_COLOR = "#f59e0b";
+export const DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR = "#DBE6FF";
+export const DEFAULT_WORD_HIGHLIGHT_COLOR = "#8AABFF";
 export const TTS_SESSION_FLAG = "books_reader_user_started_tts";
 
 export function getScrollParent(node: HTMLElement | null): HTMLElement | Window {

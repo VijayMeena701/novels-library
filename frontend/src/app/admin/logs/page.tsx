@@ -60,7 +60,7 @@ export default function AdminAuditLogsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Audit Logs</h1>
+          <h1 className="text-2xl font-bold text-primary">Audit Logs</h1>
           <p className="text-sm text-muted-foreground">Recent permission checks and admin actions.</p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => fetchLogs(page)} disabled={loading}>
@@ -70,7 +70,7 @@ export default function AdminAuditLogsPage() {
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-copy" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
         <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -85,7 +85,7 @@ export default function AdminAuditLogsPage() {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-lg border border-default">
             <table className="w-full text-sm">
               <thead className="bg-muted">
                 <tr>
@@ -100,7 +100,7 @@ export default function AdminAuditLogsPage() {
               </thead>
               <tbody>
                 {filteredLogs.map((log) => (
-                  <tr key={log._id} className="border-t border-border">
+                  <tr key={log._id} className="border-t border-default">
                     <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
                     <td className="px-4 py-3 text-xs font-mono">{log.action}</td>
                     <td className="px-4 py-3 text-xs">{log.method}</td>

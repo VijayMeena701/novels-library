@@ -36,10 +36,10 @@ export function TabBar({ activeTab, onTabClick }: TabBarProps) {
 						type="button"
 						onClick={() => onTabClick(tab)}
 						className={cn(
-							"relative flex flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[0.68rem] font-medium transition focus:outline-none focus:ring-2 focus:ring-[var(--reader-accent)] focus:ring-inset",
+							"relative flex flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[0.68rem] font-medium transition focus:outline-none focus:ring-2 focus:ring-reader-accent focus:ring-inset",
 							active
-								? "text-[var(--reader-text)] after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[var(--reader-accent)]"
-								: "text-[var(--reader-muted)] hover:text-[var(--reader-text)]",
+								? "text-reader-paragraph after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-reader-accent"
+								: "text-reader-muted hover:text-reader-paragraph",
 						)}
 					>
 						<Icon className="size-4" />

@@ -9,7 +9,7 @@ import { Input } from "../../../components/ui/input";
 import { Modal } from "../../../components/ui/modal";
 import { Spinner } from "../../../components/ui/spinner";
 import { Badge } from "../../../components/ui/badge";
-import { Search, Plus, RefreshCw } from "lucide-react";
+import { Search, Plus, RefreshCw, Key } from "lucide-react";
 
 export default function AdminUsersPage() {
   const { hasCapability } = useAuth();
@@ -24,6 +24,8 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
 
   const [createForm, setCreateForm] = useState<AdminUserCreatePayload & { confirmPassword: string }>({
     username: "",
@@ -105,6 +107,26 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    if (resetPassword.length < 8) {
+      alert("Password must be at least 8 characters.");
+      return;
+    }
+    setWorking("reset");
+    try {
+      await api.resetAdminUserPassword(resetTarget._id, resetPassword);
+      setResetTarget(null);
+      setResetPassword("");
+      await fetchData(page);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to reset password.");
+    } finally {
+      setWorking(null);
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (createForm.password !== createForm.confirmPassword) {
@@ -144,7 +166,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Users</h1>
+          <h1 className="text-2xl font-bold text-primary">Users</h1>
           <p className="text-sm text-muted-foreground">Create and manage user accounts and roles.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -163,7 +185,7 @@ export default function AdminUsersPage() {
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-copy" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -178,7 +200,7 @@ export default function AdminUsersPage() {
           <Spinner size="lg" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-default">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -190,7 +212,7 @@ export default function AdminUsersPage() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user._id} className="border-t border-border">
+                <tr key={user._id} className="border-t border-default">
                   <td className="px-4 py-3">
                     <div className="font-semibold">{user.username}</div>
                     <div className="text-xs text-muted-foreground">{user.email}</div>
@@ -203,9 +225,9 @@ export default function AdminUsersPage() {
                           <label
                             key={role._id}
                             className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition ${
-                              hasRole
-                                ? "border-primary bg-primary-soft text-foreground"
-                                : "border-border text-copy hover:bg-surface-muted"
+ hasRole
+                                ? "border-accent bg-accent-subtle text-accent"
+                                : "border-default text-secondary hover:bg-surface-raised"
                             }`}
                           >
                             <input
@@ -232,7 +254,7 @@ export default function AdminUsersPage() {
                       {user.isVerified && <Badge variant="completed">Verified</Badge>}
                       {user.isDisabled && <Badge variant="dropped">Disabled</Badge>}
                       {user.isLocked && <Badge variant="hold">Locked</Badge>}
-                      {!user.isVerified && !user.isDisabled && !user.isLocked && <span className="text-xs text-muted-copy">—</span>}
+                      {!user.isVerified && !user.isDisabled && !user.isLocked && <span className="text-xs text-muted">—</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -264,7 +286,18 @@ export default function AdminUsersPage() {
                         </Button>
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="secondary"
+                          onClick={() => {
+                            setResetTarget(user);
+                            setResetPassword("");
+                          }}
+                          disabled={working === user._id}
+                        >
+                          <Key className="size-4" /> Reset
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
                           onClick={() => handleDelete(user)}
                           disabled={working === user._id}
                         >
@@ -294,34 +327,74 @@ export default function AdminUsersPage() {
         </div>
       )}
 
+      <Modal
+        open={!!resetTarget}
+        onClose={() => {
+          setResetTarget(null);
+          setResetPassword("");
+        }}
+        title={`Reset password for ${resetTarget?.username ?? ""}`}
+        size="sm"
+      >
+        <form onSubmit={handleReset} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-primary">New Password</label>
+            <Input
+              type="password"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              minLength={8}
+              required
+              autoFocus
+            />
+            <p className="mt-1 text-xs text-muted">Must be at least 8 characters.</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setResetTarget(null);
+                setResetPassword("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={working === "reset"}>
+              Reset Password
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create User" size="md">
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Username</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Username</label>
             <Input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} required />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Email</label>
             <Input type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} required />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Password</label>
             <Input type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} required />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Confirm Password</label>
+            <label className="mb-1 block text-sm font-medium text-primary">Confirm Password</label>
             <Input type="password" value={createForm.confirmPassword} onChange={(e) => setCreateForm((f) => ({ ...f, confirmPassword: e.target.value }))} required />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Roles</label>
-            <div className="max-h-40 overflow-y-auto rounded-md border border-border p-2">
+            <label className="mb-2 block text-sm font-medium text-primary">Roles</label>
+            <div className="max-h-40 overflow-y-auto rounded-md border border-default p-2">
               {roleOptions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No roles found.</p>
               ) : (
                 roleOptions.map((role) => {
                   const selected = createForm.roleIds?.includes(role.key) ?? false;
                   return (
-                    <label key={role.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-muted">
+                    <label key={role.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised">
                       <input
                         type="checkbox"
                         className="size-4 accent-primary"

@@ -40,7 +40,7 @@ export default function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Admin Console</h1>
+        <h1 className="text-2xl font-bold text-primary">Admin Console</h1>
         <p className="text-sm text-muted-foreground">Manage users, roles, permission groups, resources, and audit logs.</p>
       </div>
 
@@ -55,7 +55,7 @@ export default function AdminOverviewPage() {
             const value = stats[card.key];
             return (
               <Link key={card.label} href={card.href}>
-                <Card className="transition hover:border-primary hover:shadow-md">
+                <Card className="transition hover:border-accent hover:shadow-md">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">{card.label}</CardTitle>
                     <Icon className={`size-5 ${card.color}`} />

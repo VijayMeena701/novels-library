@@ -28,11 +28,11 @@ export function BookRawTableOfContents({
 	onSortToggle,
 }: BookRawTableOfContentsProps) {
 	return (
-		<Card className="p-[1.1rem] bg-white border-[#dfd6c8] flex flex-col gap-4">
-			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#dfd6c8] pb-3">
+		<Card className="p-[1.1rem] bg-surface border-default flex flex-col gap-4">
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-default pb-3">
 				<div>
-					<h2 className="text-base font-bold text-[#24211d]">Raw Table of Contents</h2>
-					<p className="text-xs text-[#5f584f] mt-0.5">
+					<h2 className="text-base font-bold text-primary">Raw Table of Contents</h2>
+					<p className="text-xs text-secondary mt-0.5">
 						Archived raw: {rawChapters.length} / {book.rawChaptersTotal || sortedRawItems.length} chapters.
 					</p>
 				</div>
@@ -44,13 +44,13 @@ export function BookRawTableOfContents({
 								placeholder="Search raw..."
 								value={chapterSearch}
 								onChange={(e) => onSearchChange(e.target.value)}
-								className="w-40 h-8 bg-[#fffdf8] border border-[#dfd6c8] rounded-md px-2.5 text-xs outline-none transition-all duration-150 focus:bg-white focus:border-[#405f8f] focus:ring-4 focus:ring-[#405f8f]/10"
+								className="w-40 h-8 bg-input-bg border border-input rounded-md px-2.5 text-xs outline-none transition-all duration-150 focus:bg-input-bg-focus focus:border-focus focus:ring-4 focus:ring-focus/20"
 							/>
 							<Button
 								variant="secondary"
 								size="sm"
 								onClick={onSortToggle}
-								className="h-8 text-xs font-semibold px-2.5 border-[#dfd6c8] hover:bg-slate-50"
+								className="h-8 text-xs font-semibold px-2.5 border-default hover:bg-surface-hover"
 							>
 								{chapterSort === "asc" ? "oldest" : "newest"}
 							</Button>
@@ -65,7 +65,7 @@ export function BookRawTableOfContents({
 			</div>
 
 			{sortedRawItems.length === 0 ? (
-				<p className="text-sm text-[#5f584f] mt-2">
+				<p className="text-sm text-secondary mt-2">
 					{sortedRawItems.length === 0 ? "No raw chapters have been indexed yet." : "No raw chapters match your search."}
 				</p>
 			) : (
@@ -75,20 +75,20 @@ export function BookRawTableOfContents({
 							<Link
 								key={chapterItem.chapterNumber}
 								href={`/books/${book._id}/reader/${chapterItem.chapterNumber}?source=raw`}
-								className={`grid gap-1 p-3 border border-[#dfd6c8] rounded-md transition-all duration-150 ${
+								className={`grid gap-1 p-3 border border-default rounded-md transition-all duration-150 ${
 									chapterItem.archived
-										? "bg-[#f8f5ee] hover:bg-white hover:border-[#b9aa95]"
-										: "bg-[#ece5d8]/40 hover:bg-[#f8f5ee] opacity-75 hover:opacity-100"
+										? "bg-surface-raised hover:bg-surface hover:border-strong"
+										: "bg-surface-sunken/40 hover:bg-surface-raised opacity-75 hover:opacity-100"
 								}`}
 							>
-								<span className="text-[10px] font-black text-[#877d70] uppercase">Raw {chapterItem.chapterNumber}</span>
-								<strong className="text-xs font-bold text-[#24211d] truncate">{chapterItem.title}</strong>
-								{!chapterItem.archived && <small className="text-[9px] font-semibold text-[#877d70] uppercase">Indexed only</small>}
+								<span className="text-[10px] font-black text-muted uppercase">Raw {chapterItem.chapterNumber}</span>
+								<strong className="text-xs font-bold text-primary truncate">{chapterItem.title}</strong>
+								{!chapterItem.archived && <small className="text-[9px] font-semibold text-muted uppercase">Indexed only</small>}
 							</Link>
 						))}
 					</div>
 					{sortedRawItems.length > 120 && (
-						<p className="text-xs text-[#877d70] text-center mt-3 border-t border-slate-100 pt-3">
+						<p className="text-xs text-muted text-center mt-3 border-t border-subtle pt-3">
 							Showing first 120 raw chapters. Use the search box to locate specific numbers.
 						</p>
 					)}

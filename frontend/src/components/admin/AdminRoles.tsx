@@ -65,7 +65,7 @@ export default function AdminRoles() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Roles</h2>
         <Can action="manage" subject="roles">
-          <button className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground" onClick={() => alert("Create role UI not implemented yet")}>
+          <button className="rounded-md bg-accent px-3 py-1.5 text-sm text-primary-foreground" onClick={() => alert("Create role UI not implemented yet")}>
             + Role
           </button>
         </Can>
@@ -74,7 +74,7 @@ export default function AdminRoles() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading roles...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-default">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -87,7 +87,7 @@ export default function AdminRoles() {
             </thead>
             <tbody>
               {roles.map((role) => (
-                <tr key={role._id} className="border-t border-border">
+                <tr key={role._id} className="border-t border-default">
                   <td className="px-4 py-2 font-mono text-xs">{role.key}</td>
                   <td className="px-4 py-2">
                     <div className="font-semibold">{role.name}</div>
@@ -101,7 +101,7 @@ export default function AdminRoles() {
                   <td className="px-4 py-2">
                     <Can action="manage" subject="roles">
                       {!role.isSystem && (
-                        <button onClick={() => deleteRole(role._id)} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+                        <button onClick={() => deleteRole(role._id)} className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted">
                           Delete
                         </button>
                       )}

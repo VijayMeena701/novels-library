@@ -113,6 +113,10 @@ export interface AdminUserUpdate {
 	isVerified?: boolean;
 }
 
+export interface AdminUserResetPasswordPayload {
+	password: string;
+}
+
 export interface AdminRolePayload {
 	key?: string;
 	name?: string;
@@ -275,7 +279,7 @@ export interface Book {
 	rawOriginalLanguage: string;
 	rawChaptersTotal: number;
 	rawChaptersList: ChapterIndex[];
-	status: BookStatus;
+	status?: BookStatus;
 	translatedChaptersTotal: number;
 	chaptersRead: number;
 	rating: number;
@@ -354,7 +358,7 @@ export interface BookListFilters {
 	authorId?: string;
 }
 
-export interface CatalogBookFilters extends BookListFilters {
+export interface CatalogBookFilters extends Omit<BookListFilters, 'status'> {
 	search?: string;
 	minRating?: number;
 	maxRating?: number;
@@ -645,6 +649,13 @@ class ApiClient {
 		return this.request<{ success: boolean; message: string }>(`/admin/users/${id}`, { method: "DELETE" });
 	}
 
+	async resetAdminUserPassword(id: string, password: string) {
+		return this.request<{ success: boolean; message: string }>(`/admin/users/${id}/reset-password`, {
+			method: "POST",
+			body: JSON.stringify({ password }),
+		});
+	}
+
 	async listAdminRoles() {
 		return this.request<{ roles: AdminRole[] }>("/admin/roles");
 	}
@@ -741,12 +752,9 @@ class ApiClient {
 		return this.request<Book[]>(`/books${suffix}`);
 	}
 
-	async getCatalogBooks(filters: BookListFilters = {}): Promise<Book[]> {
+	async getCatalogBooks(filters: CatalogBookFilters = {}): Promise<Book[]> {
 		const query = new URLSearchParams();
 
-		if (filters.status && filters.status !== "all") {
-			query.set("status", filters.status);
-		}
 		if (filters.genre) {
 			query.set("genre", filters.genre);
 		}
@@ -774,9 +782,6 @@ class ApiClient {
 	private buildCatalogQuery(filters: CatalogBookFilters, includePagination: boolean): URLSearchParams {
 		const query = new URLSearchParams();
 
-		if (filters.status && filters.status !== "all") {
-			query.set("status", filters.status);
-		}
 		if (filters.genre) {
 			query.set("genre", filters.genre);
 		}

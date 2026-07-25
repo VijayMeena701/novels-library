@@ -91,9 +91,9 @@ export default function AdminUsers() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search users..."
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="rounded-md border border-default bg-app px-3 py-2 text-sm"
         />
-        <button onClick={() => fetchUsers()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">
+        <button onClick={() => fetchUsers()} className="rounded-md bg-accent px-4 py-2 text-sm text-primary-foreground">
           Refresh
         </button>
       </div>
@@ -101,7 +101,7 @@ export default function AdminUsers() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading users...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-default">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
@@ -113,7 +113,7 @@ export default function AdminUsers() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user._id} className="border-t border-border">
+                <tr key={user._id} className="border-t border-default">
                   <td className="px-4 py-2">
                     <div className="font-semibold">{user.username}</div>
                     <div className="text-xs text-muted-foreground">{user.email}</div>
@@ -122,7 +122,7 @@ export default function AdminUsers() {
                     <div className="flex flex-wrap gap-1">
                       {roles.map((role) => (
                         <Can key={role._id} action="manage" subject="users">
-                          <label className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs">
+                          <label className="inline-flex items-center gap-1 rounded-md border border-default px-2 py-1 text-xs">
                             <input
                               type="checkbox"
                               checked={user.roles.some((r) => r._id === role._id)}
@@ -143,7 +143,7 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex gap-2 text-xs">
-                      {user.isDisabled && <span className="rounded bg-red-100 px-2 py-1 text-red-700">Disabled</span>}
+                      {user.isDisabled && <span className="rounded bg-red-100 px-2 py-1 text-danger">Disabled</span>}
                       {user.isLocked && <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">Locked</span>}
                       {user.isVerified && <span className="rounded bg-green-100 px-2 py-1 text-green-700">Verified</span>}
                     </div>
@@ -154,21 +154,21 @@ export default function AdminUsers() {
                         <button
                           onClick={() => updateUser(user._id, { isDisabled: !user.isDisabled })}
                           disabled={saving === user._id}
-                          className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                          className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted"
                         >
                           {user.isDisabled ? "Enable" : "Disable"}
                         </button>
                         <button
                           onClick={() => updateUser(user._id, { isLocked: !user.isLocked })}
                           disabled={saving === user._id}
-                          className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                          className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted"
                         >
                           {user.isLocked ? "Unlock" : "Lock"}
                         </button>
                         <button
                           onClick={() => updateUser(user._id, { isVerified: !user.isVerified })}
                           disabled={saving === user._id}
-                          className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                          className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted"
                         >
                           {user.isVerified ? "Unverify" : "Verify"}
                         </button>

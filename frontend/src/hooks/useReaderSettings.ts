@@ -10,7 +10,7 @@ type ReaderHighlightMode,
 type ReaderAutoScrollBehavior,
 } from "../utils/api";
 import { useReaderTheme } from "../context/ReaderThemeContext";
-import { getThemeTokens, normalizeReaderTheme, type ReaderTheme } from "../lib/reader-theme";
+import { getTheme, type AppTheme } from "../design-system/themes";
 import {
 DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR,
 DEFAULT_WORD_HIGHLIGHT_COLOR,
@@ -28,8 +28,8 @@ function normalizePlaybackEngine(engine: PlaybackEngineName, allowLocalTts: bool
 }
 
 export interface UseReaderSettingsReturn {
-theme: ReaderTheme;
-onThemeChange: (theme: ReaderTheme) => void;
+theme: AppTheme;
+onThemeChange: (theme: AppTheme) => void;
 fontSize: number;
 onFontSizeDecrease: () => void;
 onFontSizeIncrease: () => void;
@@ -71,9 +71,7 @@ readerSettingsReady: boolean;
 }
 
 export function useReaderSettings(user: User | null, allowLocalTts = true): UseReaderSettingsReturn {
-const { setTheme: setReaderTheme } = useReaderTheme();
-
-const [theme, setTheme] = useState<ReaderTheme>("paper");
+const { theme, setTheme: setReaderTheme } = useReaderTheme();
 const [fontSize, setFontSize] = useState(18);
 const [readWidth, setReadWidth] = useState<ReaderWidth>("narrow");
 const [autoOpenNext, setAutoOpenNext] = useState(true);
@@ -119,23 +117,25 @@ return { x: Math.max(8, window.innerWidth - 64), y: Math.max(8, window.innerHeig
 });
 const [readerSettingsReady, setReaderSettingsReady] = useState(false);
 
+const setTheme = useCallback(
+	(next: AppTheme) => {
+		setReaderTheme(next);
+	},
+	[setReaderTheme],
+);
+
 const pendingReaderSettingsRef = useRef<Partial<ReaderSettings>>({});
 const settingsSaveTimerRef = useRef<number | null>(null);
 
 const effectiveParagraphColor = useMemo(() => {
 if (useCustomHighlight) return paragraphHighlightColor;
-return getThemeTokens(theme).paragraphHighlight;
+return getTheme(theme)["reader.highlight"];
 }, [useCustomHighlight, paragraphHighlightColor, theme]);
 
 const effectiveWordColor = useMemo(() => {
 if (useCustomHighlight) return wordHighlightColor;
-return getThemeTokens(theme).wordHighlight;
+return getTheme(theme)["reader.wordHighlight"];
 }, [useCustomHighlight, wordHighlightColor, theme]);
-
-useEffect(() => {
-setReaderTheme(theme);
-return () => setReaderTheme(null);
-}, [theme, setReaderTheme]);
 
 useEffect(() => {
 return () => {
@@ -185,7 +185,6 @@ try {
 const settings = await api.getSettings();
 const reader = settings.reader;
 if (reader) {
-if (reader.theme) setTheme(normalizeReaderTheme(reader.theme));
 if (reader.fontSize) setFontSize(reader.fontSize);
 if (reader.width) setReadWidth(reader.width);
 if (reader.autoNext !== undefined) setAutoOpenNext(reader.autoNext);
@@ -213,9 +212,8 @@ setReaderSettingsReady(true);
 void initializeReaderSettings();
 }, [user, allowLocalTts]);
 
-const handleThemeChange = (newTheme: ReaderTheme) => {
+const handleThemeChange = (newTheme: AppTheme) => {
 setTheme(newTheme);
-persistReaderSettings({ theme: newTheme });
 };
 
 const handleFontSizeChange = (increment: boolean) => {
@@ -272,14 +270,16 @@ setUseCustomHighlight(enabled);
 const updates: Partial<ReaderSettings> = { useCustomHighlight: enabled };
 
 if (enabled) {
-const themeTokens = getThemeTokens(theme);
+const themeTokens = getTheme(theme);
 if (paragraphHighlightColor === DEFAULT_PARAGRAPH_HIGHLIGHT_COLOR) {
-setParagraphHighlightColor(themeTokens.paragraphHighlight);
-updates.paragraphHighlightColor = themeTokens.paragraphHighlight;
+const color = themeTokens["reader.highlight"];
+setParagraphHighlightColor(color);
+updates.paragraphHighlightColor = color;
 }
 if (wordHighlightColor === DEFAULT_WORD_HIGHLIGHT_COLOR) {
-setWordHighlightColor(themeTokens.wordHighlight);
-updates.wordHighlightColor = themeTokens.wordHighlight;
+const color = themeTokens["reader.wordHighlight"];
+setWordHighlightColor(color);
+updates.wordHighlightColor = color;
 }
 }
 

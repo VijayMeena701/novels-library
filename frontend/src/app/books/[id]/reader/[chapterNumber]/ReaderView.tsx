@@ -1,13 +1,12 @@
 "use client";
 
 import { cn } from "../../../../../lib/utils";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { type SourceKind } from "../../../../../utils/api";
 import { useAuth } from "../../../../../context/AuthContext";
 import { useFeatureFlags } from "../../../../../context/FeatureFlagsContext";
 import { CAPABILITY } from "../../../../../utils/permissions";
-import { applyReaderThemeCssVariables } from "../../../../../lib/reader-theme";
 import { type ReaderPanelTab } from "../../../../../lib/reader-utils";
 import { SpeechWidget } from "../../../../../components/reader/SpeechWidget";
 import { ReaderBottomToolbar } from "../../../../../components/reader/ReaderBottomToolbar";
@@ -106,7 +105,6 @@ if (typeof window === "undefined") return;
 window.scrollTo({ top: 0, behavior: "auto" });
 }, [chapterNumber, tts.stop]);
 
-const readerThemeStyle = useMemo(() => applyReaderThemeCssVariables(settings.theme) as CSSProperties, [settings.theme]);
 const isSerif = settings.theme !== "paper";
 const widthStyle = useMemo(
 () =>
@@ -126,7 +124,7 @@ const readingTimeMinutes = chapterData.chapter?.content
 
 if (chapterData.loading || authLoading || !settings.readerSettingsReady) {
 return (
-<div className="reader-theme flex min-h-screen flex-col items-center justify-center bg-[var(--reader-bg)] text-[var(--reader-text)]">
+<div className="flex min-h-screen flex-col items-center justify-center bg-reader text-reader-paragraph">
 <Spinner size="lg" />
 </div>
 );
@@ -175,10 +173,9 @@ if (readerError) {
 return (
 <div
 className={cn(
-"reader-theme relative flex min-h-screen flex-col bg-[var(--reader-bg)] text-[var(--reader-text)]",
+"relative flex min-h-screen flex-col bg-reader text-reader-paragraph",
 isSerif ? "font-serif" : "font-sans",
 )}
-style={readerThemeStyle}
 >
 {commonHeader}
 {commonCatalog}
@@ -214,17 +211,16 @@ return (
 <>
 <div
 className={cn(
-"reader-theme relative flex min-h-screen flex-col bg-[var(--reader-bg)] text-[var(--reader-text)]",
+"relative flex min-h-screen flex-col bg-reader text-reader-paragraph",
 isSerif ? "font-serif" : "font-sans",
 )}
-style={readerThemeStyle}
 >
 {commonHeader}
 {commonCatalog}
 
 <main className="flex flex-1 justify-center px-5 py-12 pb-40 max-[860px]:px-4 max-[860px]:py-8 max-[860px]:pb-32">
 <article
-className="flex w-full flex-col gap-8 leading-[1.9] text-[var(--reader-text)]"
+className="flex w-full flex-col gap-8 leading-[1.9] text-reader-paragraph"
 style={{ maxWidth: widthStyle }}
 >
 <ReaderChapterHeader

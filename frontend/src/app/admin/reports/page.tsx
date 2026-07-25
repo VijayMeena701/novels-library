@@ -68,16 +68,16 @@ export default function AdminReportsPage() {
 
   if (loading) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted-copy")}>Loading reports...</div>
+      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted")}>Loading reports...</div>
     );
   }
 
   return (
     <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
-      <h1 className="font-serif text-2xl font-medium text-foreground mb-6">Reports & Moderation</h1>
+      <h1 className="font-serif text-2xl font-medium text-primary mb-6">Reports & Moderation</h1>
       <Card className="divide-y divide-border overflow-hidden">
         {reports.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-copy">No reports.</div>
+          <div className="p-8 text-center text-sm text-muted">No reports.</div>
         ) : (
           reports.map((report) => (
             <div key={report._id} className="p-4 flex flex-col gap-2">
@@ -86,14 +86,14 @@ export default function AdminReportsPage() {
                   <Badge variant="outline" className={statusColors[report.status] || ''}>
                     {statusLabels[report.status] || report.status}
                   </Badge>
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-sm font-semibold text-primary">
                     {typeof report.bookId === 'object' ? report.bookId.title : report.bookId}
                   </span>
                 </div>
-                <span className="text-xs text-muted-copy">{new Date(report.createdAt).toLocaleString()}</span>
+                <span className="text-xs text-muted">{new Date(report.createdAt).toLocaleString()}</span>
               </div>
-              <p className="text-sm text-muted-copy capitalize">{report.reason.replace(/_/g, ' ')}</p>
-              {report.description && <p className="text-sm text-copy">{report.description}</p>}
+              <p className="text-sm text-muted capitalize">{report.reason.replace(/_/g, ' ')}</p>
+              {report.description && <p className="text-sm text-secondary">{report.description}</p>}
               <div className="flex flex-wrap gap-2 mt-1">
                 {report.status !== 'under_review' && (
                   <Button size="sm" variant="secondary" onClick={() => updateStatus(report._id, 'under_review')}>
