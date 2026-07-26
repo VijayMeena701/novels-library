@@ -57,4 +57,6 @@ export interface PlaybackEngine {
 	setPlaybackRate(rate: number): void;
 	/** Update the active voice for future play() calls. */
 	setVoice(voiceURI: string): void;
+	/** Optional callback fired when the engine's voice list changes. */
+	onVoicesChanged?: (() => void) | null;
 }

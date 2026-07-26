@@ -5,7 +5,9 @@ export class SystemTTSEngine implements PlaybackEngine {
 	private activeUtterance: SpeechSynthesisUtterance | null = null;
 	private _voices: SpeechSynthesisVoice[] = [];
 	private _state: PlaybackState = "idle";
-	private onVoicesChanged: (() => void) | null = null;
+	private voicesChangedHandler: (() => void) | null = null;
+	private initResolve: (() => void) | null = null;
+	onVoicesChanged?: (() => void) | null = null;
 
 	get isSupported(): boolean {
 		return typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
@@ -18,31 +20,37 @@ export class SystemTTSEngine implements PlaybackEngine {
 		}
 
 		return new Promise<void>((resolve) => {
-			const voices = window.speechSynthesis.getVoices();
-			if (voices.length > 0) {
-				this._voices = voices;
-				resolve();
-				return;
-			}
+			this.initResolve = resolve;
 
-			const handleVoicesChanged = () => {
-				this._voices = window.speechSynthesis.getVoices();
-				resolve();
+			const updateVoices = () => {
+				const voices = window.speechSynthesis.getVoices();
+				if (voices.length === 0) return;
+
+				this._voices = voices;
+				this.onVoicesChanged?.();
+
+				if (this.initResolve) {
+					this.initResolve();
+					this.initResolve = null;
+				}
 			};
 
-			this.onVoicesChanged = handleVoicesChanged;
-			window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+			this.voicesChangedHandler = updateVoices;
+			window.speechSynthesis.onvoiceschanged = updateVoices;
+			updateVoices();
 		});
 	}
 
 	destroy(): void {
 		if (this.isSupported && typeof window !== "undefined") {
 			window.speechSynthesis.cancel();
-			if (this.onVoicesChanged) {
+			if (this.voicesChangedHandler) {
 				window.speechSynthesis.onvoiceschanged = null;
-				this.onVoicesChanged = null;
+				this.voicesChangedHandler = null;
 			}
 		}
+		this.onVoicesChanged = null;
+		this.initResolve = null;
 		this.activeUtterance = null;
 	}
 
