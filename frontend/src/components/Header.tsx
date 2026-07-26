@@ -9,6 +9,7 @@ import { useReaderTheme } from "../context/ReaderThemeContext";
 import { APP_THEMES, themes, type AppTheme } from "../design-system/themes";
 import { cn, getLoginHref } from "../lib/utils";
 import { Button } from "./ui/button";
+import { navItemVariants, navItemActiveVariants } from "../design-system/components/navigation";
 import { CAPABILITY } from "../utils/permissions";
 import { api } from "../utils/api";
 
@@ -35,6 +36,8 @@ function ThemePicker({ theme, onChange }: ThemePickerProps) {
 			</div>
 			<div className="grid grid-cols-5 gap-2">
 				{APP_THEMES.map((t) => {
+					const isActive = theme === t;
+					const accent = themes[t]["reader.accent"];
 					return (
 						<button
 							key={t}
@@ -42,13 +45,17 @@ function ThemePicker({ theme, onChange }: ThemePickerProps) {
 							title={t}
 							onClick={() => onChange(t)}
 							className={cn(
-								"size-7 rounded-full border-2 transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-2",
-								theme === t ? "border-accent" : "border-transparent",
+								"size-8 rounded-full border-2 transition duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+								isActive ? "bg-surface" : "border-transparent",
 							)}
-							style={{ background: themes[t]["reader.accent"] }}
+							style={{
+								backgroundColor: isActive ? undefined : accent,
+								borderColor: isActive ? accent : undefined,
+							}}
 							aria-label={`Set theme to ${t}`}
+							aria-pressed={isActive}
 						>
-							{theme === t && <Check className="size-3.5 text-inverse drop-shadow-sm" />}
+							{isActive && <Check className="size-3.5 m-auto" style={{ color: accent }} />}
 						</button>
 					);
 				})}
@@ -110,8 +117,8 @@ export default function Header() {
 
 	const navLinkClass = (active: boolean) =>
 		cn(
-			"rounded-md px-3 py-2 text-[0.85rem] font-semibold text-secondary no-underline transition hover:bg-accent-subtle hover:text-primary",
-			active && "bg-accent-subtle text-accent",
+			"rounded-md px-3 py-2 text-[0.85rem] font-semibold text-secondary no-underline transition hover:bg-surface-raised hover:text-primary",
+			active && "bg-surface-raised text-accent",
 		);
 
 	return (
@@ -139,7 +146,7 @@ export default function Header() {
 
 					{user ? (
 						<>
-							<Link href="/notifications" className="relative inline-flex items-center justify-center rounded-md px-2 py-2 text-secondary transition hover:bg-accent-subtle hover:text-primary">
+							<Link href="/notifications" className="relative inline-flex items-center justify-center rounded-md px-2 py-2 text-secondary transition hover:bg-surface-raised hover:text-primary">
 								<Bell className="size-5" />
 								{unreadCount > 0 && (
 									<span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-inverse">
@@ -161,13 +168,14 @@ export default function Header() {
 								</Button>
 
 							{isUserMenuOpen && (
-								<div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-default bg-card p-1 shadow-elevation-4">
+								<div className="absolute right-0 top-full z-dropdown mt-2 w-56 rounded-xl border border-default bg-dropdown p-1.5 shadow-elevation-4">
 									<Link
 										href="/profile"
 										onClick={() => setIsUserMenuOpen(false)}
 										className={cn(
-											"flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-secondary no-underline transition hover:bg-accent-subtle hover:text-primary",
-											pathname.startsWith("/profile") && "bg-accent-subtle text-accent",
+											navItemVariants(),
+											"font-semibold no-underline",
+											pathname.startsWith("/profile") && navItemActiveVariants(),
 										)}
 									>
 										<User className="size-4" />
@@ -177,14 +185,15 @@ export default function Header() {
 										href="/settings"
 										onClick={() => setIsUserMenuOpen(false)}
 										className={cn(
-											"flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-secondary no-underline transition hover:bg-accent-subtle hover:text-primary",
-											pathname.startsWith("/settings") && "bg-accent-subtle text-accent",
+											navItemVariants(),
+											"font-semibold no-underline",
+											pathname.startsWith("/settings") && navItemActiveVariants(),
 										)}
 									>
 										<Settings className="size-4" />
 										Settings
 									</Link>
-									<div className="my-1 h-px bg-border" />
+									<div className="my-1.5 h-px bg-border" />
 									<ThemePicker theme={theme} onChange={setTheme} />
 									<button
 										type="button"
@@ -192,7 +201,7 @@ export default function Header() {
 											setIsUserMenuOpen(false);
 											logout();
 										}}
-										className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-bold text-secondary transition hover:bg-danger/10 hover:text-danger"
+										className={cn(navItemVariants(), "w-full text-left font-semibold hover:bg-danger/10 hover:text-danger")}
 									>
 										<LogOut className="size-4" />
 										Logout
@@ -221,7 +230,7 @@ export default function Header() {
 			</div>
 
 			{isMobileMenuOpen && (
-				<div className="absolute left-0 right-0 top-full border-b border-default bg-card p-4 shadow-elevation-4 md:hidden">
+				<div className="absolute left-0 right-0 top-full border-b border-default bg-dropdown p-4 shadow-elevation-4 md:hidden">
 					<nav className="flex flex-col gap-1">
 						{links.map((link) => (
 							<Link
@@ -229,8 +238,9 @@ export default function Header() {
 								href={link.href}
 								onClick={() => setIsMobileMenuOpen(false)}
 								className={cn(
-									"rounded-md px-3 py-2.5 text-sm font-bold text-secondary no-underline transition hover:bg-accent-subtle hover:text-primary",
-									link.match(pathname) && "bg-accent-subtle text-accent",
+									navItemVariants(),
+									"font-semibold no-underline py-2.5",
+									link.match(pathname) && navItemActiveVariants(),
 								)}
 							>
 								{link.label}
@@ -240,7 +250,7 @@ export default function Header() {
 						{user && (
 							<>
 								<div className="my-2 h-px bg-border" />
-								<div className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-secondary">
+								<div className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-secondary">
 									<User className="size-4" />
 									<span className="truncate">{user.username}</span>
 								</div>
@@ -248,8 +258,9 @@ export default function Header() {
 									href="/profile"
 									onClick={() => setIsMobileMenuOpen(false)}
 									className={cn(
-										"flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-bold text-secondary no-underline transition hover:bg-accent-subtle hover:text-primary",
-										pathname.startsWith("/profile") && "bg-accent-subtle text-accent",
+										navItemVariants(),
+										"font-semibold no-underline py-2.5",
+										pathname.startsWith("/profile") && navItemActiveVariants(),
 									)}
 								>
 									<User className="size-4" />
@@ -259,8 +270,9 @@ export default function Header() {
 									href="/settings"
 									onClick={() => setIsMobileMenuOpen(false)}
 									className={cn(
-										"flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-bold text-secondary no-underline transition hover:bg-accent-subtle hover:text-primary",
-										pathname.startsWith("/settings") && "bg-accent-subtle text-accent",
+										navItemVariants(),
+										"font-semibold no-underline py-2.5",
+										pathname.startsWith("/settings") && navItemActiveVariants(),
 									)}
 								>
 									<Settings className="size-4" />
@@ -274,7 +286,7 @@ export default function Header() {
 										setIsMobileMenuOpen(false);
 										logout();
 									}}
-									className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-bold text-secondary transition hover:bg-danger/10 hover:text-danger"
+									className={cn(navItemVariants(), "font-semibold text-left py-2.5 hover:bg-danger/10 hover:text-danger")}
 								>
 									<LogOut className="size-4" />
 									Logout
@@ -286,7 +298,7 @@ export default function Header() {
 							<Link
 								href={getLoginHref(pathname)}
 								onClick={() => setIsMobileMenuOpen(false)}
-								className="rounded-md bg-accent px-3 py-2.5 text-center text-sm font-bold text-inverse no-underline transition hover:bg-accent-hover"
+								className="rounded-md bg-accent px-3 py-2.5 text-center text-sm font-semibold text-inverse no-underline transition hover:bg-accent-hover"
 							>
 								Login
 							</Link>
