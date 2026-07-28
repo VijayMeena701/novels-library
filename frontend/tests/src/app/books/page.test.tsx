@@ -77,10 +77,42 @@ describe('BooksPage', () => {
             totalPages: 1,
           });
         }
-        if (url.includes('/public/genres')) return jsonResponse([{ _id: 'g1', name: 'Fantasy', key: 'fantasy', aliases: [], bookCount: 1, createdAt: '', updatedAt: '' }] as Genre[]);
-        if (url.includes('/public/publication-statuses')) return jsonResponse([{ _id: 'p1', name: 'Ongoing', key: 'ongoing', aliases: [], color: '#000', sortOrder: 0, bookCount: 1, createdAt: '', updatedAt: '' }] as PublicationStatus[]);
-        if (url.includes('/public/authors')) return jsonResponse([{ _id: 'a1', displayName: 'Cuttlefish', penName: '', realName: '', alternativeNames: [], nameKeys: [], originalLanguage: '', officialUrls: [], notes: '', createdAt: '', updatedAt: '' }] as Author[]);
-        if (url.includes('/public/sources')) return jsonResponse([{ key: 'webnovel', name: 'Webnovel', count: 1 }] as Source[]);
+        if (url.includes('/public/genres'))
+          return jsonResponse([
+            { _id: 'g1', name: 'Fantasy', key: 'fantasy', aliases: [], bookCount: 1, createdAt: '', updatedAt: '' },
+          ] as Genre[]);
+        if (url.includes('/public/publication-statuses'))
+          return jsonResponse([
+            {
+              _id: 'p1',
+              name: 'Ongoing',
+              key: 'ongoing',
+              aliases: [],
+              color: '#000',
+              sortOrder: 0,
+              bookCount: 1,
+              createdAt: '',
+              updatedAt: '',
+            },
+          ] as PublicationStatus[]);
+        if (url.includes('/public/authors'))
+          return jsonResponse([
+            {
+              _id: 'a1',
+              displayName: 'Cuttlefish',
+              penName: '',
+              realName: '',
+              alternativeNames: [],
+              nameKeys: [],
+              originalLanguage: '',
+              officialUrls: [],
+              notes: '',
+              createdAt: '',
+              updatedAt: '',
+            },
+          ] as Author[]);
+        if (url.includes('/public/sources'))
+          return jsonResponse([{ key: 'webnovel', name: 'Webnovel', count: 1 }] as Source[]);
         return { ok: false, status: 404, headers: { get: () => null }, json: async () => null, text: async () => '' };
       }),
     );
@@ -89,7 +121,15 @@ describe('BooksPage', () => {
   it('renders loading state then catalog books', async () => {
     mockCatalogApis();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={queryClient}><AuthProvider><ReaderThemeProvider><BooksPage /></ReaderThemeProvider></AuthProvider></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ReaderThemeProvider>
+            <BooksPage />
+          </ReaderThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
 
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
 
@@ -106,7 +146,15 @@ describe('BooksPage', () => {
     const replaceSpy = useRouter().replace as ReturnType<typeof vi.fn>;
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={queryClient}><AuthProvider><ReaderThemeProvider><BooksPage /></ReaderThemeProvider></AuthProvider></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ReaderThemeProvider>
+            <BooksPage />
+          </ReaderThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
 
     await waitFor(() => expect(screen.getByPlaceholderText('Title, author, pen name...')).toBeInTheDocument());
 
@@ -141,7 +189,15 @@ describe('BooksPage', () => {
     );
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={queryClient}><AuthProvider><ReaderThemeProvider><BooksPage /></ReaderThemeProvider></AuthProvider></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ReaderThemeProvider>
+            <BooksPage />
+          </ReaderThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Server down')).toBeInTheDocument();

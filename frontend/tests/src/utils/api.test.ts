@@ -106,7 +106,9 @@ describe('api request layer', () => {
   });
 
   it('stores token after successful login', async () => {
-    mockFetch({ json: vi.fn().mockResolvedValue({ token: 'new-token', user: { id: '1', username: 'u', email: 'u@test' } }) });
+    mockFetch({
+      json: vi.fn().mockResolvedValue({ token: 'new-token', user: { id: '1', username: 'u', email: 'u@test' } }),
+    });
     await api.login('a@b.com', 'pass');
     expect(localStorage.getItem('novel_lib_token')).toBe('new-token');
   });
@@ -132,10 +134,7 @@ describe('api request layer', () => {
   });
 
   it('throws a timeout ApiError when aborted', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError')),
-    );
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError')));
     await expect(api.getMe()).rejects.toMatchObject({
       status: 0,
       message: 'The request timed out. Check the backend and try again.',

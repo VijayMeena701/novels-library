@@ -22,12 +22,8 @@ export function BookPreviewInfo({ book, authorName, totalChapters }: BookPreview
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h3 className="text-2xl font-bold leading-tight tracking-tight text-primary">
-          {book.title}
-        </h3>
-        <p className="mt-1 text-sm font-medium text-secondary">
-          by {authorName}
-        </p>
+        <h3 className="text-2xl font-bold leading-tight tracking-tight text-primary">{book.title}</h3>
+        <p className="mt-1 text-sm font-medium text-secondary">by {authorName}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -69,17 +65,8 @@ export function BookPreviewInfo({ book, authorName, totalChapters }: BookPreview
       )}
 
       <div>
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
-          About this novel
-        </span>
-        <p
-          className={cn(
-            'text-xs leading-relaxed text-secondary',
-            !isExpanded && 'line-clamp-3',
-          )}
-        >
-          {synopsis}
-        </p>
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">About this novel</span>
+        <p className={cn('text-xs leading-relaxed text-secondary', !isExpanded && 'line-clamp-3')}>{synopsis}</p>
         {hasLongSynopsis && (
           <button
             type="button"

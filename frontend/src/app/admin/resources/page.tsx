@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useAuth } from "../../../context/AuthContext";
-import { CAPABILITY } from "../../../utils/permissions";
-import { api, type AdminResource } from "../../../utils/api";
-import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Switch } from "../../../components/ui/switch";
-import { Spinner } from "../../../components/ui/spinner";
-import { Badge } from "../../../components/ui/badge";
-import { RefreshCw } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
+import { CAPABILITY } from '../../../utils/permissions';
+import { api, type AdminResource } from '../../../utils/api';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Switch } from '../../../components/ui/switch';
+import { Spinner } from '../../../components/ui/spinner';
+import { Badge } from '../../../components/ui/badge';
+import { RefreshCw } from 'lucide-react';
 
 export default function AdminResourcesPage() {
   const { hasCapability } = useAuth();
@@ -25,7 +25,7 @@ export default function AdminResourcesPage() {
       const data = await api.listAdminResources();
       setResources(data.resources);
     } catch (err) {
-      console.error("Failed to load resources:", err);
+      console.error('Failed to load resources:', err);
     } finally {
       setLoading(false);
     }
@@ -43,7 +43,7 @@ export default function AdminResourcesPage() {
       await api.enableAdminResource(resource._id, !resource.isEnabled);
       await fetchResources();
     } catch (err) {
-      console.error("Failed to toggle resource:", err);
+      console.error('Failed to toggle resource:', err);
     } finally {
       setToggling(null);
     }
@@ -69,7 +69,7 @@ export default function AdminResourcesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {resources.map((resource) => (
-            <Card key={resource._id} className={resource.isEnabled ? "" : "opacity-70"}>
+            <Card key={resource._id} className={resource.isEnabled ? '' : 'opacity-70'}>
               <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
                 <div>
                   <CardTitle className="text-base">{resource.name}</CardTitle>
@@ -83,17 +83,20 @@ export default function AdminResourcesPage() {
                 />
               </CardHeader>
               <CardContent>
-                <p className="mb-3 text-sm text-secondary">{resource.description || "No description."}</p>
+                <p className="mb-3 text-sm text-secondary">{resource.description || 'No description.'}</p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={resource.isEnabled ? "completed" : "default"}>
-                    {resource.isEnabled ? "Enabled" : "Disabled"}
+                  <Badge variant={resource.isEnabled ? 'completed' : 'default'}>
+                    {resource.isEnabled ? 'Enabled' : 'Disabled'}
                   </Badge>
                   <Badge variant="outline">{resource.category}</Badge>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-1">
                   {resource.actions.length === 0 && <span className="text-xs text-muted">No actions defined.</span>}
                   {resource.actions.map((action) => (
-                    <span key={action._id} className="rounded-md bg-surface px-2 py-1 text-xs font-medium text-secondary">
+                    <span
+                      key={action._id}
+                      className="rounded-md bg-surface px-2 py-1 text-xs font-medium text-secondary"
+                    >
                       {action.key}
                     </span>
                   ))}

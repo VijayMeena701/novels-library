@@ -1,240 +1,239 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Input, Select } from "./ui/input";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { type CatalogBookFilters, type Genre, type PublicationStatus, type Source, type Author } from "../utils/api";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Input, Select } from './ui/input';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { type CatalogBookFilters, type Genre, type PublicationStatus, type Source, type Author } from '../utils/api';
 
 interface BooksFilterPanelProps {
-	filters: CatalogBookFilters;
-	options: {
-		genres: Genre[];
-		publicationStatuses: PublicationStatus[];
-		sources: Source[];
-		authors: Author[];
-	};
-	onChange: (filters: Partial<CatalogBookFilters>) => void;
-	onClear: () => void;
+  filters: CatalogBookFilters;
+  options: {
+    genres: Genre[];
+    publicationStatuses: PublicationStatus[];
+    sources: Source[];
+    authors: Author[];
+  };
+  onChange: (filters: Partial<CatalogBookFilters>) => void;
+  onClear: () => void;
 }
 
 function getSelectedKeys(value: string | undefined): string[] {
-	return value ? value.split(",").filter(Boolean) : [];
+  return value ? value.split(',').filter(Boolean) : [];
 }
 
 function toggleKey(current: string | undefined, key: string): string | undefined {
-	const selected = getSelectedKeys(current);
-	const index = selected.indexOf(key);
-	const next = index >= 0 ? selected.filter((k) => k !== key) : [...selected, key];
-	return next.length > 0 ? next.join(",") : undefined;
+  const selected = getSelectedKeys(current);
+  const index = selected.indexOf(key);
+  const next = index >= 0 ? selected.filter((k) => k !== key) : [...selected, key];
+  return next.length > 0 ? next.join(',') : undefined;
 }
 
 function getActiveFilterCount(filters: CatalogBookFilters): number {
-	let count = 0;
-	if (filters.search) count++;
-	if (filters.genre) count += filters.genre.split(",").filter(Boolean).length;
-	if (filters.publicationStatus) count += filters.publicationStatus.split(",").filter(Boolean).length;
-	if (filters.source) count += filters.source.split(",").filter(Boolean).length;
-	if (filters.authorId) count++;
-	if (filters.minRating !== undefined && filters.minRating !== null) count++;
-	if (filters.maxRating !== undefined && filters.maxRating !== null) count++;
-	return count;
+  let count = 0;
+  if (filters.search) count++;
+  if (filters.genre) count += filters.genre.split(',').filter(Boolean).length;
+  if (filters.publicationStatus) count += filters.publicationStatus.split(',').filter(Boolean).length;
+  if (filters.source) count += filters.source.split(',').filter(Boolean).length;
+  if (filters.authorId) count++;
+  if (filters.minRating !== undefined && filters.minRating !== null) count++;
+  if (filters.maxRating !== undefined && filters.maxRating !== null) count++;
+  return count;
 }
 
 export function BooksFilterPanel({ filters, options, onChange, onClear }: BooksFilterPanelProps) {
-	const activeCount = getActiveFilterCount(filters);
-	const [search, setSearch] = useState(filters.search || "");
+  const activeCount = getActiveFilterCount(filters);
+  const [search, setSearch] = useState(filters.search || '');
 
-	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect
-		setSearch(filters.search || "");
-	}, [filters.search]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearch(filters.search || '');
+  }, [filters.search]);
 
-	const handleToggle = (field: keyof CatalogBookFilters, key: string) => {
-		onChange({ [field]: toggleKey(filters[field] as string | undefined, key) } as Partial<CatalogBookFilters>);
-	};
+  const handleToggle = (field: keyof CatalogBookFilters, key: string) => {
+    onChange({ [field]: toggleKey(filters[field] as string | undefined, key) } as Partial<CatalogBookFilters>);
+  };
 
-	return (
-		<Card className="books-filter-panel h-fit rounded-2xl bg-surface-raised lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
-			<CardHeader className="flex flex-row items-center justify-between gap-2 px-5 py-4">
-				<CardTitle className="text-base font-semibold">Filters</CardTitle>
-				{activeCount > 0 && <Badge className="bg-surface text-primary">{activeCount}</Badge>}
-			</CardHeader>
-			<CardContent className="flex flex-col gap-5 p-5 pt-0">
-				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Search</label>
-					<Input
-						type="text"
-						placeholder="Title, author, pen name..."
-						value={search}
-						onChange={(e) => {
-							const value = e.target.value;
-							setSearch(value);
-							onChange({ search: value || undefined });
-						}}
-					/>
-				</div>
+  return (
+    <Card className="books-filter-panel h-fit rounded-2xl bg-surface-raised lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 px-5 py-4">
+        <CardTitle className="text-base font-semibold">Filters</CardTitle>
+        {activeCount > 0 && <Badge className="bg-surface text-primary">{activeCount}</Badge>}
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5 p-5 pt-0">
+        <div className="grid gap-2.5">
+          <label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Search</label>
+          <Input
+            type="text"
+            placeholder="Title, author, pen name..."
+            value={search}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearch(value);
+              onChange({ search: value || undefined });
+            }}
+          />
+        </div>
 
-				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Sort by</label>
-					<div className="flex gap-2">
-						<Select
-							value={filters.sort || "updatedAt"}
-							onChange={(e) => onChange({ sort: e.target.value as CatalogBookFilters["sort"] })}
-							className="min-w-0 flex-1"
-						>
-							<option value="updatedAt">Updated</option>
-							<option value="createdAt">Added</option>
-							<option value="title">Title</option>
-							<option value="author">Author</option>
-							<option value="translatedChaptersTotal">Chapters</option>
-							<option value="rawChaptersTotal">Raw chapters</option>
-							<option value="rating">Rating</option>
-							<option value="publicationStatus">Publication status</option>
-							<option value="originalSource">Source</option>
-						</Select>
-						<Button
-							variant="secondary"
-							size="icon"
-							className="shrink-0"
-							onClick={() => onChange({ sortDir: filters.sortDir === "asc" ? "desc" : "asc" })}
-							title={filters.sortDir === "asc" ? "Ascending" : "Descending"}
-						>
-							{filters.sortDir === "asc" ? "↑" : "↓"}
-						</Button>
-					</div>
-				</div>
+        <div className="grid gap-2.5">
+          <label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Sort by</label>
+          <div className="flex gap-2">
+            <Select
+              value={filters.sort || 'updatedAt'}
+              onChange={(e) => onChange({ sort: e.target.value as CatalogBookFilters['sort'] })}
+              className="min-w-0 flex-1"
+            >
+              <option value="updatedAt">Updated</option>
+              <option value="createdAt">Added</option>
+              <option value="title">Title</option>
+              <option value="author">Author</option>
+              <option value="translatedChaptersTotal">Chapters</option>
+              <option value="rawChaptersTotal">Raw chapters</option>
+              <option value="rating">Rating</option>
+              <option value="publicationStatus">Publication status</option>
+              <option value="originalSource">Source</option>
+            </Select>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="shrink-0"
+              onClick={() => onChange({ sortDir: filters.sortDir === 'asc' ? 'desc' : 'asc' })}
+              title={filters.sortDir === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {filters.sortDir === 'asc' ? '↑' : '↓'}
+            </Button>
+          </div>
+        </div>
 
-				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Author</label>
-					<Select
-						value={filters.authorId || ""}
-						onChange={(e) => onChange({ authorId: e.target.value || undefined })}
-					>
-						<option value="">All authors</option>
-						{options.authors.map((author) => (
-							<option key={author._id} value={author._id}>
-								{author.displayName} {author.bookCount ? `(${author.bookCount})` : ""}
-							</option>
-						))}
-					</Select>
-				</div>
+        <div className="grid gap-2.5">
+          <label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Author</label>
+          <Select value={filters.authorId || ''} onChange={(e) => onChange({ authorId: e.target.value || undefined })}>
+            <option value="">All authors</option>
+            {options.authors.map((author) => (
+              <option key={author._id} value={author._id}>
+                {author.displayName} {author.bookCount ? `(${author.bookCount})` : ''}
+              </option>
+            ))}
+          </Select>
+        </div>
 
-				{options.genres.length > 0 && (
-					<div className="grid gap-2.5">
-						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Genres</label>
-						<div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
-							{options.genres.map((genre) => {
-								const selected = getSelectedKeys(filters.genre).includes(genre.key);
-								return (
-									<label
-										key={genre._id}
-										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface hover:text-primary"}`}
-									>
-										<input
-											type="checkbox"
-											checked={selected}
-											onChange={() => handleToggle("genre", genre.key)}
-											className="size-4 accent-primary"
-										/>
-										<span className="flex-1 truncate">{genre.name}</span>
-										{genre.bookCount ? <span className="text-xs text-muted">{genre.bookCount}</span> : null}
-									</label>
-								);
-								})}
-							</div>
-						</div>
-					)}
+        {options.genres.length > 0 && (
+          <div className="grid gap-2.5">
+            <label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Genres</label>
+            <div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
+              {options.genres.map((genre) => {
+                const selected = getSelectedKeys(filters.genre).includes(genre.key);
+                return (
+                  <label
+                    key={genre._id}
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? 'bg-accent-subtle font-semibold text-primary' : 'text-secondary hover:bg-surface hover:text-primary'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => handleToggle('genre', genre.key)}
+                      className="size-4 accent-primary"
+                    />
+                    <span className="flex-1 truncate">{genre.name}</span>
+                    {genre.bookCount ? <span className="text-xs text-muted">{genre.bookCount}</span> : null}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-				{options.publicationStatuses.length > 0 && (
-					<div className="grid gap-2.5">
-						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Publication status</label>
-						<div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
-							{options.publicationStatuses.map((status) => {
-								const selected = getSelectedKeys(filters.publicationStatus).includes(status.key);
-								return (
-									<label
-										key={status._id}
-										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface hover:text-primary"}`}
-									>
-										<input
-											type="checkbox"
-											checked={selected}
-											onChange={() => handleToggle("publicationStatus", status.key)}
-											className="size-4 accent-primary"
-										/>
-										<span className="flex-1 truncate">{status.name}</span>
-										{status.bookCount ? <span className="text-xs text-muted">{status.bookCount}</span> : null}
-									</label>
-								);
-								})}
-							</div>
-						</div>
-					)}
+        {options.publicationStatuses.length > 0 && (
+          <div className="grid gap-2.5">
+            <label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">
+              Publication status
+            </label>
+            <div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-1">
+              {options.publicationStatuses.map((status) => {
+                const selected = getSelectedKeys(filters.publicationStatus).includes(status.key);
+                return (
+                  <label
+                    key={status._id}
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? 'bg-accent-subtle font-semibold text-primary' : 'text-secondary hover:bg-surface hover:text-primary'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => handleToggle('publicationStatus', status.key)}
+                      className="size-4 accent-primary"
+                    />
+                    <span className="flex-1 truncate">{status.name}</span>
+                    {status.bookCount ? <span className="text-xs text-muted">{status.bookCount}</span> : null}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-				{options.sources.length > 0 && (
-					<div className="grid gap-2.5">
-						<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Source</label>
-						<div className="flex max-h-[180px] flex-col gap-2 overflow-y-auto pr-1">
-							{options.sources.map((source) => {
-								const selected = getSelectedKeys(filters.source).includes(source.key);
-								return (
-									<label
-										key={source.key}
-										className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface hover:text-primary"}`}
-									>
-										<input
-											type="checkbox"
-											checked={selected}
-											onChange={() => handleToggle("source", source.key)}
-											className="size-4 accent-primary"
-										/>
-										<span className="flex-1 truncate">{source.name}</span>
-										{source.count ? <span className="text-xs text-muted">{source.count}</span> : null}
-									</label>
-								);
-								})}
-							</div>
-						</div>
-					)}
+        {options.sources.length > 0 && (
+          <div className="grid gap-2.5">
+            <label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Source</label>
+            <div className="flex max-h-[180px] flex-col gap-2 overflow-y-auto pr-1">
+              {options.sources.map((source) => {
+                const selected = getSelectedKeys(filters.source).includes(source.key);
+                return (
+                  <label
+                    key={source.key}
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition ${selected ? 'bg-accent-subtle font-semibold text-primary' : 'text-secondary hover:bg-surface hover:text-primary'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => handleToggle('source', source.key)}
+                      className="size-4 accent-primary"
+                    />
+                    <span className="flex-1 truncate">{source.name}</span>
+                    {source.count ? <span className="text-xs text-muted">{source.count}</span> : null}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-				<div className="grid gap-2.5">
-					<label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Rating</label>
-					<div className="flex gap-3">
-						<Input
-							type="number"
-							min={0}
-							max={5}
-							step={0.5}
-							placeholder="Min"
-							value={filters.minRating ?? ""}
-							onChange={(e) =>
-								onChange({
-									minRating: e.target.value ? Number(e.target.value) : undefined,
-								})
-							}
-						/>
-						<Input
-							type="number"
-							min={0}
-							max={5}
-							step={0.5}
-							placeholder="Max"
-							value={filters.maxRating ?? ""}
-							onChange={(e) =>
-								onChange({
-									maxRating: e.target.value ? Number(e.target.value) : undefined,
-								})
-							}
-						/>
-					</div>
-				</div>
+        <div className="grid gap-2.5">
+          <label className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted">Rating</label>
+          <div className="flex gap-3">
+            <Input
+              type="number"
+              min={0}
+              max={5}
+              step={0.5}
+              placeholder="Min"
+              value={filters.minRating ?? ''}
+              onChange={(e) =>
+                onChange({
+                  minRating: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+            />
+            <Input
+              type="number"
+              min={0}
+              max={5}
+              step={0.5}
+              placeholder="Max"
+              value={filters.maxRating ?? ''}
+              onChange={(e) =>
+                onChange({
+                  maxRating: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+            />
+          </div>
+        </div>
 
-				<Button variant="secondary" className="w-full" onClick={onClear}>
-					Clear filters
-				</Button>
-			</CardContent>
-		</Card>
-	);
+        <Button variant="secondary" className="w-full" onClick={onClear}>
+          Clear filters
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }

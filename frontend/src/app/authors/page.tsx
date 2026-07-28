@@ -11,14 +11,15 @@ export default function AuthorsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getPublicAuthors()
+    api
+      .getPublicAuthors()
       .then(setAuthors)
       .catch((err) => console.error('Failed to load authors:', err))
       .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
+    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'flex flex-col gap-5')}>
       <div className="flex items-end justify-between gap-4 py-1">
         <div>
           <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">Authors</h1>

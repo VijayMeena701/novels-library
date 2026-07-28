@@ -17,11 +17,7 @@ describe('ToastProvider', () => {
   it('displays a toast with the correct variant and title', async () => {
     function Trigger() {
       const { showToast } = useToast();
-      return (
-        <button onClick={() => showToast({ message: 'Saved', variant: 'success' })}>
-          Show
-        </button>
-      );
+      return <button onClick={() => showToast({ message: 'Saved', variant: 'success' })}>Show</button>;
     }
 
     render(

@@ -59,10 +59,7 @@ export default function BookHistoryPage() {
       setLoading(true);
       setError(null);
       try {
-        const [bookData, visitsData] = await Promise.all([
-          api.getBook(bookId),
-          api.getChapterVisits(bookId, 200),
-        ]);
+        const [bookData, visitsData] = await Promise.all([api.getBook(bookId), api.getChapterVisits(bookId, 200)]);
         if (!cancelled) {
           setBook(bookData);
           setVisits(visitsData);
@@ -120,7 +117,12 @@ export default function BookHistoryPage() {
 
   if (!user) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto flex flex-1 items-center justify-center py-24")}>
+      <div
+        className={cn(
+          'mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12',
+          'max-w-5xl mx-auto flex flex-1 items-center justify-center py-24',
+        )}
+      >
         <Card className="mx-auto max-w-md p-8 text-center">
           <h1 className="font-serif text-2xl font-medium text-primary">Book History</h1>
           <p className="mt-2 text-sm text-muted">Sign in to view your reading history.</p>
@@ -133,7 +135,7 @@ export default function BookHistoryPage() {
   }
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto py-8")}>
+    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'max-w-5xl mx-auto py-8')}>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2 gap-1">
         <Link href="/history">
           <ChevronLeft className="size-4" />
@@ -172,7 +174,10 @@ export default function BookHistoryPage() {
                   )}
                 </Link>
                 <div className="flex flex-col justify-center gap-1">
-                  <Link href={`/books/${book._id}`} className="font-serif text-2xl font-bold text-primary hover:underline">
+                  <Link
+                    href={`/books/${book._id}`}
+                    className="font-serif text-2xl font-bold text-primary hover:underline"
+                  >
                     {book.title}
                   </Link>
                   <p className="text-sm text-muted">
@@ -186,9 +191,7 @@ export default function BookHistoryPage() {
 
               {book.lastVisitedChapterNumber ? (
                 <Button asChild className="sm:ml-auto">
-                  <Link href={`/books/${book._id}/reader/${book.lastVisitedChapterNumber}`}>
-                    Continue reading
-                  </Link>
+                  <Link href={`/books/${book._id}/reader/${book.lastVisitedChapterNumber}`}>Continue reading</Link>
                 </Button>
               ) : null}
             </div>
@@ -216,11 +219,7 @@ export default function BookHistoryPage() {
 
                 if (event.type === 'visit' && event.visit) {
                   return (
-                    <Link
-                      key={index}
-                      href={`/books/${book._id}/reader/${event.visit.chapterNumber}`}
-                      className="block"
-                    >
+                    <Link key={index} href={`/books/${book._id}/reader/${event.visit.chapterNumber}`} className="block">
                       <Card className="transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4">
                         {content}
                       </Card>
@@ -228,11 +227,7 @@ export default function BookHistoryPage() {
                   );
                 }
 
-                return (
-                  <Card key={index}>
-                    {content}
-                  </Card>
-                );
+                return <Card key={index}>{content}</Card>;
               })}
             </div>
           </div>

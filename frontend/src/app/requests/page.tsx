@@ -57,9 +57,7 @@ export default function RequestsPage() {
   async function handleVote(id: string) {
     try {
       const data = await api.voteBookRequest(id);
-      setRequests((prev) =>
-        prev.map((r) => (r._id === id ? data.request : r))
-      );
+      setRequests((prev) => prev.map((r) => (r._id === id ? data.request : r)));
     } catch (err) {
       console.error('Failed to vote:', err);
     }
@@ -72,7 +70,7 @@ export default function RequestsPage() {
 
   if (!user) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12")}>
+      <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'py-12')}>
         <Card className="mx-auto max-w-2xl p-8 text-center">
           <h1 className="font-serif text-2xl font-medium text-primary">Book Requests</h1>
           <p className="mt-2 text-sm text-muted">Please log in to view and create book requests.</p>
@@ -86,12 +84,14 @@ export default function RequestsPage() {
 
   if (loading) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted")}>Loading requests...</div>
+      <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'py-12 text-center text-sm text-muted')}>
+        Loading requests...
+      </div>
     );
   }
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
+    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'py-6 md:py-8')}>
       <div className="mx-auto max-w-3xl">
         <h1 className="font-serif text-2xl font-medium text-primary mb-6">Book Requests</h1>
 
@@ -126,7 +126,9 @@ export default function RequestsPage() {
                   <div>
                     <p className="text-sm font-semibold text-primary">{request.title}</p>
                     <p className="text-xs text-muted">
-                      Requested by {typeof request.requestedByUserId === 'object' ? request.requestedByUserId.username : 'Unknown'} · {new Date(request.createdAt).toLocaleDateString()}
+                      Requested by{' '}
+                      {typeof request.requestedByUserId === 'object' ? request.requestedByUserId.username : 'Unknown'} ·{' '}
+                      {new Date(request.createdAt).toLocaleDateString()}
                     </p>
                     <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-raised text-muted border border-default">
                       {statusLabels[request.status] || request.status}

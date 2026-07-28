@@ -19,13 +19,7 @@ const sizeClasses: Record<ProgressBarSize, string> = {
   lg: 'h-2.5',
 };
 
-export function ProgressBar({
-  percent,
-  size = 'sm',
-  variant = 'gradient',
-  className,
-  barClassName,
-}: ProgressBarProps) {
+export function ProgressBar({ percent, size = 'sm', variant = 'gradient', className, barClassName }: ProgressBarProps) {
   const safePercent = Math.min(100, Math.max(0, percent));
 
   return (

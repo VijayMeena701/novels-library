@@ -19,15 +19,11 @@ export function getPreviewReadButton({
   const hasChapters = totalChapters > 0 && firstChapter > 0;
 
   const isUserBook = Boolean(user && (isLibraryMode || book.userBookCreatedAt));
-  const savedChapter = isUserBook && hasChapters
-    ? book.lastVisitedChapterNumber || book.chaptersRead || 0
-    : 0;
+  const savedChapter = isUserBook && hasChapters ? book.lastVisitedChapterNumber || book.chaptersRead || 0 : 0;
   const resumeChapter = savedChapter > 0 ? savedChapter : firstChapter;
   const hasResume = savedChapter > 0 && savedChapter !== firstChapter;
 
-  const readHref = hasChapters
-    ? `/books/${book._id}/reader/${resumeChapter}`
-    : book.sourceUrl || null;
+  const readHref = hasChapters ? `/books/${book._id}/reader/${resumeChapter}` : book.sourceUrl || null;
 
   if (!hasChapters) {
     return book.sourceUrl

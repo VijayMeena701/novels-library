@@ -6,9 +6,7 @@ import { IconButton } from '@/components/ui/icon-button';
 describe('IconButton', () => {
   it('renders icon and label', async () => {
     const onClick = vi.fn();
-    render(
-      <IconButton icon={<span data-testid="icon" />} aria-label="Menu" onClick={onClick} />,
-    );
+    render(<IconButton icon={<span data-testid="icon" />} aria-label="Menu" onClick={onClick} />);
     const button = screen.getByRole('button', { name: 'Menu' });
     expect(button).toBeInTheDocument();
     expect(screen.getByTestId('icon')).toBeInTheDocument();

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
-import { api, type AdminUserUpdate } from "../../utils/api";
-import { Can } from "../Can";
+import { api, type AdminUserUpdate } from '../../utils/api';
+import { Can } from '../Can';
 
 interface UserRow {
   _id: string;
@@ -23,18 +23,21 @@ interface Role {
 export default function AdminUsers() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const [userData, roleData] = await Promise.all([api.listAdminUsers({ search, limit: 100 }), api.listAdminRoles()]);
+      const [userData, roleData] = await Promise.all([
+        api.listAdminUsers({ search, limit: 100 }),
+        api.listAdminRoles(),
+      ]);
       setUsers(userData.users);
       setRoles(roleData.roles);
     } catch (err) {
-      console.error("Failed to load admin users:", err);
+      console.error('Failed to load admin users:', err);
     } finally {
       setLoading(false);
     }
@@ -46,13 +49,16 @@ export default function AdminUsers() {
     async function loadUsers() {
       setLoading(true);
       try {
-        const [userData, roleData] = await Promise.all([api.listAdminUsers({ search, limit: 100 }), api.listAdminRoles()]);
+        const [userData, roleData] = await Promise.all([
+          api.listAdminUsers({ search, limit: 100 }),
+          api.listAdminRoles(),
+        ]);
         if (!cancelled) {
           setUsers(userData.users);
           setRoles(roleData.roles);
         }
       } catch (err) {
-        if (!cancelled) console.error("Failed to load admin users:", err);
+        if (!cancelled) console.error('Failed to load admin users:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -70,7 +76,7 @@ export default function AdminUsers() {
       await api.updateAdminUser(id, payload);
       await fetchUsers();
     } catch (err) {
-      console.error("Failed to update user:", err);
+      console.error('Failed to update user:', err);
     } finally {
       setSaving(null);
     }
@@ -136,7 +142,7 @@ export default function AdminUsers() {
                       ))}
                       <Can action="access" subject="admin">
                         <span className="text-xs text-muted-foreground">
-                          {user.roles.map((r) => r.name).join(", ") || "None"}
+                          {user.roles.map((r) => r.name).join(', ') || 'None'}
                         </span>
                       </Can>
                     </div>
@@ -145,7 +151,9 @@ export default function AdminUsers() {
                     <div className="flex gap-2 text-xs">
                       {user.isDisabled && <span className="rounded bg-red-100 px-2 py-1 text-danger">Disabled</span>}
                       {user.isLocked && <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">Locked</span>}
-                      {user.isVerified && <span className="rounded bg-green-100 px-2 py-1 text-green-700">Verified</span>}
+                      {user.isVerified && (
+                        <span className="rounded bg-green-100 px-2 py-1 text-green-700">Verified</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-2">
@@ -156,21 +164,21 @@ export default function AdminUsers() {
                           disabled={saving === user._id}
                           className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted"
                         >
-                          {user.isDisabled ? "Enable" : "Disable"}
+                          {user.isDisabled ? 'Enable' : 'Disable'}
                         </button>
                         <button
                           onClick={() => updateUser(user._id, { isLocked: !user.isLocked })}
                           disabled={saving === user._id}
                           className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted"
                         >
-                          {user.isLocked ? "Unlock" : "Lock"}
+                          {user.isLocked ? 'Unlock' : 'Lock'}
                         </button>
                         <button
                           onClick={() => updateUser(user._id, { isVerified: !user.isVerified })}
                           disabled={saving === user._id}
                           className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted"
                         >
-                          {user.isVerified ? "Unverify" : "Verify"}
+                          {user.isVerified ? 'Unverify' : 'Verify'}
                         </button>
                         <button
                           onClick={() => api.deleteAdminUser(user._id).then(fetchUsers)}

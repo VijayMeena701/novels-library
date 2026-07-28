@@ -51,7 +51,11 @@ export function BookPreviewCover({
       {showProgress && (
         <div className="w-full max-w-[200px] rounded-xl border border-default bg-surface p-4 shadow-elevation-2">
           <div className="mb-3 flex items-center justify-between">
-            {status ? <StatusLabel status={status} /> : <span className="text-xs font-semibold text-muted">Progress</span>}
+            {status ? (
+              <StatusLabel status={status} />
+            ) : (
+              <span className="text-xs font-semibold text-muted">Progress</span>
+            )}
             <span className="text-xs font-bold text-secondary">{progressPercent}%</span>
           </div>
 

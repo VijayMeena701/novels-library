@@ -8,7 +8,10 @@ describe('SettingsPage', () => {
   it('shows loading state initially', () => {
     const payload = btoa(JSON.stringify({ id: 'u1', email: 'u@test' }));
     api.setToken(`settings.${payload}.sig`);
-    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    );
 
     render(
       <AuthProvider>

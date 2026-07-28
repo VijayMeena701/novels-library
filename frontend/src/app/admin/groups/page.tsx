@@ -1,16 +1,22 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../../../context/AuthContext";
-import { CAPABILITY } from "../../../utils/permissions";
-import { api, type AdminGroup, type AdminCapability, type AdminResource, type AdminGroupPayload } from "../../../utils/api";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Textarea } from "../../../components/ui/input";
-import { Modal } from "../../../components/ui/modal";
-import { Spinner } from "../../../components/ui/spinner";
-import { Badge } from "../../../components/ui/badge";
-import { Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
+import { CAPABILITY } from '../../../utils/permissions';
+import {
+  api,
+  type AdminGroup,
+  type AdminCapability,
+  type AdminResource,
+  type AdminGroupPayload,
+} from '../../../utils/api';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Textarea } from '../../../components/ui/input';
+import { Modal } from '../../../components/ui/modal';
+import { Spinner } from '../../../components/ui/spinner';
+import { Badge } from '../../../components/ui/badge';
+import { Plus, RefreshCw, Pencil, Trash2 } from 'lucide-react';
 
 export default function AdminGroupsPage() {
   const { hasCapability } = useAuth();
@@ -25,10 +31,10 @@ export default function AdminGroupsPage() {
   const [editing, setEditing] = useState<AdminGroup | null>(null);
 
   const [form, setForm] = useState<AdminGroupPayload & { key: string }>({
-    key: "",
-    name: "",
-    description: "",
-    resourceId: "",
+    key: '',
+    name: '',
+    description: '',
+    resourceId: '',
     capabilityIds: [],
   });
 
@@ -44,7 +50,7 @@ export default function AdminGroupsPage() {
       setCapabilities(capsRes.capabilities);
       setResources(resourcesRes.resources);
     } catch (err) {
-      console.error("Failed to load permission groups:", err);
+      console.error('Failed to load permission groups:', err);
     } finally {
       setLoading(false);
     }
@@ -56,7 +62,7 @@ export default function AdminGroupsPage() {
   }, []);
 
   const capabilitiesByResource = useMemo(() => {
-    const map = new Map<string, { resource: AdminCapability["resource"]; capabilities: AdminCapability[] }>();
+    const map = new Map<string, { resource: AdminCapability['resource']; capabilities: AdminCapability[] }>();
     for (const cap of capabilities) {
       const key = cap.resource.key;
       if (!map.has(key)) {
@@ -68,13 +74,13 @@ export default function AdminGroupsPage() {
   }, [capabilities]);
 
   const resourceOptions = useMemo(
-    () => [{ _id: "", key: "", name: "None" }, ...resources.map((r) => ({ _id: r._id, key: r.key, name: r.name }))],
-    [resources]
+    () => [{ _id: '', key: '', name: 'None' }, ...resources.map((r) => ({ _id: r._id, key: r.key, name: r.name }))],
+    [resources],
   );
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ key: "", name: "", description: "", resourceId: "", capabilityIds: [] });
+    setForm({ key: '', name: '', description: '', resourceId: '', capabilityIds: [] });
     setShowModal(true);
   };
 
@@ -84,7 +90,7 @@ export default function AdminGroupsPage() {
       key: group.key,
       name: group.name,
       description: group.description,
-      resourceId: group.resource?._id || "",
+      resourceId: group.resource?._id || '',
       capabilityIds: group.capabilities.map((c) => c._id),
     });
     setShowModal(true);
@@ -103,7 +109,7 @@ export default function AdminGroupsPage() {
     e.preventDefault();
     if (!canManage) return;
     if (!form.key || !form.name) {
-      alert("Key and name are required.");
+      alert('Key and name are required.');
       return;
     }
     setWorking(true);
@@ -122,7 +128,7 @@ export default function AdminGroupsPage() {
       setShowModal(false);
       await fetchData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save permission group.");
+      alert(err instanceof Error ? err.message : 'Failed to save permission group.');
     } finally {
       setWorking(false);
     }
@@ -136,7 +142,7 @@ export default function AdminGroupsPage() {
       await api.deleteAdminGroup(group._id);
       await fetchData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete permission group.");
+      alert(err instanceof Error ? err.message : 'Failed to delete permission group.');
     } finally {
       setWorking(false);
     }
@@ -147,7 +153,9 @@ export default function AdminGroupsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary">Permission Groups</h1>
-          <p className="text-sm text-muted-foreground">Permission groups bundle capabilities (resource:action) that roles can assign.</p>
+          <p className="text-sm text-muted-foreground">
+            Permission groups bundle capabilities (resource:action) that roles can assign.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={fetchData} disabled={loading}>
@@ -190,7 +198,11 @@ export default function AdminGroupsPage() {
                     <div className="text-xs text-secondary">{group.description}</div>
                   </td>
                   <td className="px-4 py-3">
-                    {group.resource ? <Badge variant="outline">{group.resource.name}</Badge> : <span className="text-xs text-muted">—</span>}
+                    {group.resource ? (
+                      <Badge variant="outline">{group.resource.name}</Badge>
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex max-w-md flex-wrap gap-1">
@@ -225,7 +237,12 @@ export default function AdminGroupsPage() {
         </div>
       )}
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Edit Permission Group" : "Create Permission Group"} size="xl">
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? 'Edit Permission Group' : 'Create Permission Group'}
+        size="xl"
+      >
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Key</label>
@@ -243,7 +260,10 @@ export default function AdminGroupsPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Description</label>
-            <Textarea value={form.description || ""} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            <Textarea
+              value={form.description || ''}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Resource</label>
@@ -253,8 +273,8 @@ export default function AdminGroupsPage() {
               className="min-h-[42px] w-full rounded-md border border-default bg-surface px-3 py-2 text-sm text-primary outline-none"
             >
               {resourceOptions.map((r) => (
-                <option key={r._id || "none"} value={r._id}>
-                  {r.name || "None"}
+                <option key={r._id || 'none'} value={r._id}>
+                  {r.name || 'None'}
                 </option>
               ))}
             </select>
@@ -277,7 +297,9 @@ export default function AdminGroupsPage() {
                           <label
                             key={cap._id}
                             className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition ${
- selected ? "bg-accent-subtle font-semibold text-primary" : "text-secondary hover:bg-surface-raised"
+                              selected
+                                ? 'bg-accent-subtle font-semibold text-primary'
+                                : 'text-secondary hover:bg-surface-raised'
                             }`}
                           >
                             <input
@@ -301,7 +323,7 @@ export default function AdminGroupsPage() {
               Cancel
             </Button>
             <Button type="submit" disabled={working}>
-              {working ? "Saving..." : editing ? "Save Changes" : "Create Group"}
+              {working ? 'Saving...' : editing ? 'Save Changes' : 'Create Group'}
             </Button>
           </div>
         </form>

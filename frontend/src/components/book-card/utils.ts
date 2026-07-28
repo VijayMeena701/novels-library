@@ -1,24 +1,57 @@
 import type { CSSProperties } from 'react';
-import {
-  BookOpen,
-  Bookmark,
-  CheckCircle2,
-  Clock,
-  Flame,
-  X,
-} from 'lucide-react';
+import { BookOpen, Bookmark, CheckCircle2, Clock, Flame, X } from 'lucide-react';
 import type { Book } from '@/utils/api';
 import type { StatusConfig } from './types';
 
 const COVER_PALETTES = [
-  { main: '#1e1b4b', accent: '#6366f1', glow: '#a5b4fc', texture: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)' },
-  { main: '#14532d', accent: '#22c55e', glow: '#86efac', texture: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)' },
-  { main: '#701a75', accent: '#d946ef', glow: '#f0abfc', texture: 'linear-gradient(135deg, #581c87 0%, #7e22ce 50%, #9333ea 100%)' },
-  { main: '#7c2d12', accent: '#f97316', glow: '#fdba74', texture: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 50%, #ea580c 100%)' },
-  { main: '#0f172a', accent: '#38bdf8', glow: '#7dd3fc', texture: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)' },
-  { main: '#881337', accent: '#f43f5e', glow: '#fda4af', texture: 'linear-gradient(135deg, #881337 0%, #be123c 50%, #e11d48 100%)' },
-  { main: '#312e81', accent: '#818cf8', glow: '#c7d2fe', texture: 'linear-gradient(135deg, #312e81 0%, #4f46e5 50%, #6366f1 100%)' },
-  { main: '#365314', accent: '#84cc16', glow: '#bef264', texture: 'linear-gradient(135deg, #1a2e05 0%, #3f6212 50%, #4d7c0f 100%)' },
+  {
+    main: '#1e1b4b',
+    accent: '#6366f1',
+    glow: '#a5b4fc',
+    texture: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
+  },
+  {
+    main: '#14532d',
+    accent: '#22c55e',
+    glow: '#86efac',
+    texture: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
+  },
+  {
+    main: '#701a75',
+    accent: '#d946ef',
+    glow: '#f0abfc',
+    texture: 'linear-gradient(135deg, #581c87 0%, #7e22ce 50%, #9333ea 100%)',
+  },
+  {
+    main: '#7c2d12',
+    accent: '#f97316',
+    glow: '#fdba74',
+    texture: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 50%, #ea580c 100%)',
+  },
+  {
+    main: '#0f172a',
+    accent: '#38bdf8',
+    glow: '#7dd3fc',
+    texture: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+  },
+  {
+    main: '#881337',
+    accent: '#f43f5e',
+    glow: '#fda4af',
+    texture: 'linear-gradient(135deg, #881337 0%, #be123c 50%, #e11d48 100%)',
+  },
+  {
+    main: '#312e81',
+    accent: '#818cf8',
+    glow: '#c7d2fe',
+    texture: 'linear-gradient(135deg, #312e81 0%, #4f46e5 50%, #6366f1 100%)',
+  },
+  {
+    main: '#365314',
+    accent: '#84cc16',
+    glow: '#bef264',
+    texture: 'linear-gradient(135deg, #1a2e05 0%, #3f6212 50%, #4d7c0f 100%)',
+  },
 ] as const;
 
 export function getCoverStyle(book: Book): CSSProperties {
@@ -43,9 +76,7 @@ export function getTotalChapters(book: Book): number {
 
 export function getProgressPercent(book: Book): number {
   const totalChapters = getTotalChapters(book);
-  return totalChapters > 0
-    ? Math.min(100, Math.round((book.chaptersRead / totalChapters) * 100))
-    : 0;
+  return totalChapters > 0 ? Math.min(100, Math.round((book.chaptersRead / totalChapters) * 100)) : 0;
 }
 
 export function getStatusConfig(status = ''): StatusConfig {

@@ -60,14 +60,18 @@ export function useHomeSections(books: Book[], libraryBooks: Book[], home: HomeR
   }, [sections.ranked, sections.newest]);
 
   const userSections = useMemo<UserLibrarySections>(() => {
-    const byUpdated = [...libraryBooks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const byUpdated = [...libraryBooks].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
     const byRating = [...libraryBooks].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     const totalChaptersFor = (book: Book) => book.translatedChaptersTotal || book.translatedChaptersList?.length || 0;
 
     return {
       continueReading: home?.continueReading.length
         ? home.continueReading
-        : byUpdated.filter((n) => n.status === 'reading' && n.chaptersRead > 0 && n.chaptersRead < totalChaptersFor(n)).slice(0, 6),
+        : byUpdated
+            .filter((n) => n.status === 'reading' && n.chaptersRead > 0 && n.chaptersRead < totalChaptersFor(n))
+            .slice(0, 6),
       planning: byUpdated.filter((n) => n.status === 'planning').slice(0, 6),
       completed: byUpdated.filter((n) => n.status === 'completed').slice(0, 6),
       topRated: byRating.filter((n) => (n.rating || 0) > 0).slice(0, 6),

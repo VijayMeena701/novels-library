@@ -1,70 +1,66 @@
-import type { PronunciationRule } from "@/utils/api";
-import { SPEECH_BLOCK_SELECTOR, isSpeechLeafBlock } from "@/lib/reader-utils";
-import { buildWholeWordPattern, escapeRegExp } from "@/lib/reader-utils";
-import type { SpeechBlock, SpeechChunk, SpeechQueueItem, SpeechQueueSegment } from "./speechTypes";
+import type { PronunciationRule } from '@/utils/api';
+import { SPEECH_BLOCK_SELECTOR, isSpeechLeafBlock } from '@/lib/reader-utils';
+import { buildWholeWordPattern, escapeRegExp } from '@/lib/reader-utils';
+import type { SpeechBlock, SpeechChunk, SpeechQueueItem, SpeechQueueSegment } from './speechTypes';
 
 export function findSpeechBlocks(root: HTMLElement | null): SpeechBlock[] {
-	if (!root) return [];
+  if (!root) return [];
 
-	const found: SpeechBlock[] = [];
-	const nodes = root.querySelectorAll(SPEECH_BLOCK_SELECTOR);
+  const found: SpeechBlock[] = [];
+  const nodes = root.querySelectorAll(SPEECH_BLOCK_SELECTOR);
 
-	for (const node of nodes) {
-		if (node instanceof HTMLElement && isSpeechLeafBlock(node)) {
-			const text = node.textContent?.trim() || "";
-			if (text) {
-				found.push({ element: node, text });
-			}
-		}
-	}
+  for (const node of nodes) {
+    if (node instanceof HTMLElement && isSpeechLeafBlock(node)) {
+      const text = node.textContent?.trim() || '';
+      if (text) {
+        found.push({ element: node, text });
+      }
+    }
+  }
 
-	return found;
+  return found;
 }
 
 export function splitSpeechTextWithOffsets(text: string, maxLength = 1800): SpeechChunk[] {
-	const normalized = text.replace(/\s+/g, " ").trim();
-	if (!normalized) return [];
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
 
-	const chunks: SpeechChunk[] = [];
-	let remaining = normalized;
-	let consumed = 0;
+  const chunks: SpeechChunk[] = [];
+  let remaining = normalized;
+  let consumed = 0;
 
-	while (remaining.length > maxLength) {
-		const punctuationBreak = Math.max(
-			remaining.lastIndexOf(".", maxLength),
-			remaining.lastIndexOf("!", maxLength),
-			remaining.lastIndexOf("?", maxLength),
-			remaining.lastIndexOf(";", maxLength),
-			remaining.lastIndexOf(",", maxLength),
-		);
-		const wordBreak = remaining.lastIndexOf(" ", maxLength);
-		const breakAt =
-			punctuationBreak > maxLength * 0.45
-				? punctuationBreak + 1
-				: wordBreak > maxLength * 0.45
-					? wordBreak
-					: maxLength;
-		const chunk = remaining.slice(0, breakAt).trim();
-		if (chunk) {
-			const exactStart = normalized.indexOf(chunk, consumed);
-			chunks.push({
-				text: chunk,
-				startOffset: exactStart !== -1 ? exactStart : consumed,
-			});
-		}
-		consumed += breakAt;
-		remaining = remaining.slice(breakAt).trim();
-	}
+  while (remaining.length > maxLength) {
+    const punctuationBreak = Math.max(
+      remaining.lastIndexOf('.', maxLength),
+      remaining.lastIndexOf('!', maxLength),
+      remaining.lastIndexOf('?', maxLength),
+      remaining.lastIndexOf(';', maxLength),
+      remaining.lastIndexOf(',', maxLength),
+    );
+    const wordBreak = remaining.lastIndexOf(' ', maxLength);
+    const breakAt =
+      punctuationBreak > maxLength * 0.45 ? punctuationBreak + 1 : wordBreak > maxLength * 0.45 ? wordBreak : maxLength;
+    const chunk = remaining.slice(0, breakAt).trim();
+    if (chunk) {
+      const exactStart = normalized.indexOf(chunk, consumed);
+      chunks.push({
+        text: chunk,
+        startOffset: exactStart !== -1 ? exactStart : consumed,
+      });
+    }
+    consumed += breakAt;
+    remaining = remaining.slice(breakAt).trim();
+  }
 
-	if (remaining) {
-		const exactStart = normalized.indexOf(remaining, consumed);
-		chunks.push({
-			text: remaining,
-			startOffset: exactStart !== -1 ? exactStart : consumed,
-		});
-	}
+  if (remaining) {
+    const exactStart = normalized.indexOf(remaining, consumed);
+    chunks.push({
+      text: remaining,
+      startOffset: exactStart !== -1 ? exactStart : consumed,
+    });
+  }
 
-	return chunks;
+  return chunks;
 }
 
 /**
@@ -72,106 +68,102 @@ export function splitSpeechTextWithOffsets(text: string, maxLength = 1800): Spee
  * "all books" global rules). Rules with an empty replacement mute/skip the matched text.
  */
 export function applyPronunciationRules(text: string, rules: PronunciationRule[]): string {
-	if (!rules.length) return text;
+  if (!rules.length) return text;
 
-	let result = text;
-	for (const rule of rules) {
-		if (!rule.enabled || !rule.pattern) continue;
+  let result = text;
+  for (const rule of rules) {
+    if (!rule.enabled || !rule.pattern) continue;
 
-		const pattern = rule.wholeWord ? buildWholeWordPattern(rule.pattern) : escapeRegExp(rule.pattern);
-		const flags = rule.caseSensitive ? "gu" : "giu";
-		try {
-			const regex = new RegExp(pattern, flags);
-			result = result.replace(regex, rule.replacement);
-		} catch {
-			// Ignore malformed patterns rather than breaking speech playback.
-		}
-	}
+    const pattern = rule.wholeWord ? buildWholeWordPattern(rule.pattern) : escapeRegExp(rule.pattern);
+    const flags = rule.caseSensitive ? 'gu' : 'giu';
+    try {
+      const regex = new RegExp(pattern, flags);
+      result = result.replace(regex, rule.replacement);
+    } catch {
+      // Ignore malformed patterns rather than breaking speech playback.
+    }
+  }
 
-	return result.replace(/\s+/g, " ").trim();
+  return result.replace(/\s+/g, ' ').trim();
 }
 
 function normalizeBlockText(text: string): string {
-	return text.replace(/\s+/g, " ").trim();
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 export function createSpeechQueue(
-	blocks: SpeechBlock[],
-	startBlockIndex: number,
-	rules: PronunciationRule[],
-	maxChunkLength = 1800,
+  blocks: SpeechBlock[],
+  startBlockIndex: number,
+  rules: PronunciationRule[],
+  maxChunkLength = 1800,
 ): SpeechQueueItem[] {
-	const queue: SpeechQueueItem[] = [];
-	let i = startBlockIndex;
+  const queue: SpeechQueueItem[] = [];
+  let i = startBlockIndex;
 
-	while (i < blocks.length) {
-		const block = blocks[i];
-		const normalized = normalizeBlockText(block.text);
+  while (i < blocks.length) {
+    const block = blocks[i];
+    const normalized = normalizeBlockText(block.text);
 
-		if (!normalized) {
-			i++;
-			continue;
-		}
+    if (!normalized) {
+      i++;
+      continue;
+    }
 
-		if (normalized.length > maxChunkLength) {
-			const chunks = splitSpeechTextWithOffsets(block.text, maxChunkLength);
-			for (const chunk of chunks) {
-				queue.push({
-					text: chunk.text,
-					spokenText: applyPronunciationRules(chunk.text, rules),
-					blockIndex: i,
-					startOffset: chunk.startOffset,
-					segments: [
-						{ blockIndex: i, text: chunk.text, startOffset: 0, blockStartOffset: chunk.startOffset },
-					],
-				});
-			}
-			i++;
-			continue;
-		}
+    if (normalized.length > maxChunkLength) {
+      const chunks = splitSpeechTextWithOffsets(block.text, maxChunkLength);
+      for (const chunk of chunks) {
+        queue.push({
+          text: chunk.text,
+          spokenText: applyPronunciationRules(chunk.text, rules),
+          blockIndex: i,
+          startOffset: chunk.startOffset,
+          segments: [{ blockIndex: i, text: chunk.text, startOffset: 0, blockStartOffset: chunk.startOffset }],
+        });
+      }
+      i++;
+      continue;
+    }
 
-		let currentText = normalized;
-		const segments: SpeechQueueSegment[] = [
-			{ blockIndex: i, text: normalized, startOffset: 0, blockStartOffset: 0 },
-		];
-		let j = i + 1;
+    let currentText = normalized;
+    const segments: SpeechQueueSegment[] = [{ blockIndex: i, text: normalized, startOffset: 0, blockStartOffset: 0 }];
+    let j = i + 1;
 
-		while (j < blocks.length) {
-			const nextBlock = blocks[j];
-			const nextNormalized = normalizeBlockText(nextBlock.text);
+    while (j < blocks.length) {
+      const nextBlock = blocks[j];
+      const nextNormalized = normalizeBlockText(nextBlock.text);
 
-			if (!nextNormalized) {
-				j++;
-				continue;
-			}
+      if (!nextNormalized) {
+        j++;
+        continue;
+      }
 
-			if (nextNormalized.length > maxChunkLength) {
-				break;
-			}
+      if (nextNormalized.length > maxChunkLength) {
+        break;
+      }
 
-			if (currentText.length + 1 + nextNormalized.length > maxChunkLength) {
-				break;
-			}
+      if (currentText.length + 1 + nextNormalized.length > maxChunkLength) {
+        break;
+      }
 
-			segments.push({
-				blockIndex: j,
-				text: nextNormalized,
-				startOffset: currentText.length + 1,
-				blockStartOffset: 0,
-			});
-			currentText = currentText + " " + nextNormalized;
-			j++;
-		}
+      segments.push({
+        blockIndex: j,
+        text: nextNormalized,
+        startOffset: currentText.length + 1,
+        blockStartOffset: 0,
+      });
+      currentText = currentText + ' ' + nextNormalized;
+      j++;
+    }
 
-		queue.push({
-			text: currentText,
-			spokenText: applyPronunciationRules(currentText, rules),
-			blockIndex: i,
-			startOffset: 0,
-			segments,
-		});
-		i = j;
-	}
+    queue.push({
+      text: currentText,
+      spokenText: applyPronunciationRules(currentText, rules),
+      blockIndex: i,
+      startOffset: 0,
+      segments,
+    });
+    i = j;
+  }
 
-	return queue;
+  return queue;
 }

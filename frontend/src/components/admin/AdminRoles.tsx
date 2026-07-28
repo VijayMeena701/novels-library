@@ -1,7 +1,7 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
-import { api } from "../../utils/api";
-import { Can } from "../Can";
+import { api } from '../../utils/api';
+import { Can } from '../Can';
 
 interface Role {
   _id: string;
@@ -23,7 +23,7 @@ export default function AdminRoles() {
       const data = await api.listAdminRoles();
       setRoles(data.roles);
     } catch (err) {
-      console.error("Failed to load roles:", err);
+      console.error('Failed to load roles:', err);
     } finally {
       setLoading(false);
     }
@@ -38,7 +38,7 @@ export default function AdminRoles() {
         const data = await api.listAdminRoles();
         if (!cancelled) setRoles(data.roles);
       } catch (err) {
-        if (!cancelled) console.error("Failed to load roles:", err);
+        if (!cancelled) console.error('Failed to load roles:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -51,12 +51,12 @@ export default function AdminRoles() {
   }, []);
 
   const deleteRole = async (id: string) => {
-    if (!confirm("Delete this role?")) return;
+    if (!confirm('Delete this role?')) return;
     try {
       await api.deleteAdminRole(id);
       await fetchRoles();
     } catch (err) {
-      console.error("Failed to delete role:", err);
+      console.error('Failed to delete role:', err);
     }
   };
 
@@ -65,7 +65,10 @@ export default function AdminRoles() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Roles</h2>
         <Can action="manage" subject="roles">
-          <button className="rounded-md bg-accent px-3 py-1.5 text-sm text-primary-foreground" onClick={() => alert("Create role UI not implemented yet")}>
+          <button
+            className="rounded-md bg-accent px-3 py-1.5 text-sm text-primary-foreground"
+            onClick={() => alert('Create role UI not implemented yet')}
+          >
             + Role
           </button>
         </Can>
@@ -93,7 +96,7 @@ export default function AdminRoles() {
                     <div className="font-semibold">{role.name}</div>
                     <div className="text-xs text-muted-foreground">{role.description}</div>
                   </td>
-                  <td className="px-4 py-2 text-xs">{role.groups.map((g) => g.name).join(", ") || "None"}</td>
+                  <td className="px-4 py-2 text-xs">{role.groups.map((g) => g.name).join(', ') || 'None'}</td>
                   <td className="px-4 py-2 text-xs">
                     {role.isSuperuser && <span className="rounded bg-purple-100 px-2 py-1 text-purple-700">Super</span>}
                     {role.isSystem && <span className="rounded bg-blue-100 px-2 py-1 text-blue-700">System</span>}
@@ -101,7 +104,10 @@ export default function AdminRoles() {
                   <td className="px-4 py-2">
                     <Can action="manage" subject="roles">
                       {!role.isSystem && (
-                        <button onClick={() => deleteRole(role._id)} className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted">
+                        <button
+                          onClick={() => deleteRole(role._id)}
+                          className="rounded-md border border-default px-2 py-1 text-xs hover:bg-muted"
+                        >
                           Delete
                         </button>
                       )}

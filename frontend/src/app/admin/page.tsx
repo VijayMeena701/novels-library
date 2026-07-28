@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { api } from "../../utils/api";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Spinner } from "../../components/ui/spinner";
-import { Users, Shield, Key, Folder, ScrollText, Layers } from "lucide-react";
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { api } from '../../utils/api';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Spinner } from '../../components/ui/spinner';
+import { Users, Shield, Key, Folder, ScrollText, Layers } from 'lucide-react';
 
 interface Stats {
   users: number;
@@ -17,12 +17,12 @@ interface Stats {
 }
 
 const cards = [
-  { label: "Users", key: "users" as const, href: "/admin/users", icon: Users, color: "text-blue-600" },
-  { label: "Roles", key: "roles" as const, href: "/admin/roles", icon: Shield, color: "text-purple-600" },
-  { label: "Permission Groups", key: "groups" as const, href: "/admin/groups", icon: Key, color: "text-amber-600" },
-  { label: "Capabilities", key: "capabilities" as const, href: "/admin/groups", icon: Layers, color: "text-slate-600" },
-  { label: "Resources", key: "resources" as const, href: "/admin/resources", icon: Folder, color: "text-green-600" },
-  { label: "Audit Logs", key: "auditLogs" as const, href: "/admin/logs", icon: ScrollText, color: "text-rose-600" },
+  { label: 'Users', key: 'users' as const, href: '/admin/users', icon: Users, color: 'text-blue-600' },
+  { label: 'Roles', key: 'roles' as const, href: '/admin/roles', icon: Shield, color: 'text-purple-600' },
+  { label: 'Permission Groups', key: 'groups' as const, href: '/admin/groups', icon: Key, color: 'text-amber-600' },
+  { label: 'Capabilities', key: 'capabilities' as const, href: '/admin/groups', icon: Layers, color: 'text-slate-600' },
+  { label: 'Resources', key: 'resources' as const, href: '/admin/resources', icon: Folder, color: 'text-green-600' },
+  { label: 'Audit Logs', key: 'auditLogs' as const, href: '/admin/logs', icon: ScrollText, color: 'text-rose-600' },
 ];
 
 export default function AdminOverviewPage() {
@@ -33,7 +33,7 @@ export default function AdminOverviewPage() {
     api
       .getAdminStats()
       .then((data) => setStats(data))
-      .catch((err) => console.error("Failed to load admin stats:", err))
+      .catch((err) => console.error('Failed to load admin stats:', err))
       .finally(() => setLoading(false));
   }, []);
 
@@ -41,7 +41,9 @@ export default function AdminOverviewPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-primary">Admin Console</h1>
-        <p className="text-sm text-muted-foreground">Manage users, roles, permission groups, resources, and audit logs.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage users, roles, permission groups, resources, and audit logs.
+        </p>
       </div>
 
       {loading || !stats ? (

@@ -26,7 +26,11 @@ describe('AuthProvider', () => {
   it('returns guest context when useAuth is called outside provider', () => {
     const GuestComponent = () => {
       const { user, hasCapability } = useAuth();
-      return <div>{user ? 'user' : 'guest'}-{hasCapability('books:read') ? 'yes' : 'no'}</div>;
+      return (
+        <div>
+          {user ? 'user' : 'guest'}-{hasCapability('books:read') ? 'yes' : 'no'}
+        </div>
+      );
     };
     render(<GuestComponent />);
     expect(screen.getByText('guest-no')).toBeInTheDocument();

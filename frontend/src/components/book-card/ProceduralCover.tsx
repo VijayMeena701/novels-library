@@ -31,9 +31,7 @@ export function ProceduralCover({ book }: { book: Book }) {
           {book.title}
         </strong>
         <div className="mt-2 h-0.5 w-8 rounded bg-gradient-to-r from-warning to-transparent" />
-        <small className="mt-2 block line-clamp-1 text-xs font-medium italic text-inverse/80">
-          {authorName}
-        </small>
+        <small className="mt-2 block line-clamp-1 text-xs font-medium italic text-inverse/80">{authorName}</small>
       </div>
 
       <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-2 text-[10px] font-mono text-inverse/60">

@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../../../context/AuthContext";
-import { CAPABILITY } from "../../../utils/permissions";
-import { api, type AdminUser, type AdminRole, type AdminUserCreatePayload } from "../../../utils/api";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Modal } from "../../../components/ui/modal";
-import { Spinner } from "../../../components/ui/spinner";
-import { Badge } from "../../../components/ui/badge";
-import { Search, Plus, RefreshCw, Key } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
+import { CAPABILITY } from '../../../utils/permissions';
+import { api, type AdminUser, type AdminRole, type AdminUserCreatePayload } from '../../../utils/api';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Modal } from '../../../components/ui/modal';
+import { Spinner } from '../../../components/ui/spinner';
+import { Badge } from '../../../components/ui/badge';
+import { Search, Plus, RefreshCw, Key } from 'lucide-react';
 
 export default function AdminUsersPage() {
   const { hasCapability } = useAuth();
@@ -17,7 +17,7 @@ export default function AdminUsersPage() {
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<AdminRole[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [limit] = useState(50);
@@ -25,13 +25,13 @@ export default function AdminUsersPage() {
   const [working, setWorking] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
-  const [resetPassword, setResetPassword] = useState("");
+  const [resetPassword, setResetPassword] = useState('');
 
   const [createForm, setCreateForm] = useState<AdminUserCreatePayload & { confirmPassword: string }>({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
     roleIds: [],
   });
 
@@ -46,7 +46,7 @@ export default function AdminUsersPage() {
       setTotalPages(usersRes.totalPages);
       setRoles(rolesRes.roles);
     } catch (err) {
-      console.error("Failed to load users:", err);
+      console.error('Failed to load users:', err);
     } finally {
       setLoading(false);
     }
@@ -74,20 +74,20 @@ export default function AdminUsersPage() {
       await api.updateAdminUser(user._id, { roleIds: Array.from(current) });
       await fetchData(page);
     } catch (err) {
-      console.error("Failed to update user roles:", err);
+      console.error('Failed to update user roles:', err);
     } finally {
       setWorking(null);
     }
   };
 
-  const handleToggleStatus = async (user: AdminUser, field: "isDisabled" | "isLocked" | "isVerified") => {
+  const handleToggleStatus = async (user: AdminUser, field: 'isDisabled' | 'isLocked' | 'isVerified') => {
     if (!canManage) return;
     setWorking(user._id);
     try {
       await api.updateAdminUser(user._id, { [field]: !user[field] });
       await fetchData(page);
     } catch (err) {
-      console.error("Failed to update user status:", err);
+      console.error('Failed to update user status:', err);
     } finally {
       setWorking(null);
     }
@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
       await api.deleteAdminUser(user._id);
       await fetchData(page);
     } catch (err) {
-      console.error("Failed to delete user:", err);
+      console.error('Failed to delete user:', err);
     } finally {
       setWorking(null);
     }
@@ -111,17 +111,17 @@ export default function AdminUsersPage() {
     e.preventDefault();
     if (!resetTarget) return;
     if (resetPassword.length < 8) {
-      alert("Password must be at least 8 characters.");
+      alert('Password must be at least 8 characters.');
       return;
     }
-    setWorking("reset");
+    setWorking('reset');
     try {
       await api.resetAdminUserPassword(resetTarget._id, resetPassword);
       setResetTarget(null);
-      setResetPassword("");
+      setResetPassword('');
       await fetchData(page);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to reset password.");
+      alert(err instanceof Error ? err.message : 'Failed to reset password.');
     } finally {
       setWorking(null);
     }
@@ -130,14 +130,14 @@ export default function AdminUsersPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (createForm.password !== createForm.confirmPassword) {
-      alert("Passwords do not match.");
+      alert('Passwords do not match.');
       return;
     }
     if (!createForm.username || !createForm.email || !createForm.password) {
-      alert("Username, email, and password are required.");
+      alert('Username, email, and password are required.');
       return;
     }
-    setWorking("create");
+    setWorking('create');
     try {
       const payload: AdminUserCreatePayload = {
         username: createForm.username,
@@ -147,20 +147,16 @@ export default function AdminUsersPage() {
       };
       await api.createAdminUser(payload);
       setShowCreate(false);
-      setCreateForm({ username: "", email: "", password: "", confirmPassword: "", roleIds: [] });
+      setCreateForm({ username: '', email: '', password: '', confirmPassword: '', roleIds: [] });
       await fetchData(1);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to create user.");
+      alert(err instanceof Error ? err.message : 'Failed to create user.');
     } finally {
       setWorking(null);
     }
   };
 
-  const roleOptions = useMemo(
-    () =>
-      roles.map((r) => ({ key: r._id, label: r.name })),
-    [roles]
-  );
+  const roleOptions = useMemo(() => roles.map((r) => ({ key: r._id, label: r.name })), [roles]);
 
   return (
     <div className="space-y-6">
@@ -225,9 +221,9 @@ export default function AdminUsersPage() {
                           <label
                             key={role._id}
                             className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition ${
- hasRole
-                                ? "border-accent bg-accent-subtle text-accent"
-                                : "border-default text-secondary hover:bg-surface-raised"
+                              hasRole
+                                ? 'border-accent bg-accent-subtle text-accent'
+                                : 'border-default text-secondary hover:bg-surface-raised'
                             }`}
                           >
                             <input
@@ -254,7 +250,9 @@ export default function AdminUsersPage() {
                       {user.isVerified && <Badge variant="completed">Verified</Badge>}
                       {user.isDisabled && <Badge variant="dropped">Disabled</Badge>}
                       {user.isLocked && <Badge variant="hold">Locked</Badge>}
-                      {!user.isVerified && !user.isDisabled && !user.isLocked && <span className="text-xs text-muted">—</span>}
+                      {!user.isVerified && !user.isDisabled && !user.isLocked && (
+                        <span className="text-xs text-muted">—</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -263,33 +261,33 @@ export default function AdminUsersPage() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => handleToggleStatus(user, "isVerified")}
+                          onClick={() => handleToggleStatus(user, 'isVerified')}
                           disabled={working === user._id}
                         >
-                          {user.isVerified ? "Unverify" : "Verify"}
+                          {user.isVerified ? 'Unverify' : 'Verify'}
                         </Button>
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => handleToggleStatus(user, "isDisabled")}
+                          onClick={() => handleToggleStatus(user, 'isDisabled')}
                           disabled={working === user._id}
                         >
-                          {user.isDisabled ? "Enable" : "Disable"}
+                          {user.isDisabled ? 'Enable' : 'Disable'}
                         </Button>
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => handleToggleStatus(user, "isLocked")}
+                          onClick={() => handleToggleStatus(user, 'isLocked')}
                           disabled={working === user._id}
                         >
-                          {user.isLocked ? "Unlock" : "Lock"}
+                          {user.isLocked ? 'Unlock' : 'Lock'}
                         </Button>
                         <Button
                           size="sm"
                           variant="secondary"
                           onClick={() => {
                             setResetTarget(user);
-                            setResetPassword("");
+                            setResetPassword('');
                           }}
                           disabled={working === user._id}
                         >
@@ -315,13 +313,23 @@ export default function AdminUsersPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1 || loading}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1 || loading}
+          >
             Previous
           </Button>
           <span className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </span>
-          <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages || loading}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages || loading}
+          >
             Next
           </Button>
         </div>
@@ -331,9 +339,9 @@ export default function AdminUsersPage() {
         open={!!resetTarget}
         onClose={() => {
           setResetTarget(null);
-          setResetPassword("");
+          setResetPassword('');
         }}
-        title={`Reset password for ${resetTarget?.username ?? ""}`}
+        title={`Reset password for ${resetTarget?.username ?? ''}`}
         size="sm"
       >
         <form onSubmit={handleReset} className="space-y-4">
@@ -355,12 +363,12 @@ export default function AdminUsersPage() {
               variant="secondary"
               onClick={() => {
                 setResetTarget(null);
-                setResetPassword("");
+                setResetPassword('');
               }}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={working === "reset"}>
+            <Button type="submit" disabled={working === 'reset'}>
               Reset Password
             </Button>
           </div>
@@ -371,19 +379,38 @@ export default function AdminUsersPage() {
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Username</label>
-            <Input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} required />
+            <Input
+              value={createForm.username}
+              onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))}
+              required
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Email</label>
-            <Input type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} required />
+            <Input
+              type="email"
+              value={createForm.email}
+              onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+              required
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Password</label>
-            <Input type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} required />
+            <Input
+              type="password"
+              value={createForm.password}
+              onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+              required
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Confirm Password</label>
-            <Input type="password" value={createForm.confirmPassword} onChange={(e) => setCreateForm((f) => ({ ...f, confirmPassword: e.target.value }))} required />
+            <Input
+              type="password"
+              value={createForm.confirmPassword}
+              onChange={(e) => setCreateForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+              required
+            />
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-primary">Roles</label>
@@ -394,7 +421,10 @@ export default function AdminUsersPage() {
                 roleOptions.map((role) => {
                   const selected = createForm.roleIds?.includes(role.key) ?? false;
                   return (
-                    <label key={role.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised">
+                    <label
+                      key={role.key}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised"
+                    >
                       <input
                         type="checkbox"
                         className="size-4 accent-primary"
@@ -419,7 +449,7 @@ export default function AdminUsersPage() {
             <Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={working === "create"}>
+            <Button type="submit" disabled={working === 'create'}>
               Create
             </Button>
           </div>

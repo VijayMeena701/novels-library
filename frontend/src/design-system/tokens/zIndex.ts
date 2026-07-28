@@ -5,24 +5,16 @@
  */
 
 export type ZIndexToken =
-	| "base"
-	| "sticky"
-	| "header"
-	| "dropdown"
-	| "popover"
-	| "drawer"
-	| "modal"
-	| "toast"
-	| "tooltip";
+  'base' | 'sticky' | 'header' | 'dropdown' | 'popover' | 'drawer' | 'modal' | 'toast' | 'tooltip';
 
 export const Z_INDEX: Record<ZIndexToken, number> = {
-	base: 0,
-	sticky: 10,
-	header: 50,
-	dropdown: 100,
-	popover: 110,
-	drawer: 120,
-	modal: 130,
-	toast: 140,
-	tooltip: 150,
+  base: 0,
+  sticky: 10,
+  header: 50,
+  dropdown: 100,
+  popover: 110,
+  drawer: 120,
+  modal: 130,
+  toast: 140,
+  tooltip: 150,
 };

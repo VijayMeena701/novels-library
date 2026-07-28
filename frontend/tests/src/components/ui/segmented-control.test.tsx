@@ -12,9 +12,7 @@ describe('SegmentedControl', () => {
   });
 
   it('marks the active option', () => {
-    const { rerender } = render(
-      <SegmentedControl options={['a', 'b', 'c'] as const} value="a" onChange={vi.fn()} />,
-    );
+    const { rerender } = render(<SegmentedControl options={['a', 'b', 'c'] as const} value="a" onChange={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'a' })).toHaveClass('bg-reader-accent');
 
     rerender(<SegmentedControl options={['a', 'b', 'c'] as const} value="b" onChange={vi.fn()} />);

@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../../../context/AuthContext";
-import { CAPABILITY } from "../../../utils/permissions";
-import { api, type AdminRole, type AdminGroup, type AdminRolePayload } from "../../../utils/api";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Textarea } from "../../../components/ui/input";
-import { Modal } from "../../../components/ui/modal";
-import { Spinner } from "../../../components/ui/spinner";
-import { Badge } from "../../../components/ui/badge";
-import { CheckboxGroup } from "../../../components/ui/checkbox-group";
-import { Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
+import { CAPABILITY } from '../../../utils/permissions';
+import { api, type AdminRole, type AdminGroup, type AdminRolePayload } from '../../../utils/api';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Textarea } from '../../../components/ui/input';
+import { Modal } from '../../../components/ui/modal';
+import { Spinner } from '../../../components/ui/spinner';
+import { Badge } from '../../../components/ui/badge';
+import { CheckboxGroup } from '../../../components/ui/checkbox-group';
+import { Plus, RefreshCw, Pencil, Trash2 } from 'lucide-react';
 
 export default function AdminRolesPage() {
   const { hasCapability } = useAuth();
@@ -25,9 +25,9 @@ export default function AdminRolesPage() {
   const [editing, setEditing] = useState<AdminRole | null>(null);
 
   const [form, setForm] = useState<AdminRolePayload & { key: string }>({
-    key: "",
-    name: "",
-    description: "",
+    key: '',
+    name: '',
+    description: '',
     isSuperuser: false,
     groupIds: [],
   });
@@ -39,7 +39,7 @@ export default function AdminRolesPage() {
       setRoles(rolesRes.roles);
       setGroups(groupsRes.groups);
     } catch (err) {
-      console.error("Failed to load roles:", err);
+      console.error('Failed to load roles:', err);
     } finally {
       setLoading(false);
     }
@@ -50,14 +50,11 @@ export default function AdminRolesPage() {
     void fetchData();
   }, []);
 
-  const groupOptions = useMemo(
-    () => groups.map((g) => ({ key: g._id, label: `${g.name} (${g.key})` })),
-    [groups]
-  );
+  const groupOptions = useMemo(() => groups.map((g) => ({ key: g._id, label: `${g.name} (${g.key})` })), [groups]);
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ key: "", name: "", description: "", isSuperuser: false, groupIds: [] });
+    setForm({ key: '', name: '', description: '', isSuperuser: false, groupIds: [] });
     setShowModal(true);
   };
 
@@ -77,7 +74,7 @@ export default function AdminRolesPage() {
     e.preventDefault();
     if (!canManage) return;
     if (!form.key || !form.name) {
-      alert("Key and name are required.");
+      alert('Key and name are required.');
       return;
     }
     setWorking(true);
@@ -101,7 +98,7 @@ export default function AdminRolesPage() {
       setShowModal(false);
       await fetchData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save role.");
+      alert(err instanceof Error ? err.message : 'Failed to save role.');
     } finally {
       setWorking(false);
     }
@@ -115,7 +112,7 @@ export default function AdminRolesPage() {
       await api.deleteAdminRole(role._id);
       await fetchData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete role.");
+      alert(err instanceof Error ? err.message : 'Failed to delete role.');
     } finally {
       setWorking(false);
     }
@@ -204,7 +201,12 @@ export default function AdminRolesPage() {
         </div>
       )}
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Edit Role" : "Create Role"} size="lg">
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? 'Edit Role' : 'Create Role'}
+        size="lg"
+      >
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Key</label>
@@ -222,7 +224,10 @@ export default function AdminRolesPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-primary">Description</label>
-            <Textarea value={form.description || ""} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            <Textarea
+              value={form.description || ''}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -257,7 +262,7 @@ export default function AdminRolesPage() {
               Cancel
             </Button>
             <Button type="submit" disabled={working}>
-              {working ? "Saving..." : editing ? "Save Changes" : "Create Role"}
+              {working ? 'Saving...' : editing ? 'Save Changes' : 'Create Role'}
             </Button>
           </div>
         </form>

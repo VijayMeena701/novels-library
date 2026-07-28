@@ -15,7 +15,8 @@ export default function AuthorDetailsPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getPublicAuthor(id)
+    api
+      .getPublicAuthor(id)
       .then((data) => {
         setAuthor(data.author);
         setBooks(data.books);
@@ -25,12 +26,16 @@ export default function AuthorDetailsPage({ params }: { params: Promise<{ id: st
   }, [id]);
 
   if (loading) {
-    return <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}><Spinner size="md" /></div>;
+    return (
+      <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12')}>
+        <Spinner size="md" />
+      </div>
+    );
   }
 
   if (!author) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12")}>
+      <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12')}>
         <h1>Author Not Found</h1>
         <Button asChild variant="secondary" className="mt-4">
           <Link href="/authors">Back to Authors</Link>
@@ -40,9 +45,14 @@ export default function AuthorDetailsPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
+    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'flex flex-col gap-5')}>
       <div className="flex flex-col gap-[0.8rem] rounded-lg border border-default bg-card p-6 shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4">
-        <Link href="/authors" className="rounded-md px-3 py-2 text-[0.86rem] font-bold text-secondary no-underline transition hover:bg-accent-subtle hover:text-accent">Back to Authors</Link>
+        <Link
+          href="/authors"
+          className="rounded-md px-3 py-2 text-[0.86rem] font-bold text-secondary no-underline transition hover:bg-accent-subtle hover:text-accent"
+        >
+          Back to Authors
+        </Link>
         <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">{author.displayName}</h1>
         {author.realName && <p className="text-secondary">Real name: {author.realName}</p>}
         {author.originalLanguage && <p className="text-secondary">Original language: {author.originalLanguage}</p>}
@@ -54,10 +64,14 @@ export default function AuthorDetailsPage({ params }: { params: Promise<{ id: st
       <section className="flex flex-col gap-4">
         <h2 className="text-[1.35rem]">Books by {author.displayName}</h2>
         {books.length === 0 ? (
-          <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-12 text-center text-secondary">No linked books yet.</div>
+          <div className="rounded-lg border border-default bg-card shadow-elevation-2 transition hover:border-hover hover:bg-card-hover hover:shadow-elevation-4 p-12 text-center text-secondary">
+            No linked books yet.
+          </div>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,250px))] gap-3.5">
-            {books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
+            {books.map((book) => (
+              <BookCard key={book._id} book={book} mode="catalog" />
+            ))}
           </div>
         )}
       </section>

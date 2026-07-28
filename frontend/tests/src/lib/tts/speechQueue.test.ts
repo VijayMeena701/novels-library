@@ -7,9 +7,7 @@ import {
   createSpeechQueue,
 } from '@/lib/tts/speechQueue';
 
-function makeRule(
-  overrides: Partial<PronunciationRule> & { pattern: string; replacement: string },
-): PronunciationRule {
+function makeRule(overrides: Partial<PronunciationRule> & { pattern: string; replacement: string }): PronunciationRule {
   return {
     _id: 'test',
     userId: 'test',

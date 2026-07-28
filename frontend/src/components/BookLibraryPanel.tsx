@@ -36,10 +36,12 @@ function normalizeTitle(value: string): string {
 
 function isGenericChapterTitle(value: string, bookTitle: string, chapterNumber: number): boolean {
   const normalized = normalizeTitle(value);
-  return !normalized ||
+  return (
+    !normalized ||
     normalized === normalizeTitle(bookTitle) ||
     normalized === `chapter ${chapterNumber}` ||
-    normalized === `ch ${chapterNumber}`;
+    normalized === `ch ${chapterNumber}`
+  );
 }
 
 function getStatusBadgeVariant(status?: BookStatus | string) {
@@ -260,9 +262,10 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
   const displayAuthor = book.authorPenName || book.author || book.authorRealName || 'Unknown Author';
   const coverSrc = getBookCoverUrl(book);
   const resumeChapter = book.lastVisitedChapterNumber || book.chaptersRead || 1;
-  const readPercent = book.translatedChaptersTotal > 0
-    ? Math.min(100, Math.round(((book.chaptersRead ?? 0) / book.translatedChaptersTotal) * 100))
-    : 0;
+  const readPercent =
+    book.translatedChaptersTotal > 0
+      ? Math.min(100, Math.round(((book.chaptersRead ?? 0) / book.translatedChaptersTotal) * 100))
+      : 0;
   const hasSourceMetadata = Boolean(
     book.authorRealName ||
     (book.alternativeNames || []).length > 0 ||
@@ -271,7 +274,9 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
     book.publicationStatus,
   );
 
-  const chapterIndexByNumber = new Map((book.translatedChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]));
+  const chapterIndexByNumber = new Map(
+    (book.translatedChaptersList || []).map((chapter) => [chapter.chapterNumber, chapter]),
+  );
 
   const getChapterDisplayTitle = (chapter: Omit<ChapterContent, 'content'>) => {
     const indexedTitle = chapterIndexByNumber.get(chapter.chapterNumber)?.title?.trim() || '';
@@ -305,11 +310,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
   const standaloneChapterVisits = chapterVisits.filter((visit) => !visit.sessionId);
 
   const hasNotes = Boolean(
-    book.review ||
-    book.personalNotes ||
-    book.characterNotes ||
-    book.relationshipNotes ||
-    book.rawLegacyEntry,
+    book.review || book.personalNotes || book.characterNotes || book.relationshipNotes || book.rawLegacyEntry,
   );
 
   return (
@@ -359,9 +360,7 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                     </span>
                   )}
                   {book.completedAt && (
-                    <span className="text-xs text-muted">
-                      Completed {new Date(book.completedAt).toLocaleString()}
-                    </span>
+                    <span className="text-xs text-muted">Completed {new Date(book.completedAt).toLocaleString()}</span>
                   )}
                 </div>
 
@@ -396,7 +395,12 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                   </Button>
                   {book.sourceUrl && (
                     <Button asChild variant="ghost" size="sm">
-                      <a href={book.sourceUrl} target="_blank" rel="noreferrer" className="text-accent hover:text-primary-hover">
+                      <a
+                        href={book.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-accent hover:text-primary-hover"
+                      >
                         Original Website
                       </a>
                     </Button>
@@ -438,14 +442,10 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                   </Field>
                 )}
                 <Field label="Book Source">
-                  <span className="text-sm text-secondary">
-                    {book.originalSource || '—'}
-                  </span>
+                  <span className="text-sm text-secondary">{book.originalSource || '—'}</span>
                 </Field>
                 <Field label="Publication Status">
-                  <span className="text-sm font-semibold text-primary">
-                    {book.publicationStatus || '—'}
-                  </span>
+                  <span className="text-sm font-semibold text-primary">{book.publicationStatus || '—'}</span>
                 </Field>
               </div>
             </CardContent>
@@ -644,23 +644,17 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
                   const isRead = ch.chapterNumber <= (book.chaptersRead ?? 0);
                   const chapterTitle = getChapterDisplayTitle(ch);
                   return (
-                    <Link
-                      key={ch._id}
-                      href={`/books/${bookId}/reader/${ch.chapterNumber}`}
-                      className="block"
-                    >
+                    <Link key={ch._id} href={`/books/${bookId}/reader/${ch.chapterNumber}`} className="block">
                       <div
                         className={`flex items-center justify-between gap-3 px-4 py-3 border-b border-default last:border-b-0 hover:bg-surface-raised transition-colors ${
- isRead ? 'bg-surface-raised text-secondary' : 'bg-card text-accent'
+                          isRead ? 'bg-surface-raised text-secondary' : 'bg-card text-accent'
                         }`}
                       >
                         <span className={`min-w-0 truncate text-sm ${isRead ? 'font-medium' : 'font-semibold'}`}>
                           {chapterTitle}
                         </span>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-muted">
-                            {new Date(ch.scrapedAt).toLocaleDateString()}
-                          </span>
+                          <span className="text-xs text-muted">{new Date(ch.scrapedAt).toLocaleDateString()}</span>
                           <span className={`w-2 h-2 rounded-full ${isRead ? 'bg-muted' : 'bg-accent'}`} />
                         </div>
                       </div>
@@ -726,18 +720,10 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
               />
             </Field>
             <Field label="What did you like? (Review)" className="sm:col-span-2">
-              <Textarea
-                rows={3}
-                value={editReview}
-                onChange={(e) => setEditReview(e.target.value)}
-              />
+              <Textarea rows={3} value={editReview} onChange={(e) => setEditReview(e.target.value)} />
             </Field>
             <Field label="Detailed Notes" className="sm:col-span-2">
-              <Textarea
-                rows={4}
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-              />
+              <Textarea rows={4} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
             </Field>
             <Field label="Original Legacy Entry" className="sm:col-span-2">
               <Textarea
@@ -825,7 +811,8 @@ export function BookLibraryPanel({ bookId, book: bookProp, chapters: chaptersPro
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-secondary">
-            Remove this book from your profile library? The shared catalog and archived chapters will stay in the system.
+            Remove this book from your profile library? The shared catalog and archived chapters will stay in the
+            system.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setIsRemoveModalOpen(false)} disabled={removing}>

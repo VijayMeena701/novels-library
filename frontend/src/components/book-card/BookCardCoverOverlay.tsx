@@ -35,7 +35,11 @@ export function BookCardCoverOverlay({
         {typeof book.ratingAverage === 'number' && (
           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/50 px-2.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-md shadow-elevation-1">
             <Star className="size-3 fill-white text-white" />
-            {book.ratingAverage > 0 ? (Number.isInteger(book.ratingAverage) ? book.ratingAverage : book.ratingAverage.toFixed(1)) : '–'}
+            {book.ratingAverage > 0
+              ? Number.isInteger(book.ratingAverage)
+                ? book.ratingAverage
+                : book.ratingAverage.toFixed(1)
+              : '–'}
           </span>
         )}
       </div>
@@ -69,7 +73,7 @@ export function BookCardCoverOverlay({
             onClick={onToggleBookmark}
             disabled={isToggling}
             className={`rounded-full border p-2 backdrop-blur-md transition-transform hover:scale-105 disabled:opacity-60 ${
- isBookmarked
+              isBookmarked
                 ? 'border-accent bg-accent text-white'
                 : 'border-white/20 bg-black/50 text-white hover:bg-black/70'
             }`}

@@ -1,25 +1,14 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
-import { useAuth } from "../../context/AuthContext";
-import { CAPABILITY } from "../../utils/permissions";
-import { cn } from "../../lib/utils";
-import { Button } from "../../components/ui/button";
-import { Spinner } from "../../components/ui/spinner";
-import {
-  LayoutDashboard,
-  Users,
-  Shield,
-  Key,
-  Folder,
-  ScrollText,
-  FileText,
-  Settings,
-  Menu,
-  X,
-} from "lucide-react";
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
+import { CAPABILITY } from '../../utils/permissions';
+import { cn } from '../../lib/utils';
+import { Button } from '../../components/ui/button';
+import { Spinner } from '../../components/ui/spinner';
+import { LayoutDashboard, Users, Shield, Key, Folder, ScrollText, FileText, Settings, Menu, X } from 'lucide-react';
 
 interface NavItem {
   href: string;
@@ -29,14 +18,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/roles", label: "Roles", icon: Shield },
-  { href: "/admin/groups", label: "Permission Groups", icon: Key },
-  { href: "/admin/resources", label: "Resources", icon: Folder },
-  { href: "/admin/app-config", label: "App Config", icon: Settings, guard: CAPABILITY.APP_CONFIG_READ },
-  { href: "/admin/logs", label: "Audit Logs", icon: ScrollText },
-  { href: "/admin/reports", label: "Reports", icon: FileText, guard: CAPABILITY.BOOKS_MANAGE },
+  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+  { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/roles', label: 'Roles', icon: Shield },
+  { href: '/admin/groups', label: 'Permission Groups', icon: Key },
+  { href: '/admin/resources', label: 'Resources', icon: Folder },
+  { href: '/admin/app-config', label: 'App Config', icon: Settings, guard: CAPABILITY.APP_CONFIG_READ },
+  { href: '/admin/logs', label: 'Audit Logs', icon: ScrollText },
+  { href: '/admin/reports', label: 'Reports', icon: FileText, guard: CAPABILITY.BOOKS_MANAGE },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -47,7 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading && !hasCapability(CAPABILITY.ADMIN_ACCESS)) {
-      router.push("/profile");
+      router.push('/profile');
     }
   }, [loading, hasCapability, router, pathname]);
 
@@ -74,19 +63,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 w-60 transform border-r border-default bg-card transition-transform duration-200 md:static md:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+          'fixed inset-y-0 left-0 z-30 w-60 transform border-r border-default bg-card transition-transform duration-200 md:static md:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex h-14 items-center border-b border-default px-4 font-bold text-primary">
-          Admin Console
-        </div>
+        <div className="flex h-14 items-center border-b border-default px-4 font-bold text-primary">Admin Console</div>
         <nav className="space-y-1 p-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
-              item.href === "/admin"
-                ? pathname === "/admin"
+              item.href === '/admin'
+                ? pathname === '/admin'
                 : pathname === item.href || pathname.startsWith(`${item.href}/`);
             const disabled = item.guard ? !hasCapability(item.guard) : false;
             return (
@@ -95,11 +82,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition",
+                  'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition',
                   isActive
-                    ? "bg-accent text-primary-foreground"
-                    : "text-secondary hover:bg-surface-raised hover:text-accent",
-                  disabled && "pointer-events-none opacity-50"
+                    ? 'bg-accent text-primary-foreground'
+                    : 'text-secondary hover:bg-surface-raised hover:text-accent',
+                  disabled && 'pointer-events-none opacity-50',
                 )}
               >
                 <Icon className="size-4" />
@@ -110,16 +97,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
       </aside>
 
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-scrim md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      {mobileOpen && <div className="fixed inset-0 z-20 bg-scrim md:hidden" onClick={() => setMobileOpen(false)} />}
 
-      <main className="flex-1 p-4 pt-16 md:p-8 md:pt-8">
-        {children}
-      </main>
+      <main className="flex-1 p-4 pt-16 md:p-8 md:pt-8">{children}</main>
     </div>
   );
 }

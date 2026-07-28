@@ -16,12 +16,37 @@ const genres: Genre[] = [
 ];
 
 const publicationStatuses: PublicationStatus[] = [
-  { _id: 'p1', name: 'Ongoing', key: 'ongoing', aliases: [], color: '#000', sortOrder: 0, bookCount: 8, createdAt: '', updatedAt: '' },
+  {
+    _id: 'p1',
+    name: 'Ongoing',
+    key: 'ongoing',
+    aliases: [],
+    color: '#000',
+    sortOrder: 0,
+    bookCount: 8,
+    createdAt: '',
+    updatedAt: '',
+  },
 ];
 
 const sources: Source[] = [{ key: 'webnovel', name: 'Webnovel', count: 20 }];
 
-const authors: Author[] = [{ _id: 'a1', displayName: 'Cuttlefish', penName: '', realName: '', alternativeNames: [], nameKeys: [], originalLanguage: '', officialUrls: [], notes: '', bookCount: 3, createdAt: '', updatedAt: '' }];
+const authors: Author[] = [
+  {
+    _id: 'a1',
+    displayName: 'Cuttlefish',
+    penName: '',
+    realName: '',
+    alternativeNames: [],
+    nameKeys: [],
+    originalLanguage: '',
+    officialUrls: [],
+    notes: '',
+    bookCount: 3,
+    createdAt: '',
+    updatedAt: '',
+  },
+];
 
 describe('BooksFilterPanel', () => {
   it('renders search input and clear filters button', () => {

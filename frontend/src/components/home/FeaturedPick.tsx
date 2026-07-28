@@ -47,7 +47,9 @@ export function FeaturedPick({ book }: FeaturedPickProps) {
             <div className="flex flex-wrap gap-2">
               {book.publicationStatus && <Badge variant="outline">{book.publicationStatus}</Badge>}
               {(book.genres || []).slice(0, 3).map((genre) => (
-                <Badge key={genre} variant="outline">{genre}</Badge>
+                <Badge key={genre} variant="outline">
+                  {genre}
+                </Badge>
               ))}
             </div>
             <div className="mt-auto">

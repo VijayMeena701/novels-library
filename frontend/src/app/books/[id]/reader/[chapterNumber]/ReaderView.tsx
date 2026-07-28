@@ -1,361 +1,368 @@
-"use client";
+'use client';
 
-import { cn } from "../../../../../lib/utils";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { type SourceKind } from "../../../../../utils/api";
-import { useAuth } from "../../../../../context/AuthContext";
-import { useFeatureFlags } from "../../../../../context/FeatureFlagsContext";
-import { CAPABILITY } from "../../../../../utils/permissions";
-import { type ReaderPanelTab } from "../../../../../lib/reader-utils";
-import { SpeechWidget } from "../../../../../components/reader/SpeechWidget";
-import { ReaderBottomToolbar } from "../../../../../components/reader/ReaderBottomToolbar";
-import { ReaderControlBar } from "../../../../../components/reader/ReaderControlBar";
-import { ReaderCatalog } from "../../../../../components/reader/ReaderCatalog";
-import { PronunciationRulesModal } from "../../../../../components/reader/PronunciationRulesModal";
-import { ReaderHeader } from "../../../../../components/reader/ReaderHeader";
-import { ReaderChapterHeader } from "../../../../../components/reader/ReaderChapterHeader";
-import { ReaderChapterContent } from "../../../../../components/reader/ReaderChapterContent";
-import { ReaderErrorState } from "../../../../../components/reader/ReaderErrorState";
-import { Spinner } from "../../../../../components/ui/spinner";
-import { useReaderSettings } from "../../../../../hooks/useReaderSettings";
-import { useReaderTts } from "../../../../../hooks/useReaderTts";
-import { usePronunciationRules } from "../../../../../hooks/usePronunciationRules";
-import { useChapterData } from "../../../../../hooks/useChapterData";
-import { useReaderCatalog } from "../../../../../hooks/useReaderCatalog";
-import { useReaderNavigation } from "../../../../../hooks/useReaderNavigation";
-import { useReaderAdminActions } from "../../../../../hooks/useReaderAdminActions";
+import { cn } from '../../../../../lib/utils';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { type SourceKind } from '../../../../../utils/api';
+import { useAuth } from '../../../../../context/AuthContext';
+import { useFeatureFlags } from '../../../../../context/FeatureFlagsContext';
+import { CAPABILITY } from '../../../../../utils/permissions';
+import { type ReaderPanelTab } from '../../../../../lib/reader-utils';
+import { SpeechWidget } from '../../../../../components/reader/SpeechWidget';
+import { ReaderBottomToolbar } from '../../../../../components/reader/ReaderBottomToolbar';
+import { ReaderControlBar } from '../../../../../components/reader/ReaderControlBar';
+import { ReaderCatalog } from '../../../../../components/reader/ReaderCatalog';
+import { PronunciationRulesModal } from '../../../../../components/reader/PronunciationRulesModal';
+import { ReaderHeader } from '../../../../../components/reader/ReaderHeader';
+import { ReaderChapterHeader } from '../../../../../components/reader/ReaderChapterHeader';
+import { ReaderChapterContent } from '../../../../../components/reader/ReaderChapterContent';
+import { ReaderErrorState } from '../../../../../components/reader/ReaderErrorState';
+import { Spinner } from '../../../../../components/ui/spinner';
+import { useReaderSettings } from '../../../../../hooks/useReaderSettings';
+import { useReaderTts } from '../../../../../hooks/useReaderTts';
+import { usePronunciationRules } from '../../../../../hooks/usePronunciationRules';
+import { useChapterData } from '../../../../../hooks/useChapterData';
+import { useReaderCatalog } from '../../../../../hooks/useReaderCatalog';
+import { useReaderNavigation } from '../../../../../hooks/useReaderNavigation';
+import { useReaderAdminActions } from '../../../../../hooks/useReaderAdminActions';
 export interface ReaderViewProps {
-	id: string;
-	chapterNumber: number;
+  id: string;
+  chapterNumber: number;
 }
 
 export default function ReaderView({ id: bookId, chapterNumber }: ReaderViewProps) {
-const searchParams = useSearchParams();
-const { user, loading: authLoading, hasCapability } = useAuth();
-const { featureFlags } = useFeatureFlags();
+  const searchParams = useSearchParams();
+  const { user, loading: authLoading, hasCapability } = useAuth();
+  const { featureFlags } = useFeatureFlags();
 
-const allowLocalTts = featureFlags.localTtsEnabled && hasCapability(CAPABILITY.LOCAL_TTS_USE);
-const shouldResumeTtsFromRoute = searchParams.get("tts") === "1";
-const readingSource: SourceKind = searchParams.get("source") === "raw" ? "raw" : "translated";
-const isRawReader = readingSource === "raw";
+  const allowLocalTts = featureFlags.localTtsEnabled && hasCapability(CAPABILITY.LOCAL_TTS_USE);
+  const shouldResumeTtsFromRoute = searchParams.get('tts') === '1';
+  const readingSource: SourceKind = searchParams.get('source') === 'raw' ? 'raw' : 'translated';
+  const isRawReader = readingSource === 'raw';
 
-const readerContentRef = useRef<HTMLDivElement | null>(null);
+  const readerContentRef = useRef<HTMLDivElement | null>(null);
 
-const settings = useReaderSettings(user, allowLocalTts);
-const chapterData = useChapterData({ bookId, chapterNumber, isRawReader, user });
-const pronunciation = usePronunciationRules(bookId, user);
-const catalog = useReaderCatalog({
-isRawReader,
-book: chapterData.book,
-chapters: chapterData.chapters,
-chapter: chapterData.chapter,
-chapterNumber,
-});
-const navigation = useReaderNavigation({ bookId, chapterNumber, readingSource });
+  const settings = useReaderSettings(user, allowLocalTts);
+  const chapterData = useChapterData({ bookId, chapterNumber, isRawReader, user });
+  const pronunciation = usePronunciationRules(bookId, user);
+  const catalog = useReaderCatalog({
+    isRawReader,
+    book: chapterData.book,
+    chapters: chapterData.chapters,
+    chapter: chapterData.chapter,
+    chapterNumber,
+  });
+  const navigation = useReaderNavigation({ bookId, chapterNumber, readingSource });
 
-const tts = useReaderTts({
-readerContentRef,
-chapter: chapterData.chapter,
-chapterNumber,
-hasNextChapter: catalog.hasNextChapter,
-nextChapterNumber: catalog.nextChapterNumber,
-navigateToChapter: navigation.navigateToChapter,
-autoOpenNext: settings.autoOpenNext,
-rate: settings.rate,
-pitch: settings.pitch,
-voiceURI: settings.voiceURI,
-onVoiceChange: settings.onVoiceChange,
-pronunciationRules: pronunciation.rules,
-highlightParagraph: settings.highlightParagraph,
-paragraphHighlightColor: settings.paragraphColor,
-autoScrollDuringSpeech: settings.autoScrollDuringSpeech,
-autoScrollOffset: settings.autoScrollOffset,
-autoScrollBehavior: settings.autoScrollBehavior,
-wordHighlightColor: settings.wordColor,
-highlightMode: settings.highlightMode,
-shouldResumeTtsFromRoute,
-loading: chapterData.loading,
-readerSettingsReady: settings.readerSettingsReady,
-authLoading,
-playbackEngineName: settings.playbackEngine,
-allowLocalTts,
-});
+  const tts = useReaderTts({
+    readerContentRef,
+    chapter: chapterData.chapter,
+    chapterNumber,
+    hasNextChapter: catalog.hasNextChapter,
+    nextChapterNumber: catalog.nextChapterNumber,
+    navigateToChapter: navigation.navigateToChapter,
+    autoOpenNext: settings.autoOpenNext,
+    rate: settings.rate,
+    pitch: settings.pitch,
+    voiceURI: settings.voiceURI,
+    onVoiceChange: settings.onVoiceChange,
+    pronunciationRules: pronunciation.rules,
+    highlightParagraph: settings.highlightParagraph,
+    paragraphHighlightColor: settings.paragraphColor,
+    autoScrollDuringSpeech: settings.autoScrollDuringSpeech,
+    autoScrollOffset: settings.autoScrollOffset,
+    autoScrollBehavior: settings.autoScrollBehavior,
+    wordHighlightColor: settings.wordColor,
+    highlightMode: settings.highlightMode,
+    shouldResumeTtsFromRoute,
+    loading: chapterData.loading,
+    readerSettingsReady: settings.readerSettingsReady,
+    authLoading,
+    playbackEngineName: settings.playbackEngine,
+    allowLocalTts,
+  });
 
-const admin = useReaderAdminActions({
-bookId,
-book: chapterData.book,
-chapter: chapterData.chapter,
-chapterNumber,
-readerSourceKind: catalog.readerSourceKind,
-archiveJobType: catalog.archiveJobType,
-currentSourceUrl: catalog.currentSourceUrl,
-setBook: chapterData.setBook,
-setError: chapterData.setError,
-reloadCurrentChapter: chapterData.reloadCurrentChapter,
-});
+  const admin = useReaderAdminActions({
+    bookId,
+    book: chapterData.book,
+    chapter: chapterData.chapter,
+    chapterNumber,
+    readerSourceKind: catalog.readerSourceKind,
+    archiveJobType: catalog.archiveJobType,
+    currentSourceUrl: catalog.currentSourceUrl,
+    setBook: chapterData.setBook,
+    setError: chapterData.setError,
+    reloadCurrentChapter: chapterData.reloadCurrentChapter,
+  });
 
-const [isReaderPanelOpen, setIsReaderPanelOpen] = useState(false);
-const [readerPanelTab, setReaderPanelTab] = useState<ReaderPanelTab>("read");
-const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-const [isPronunciationModalOpen, setIsPronunciationModalOpen] = useState(false);
+  const [isReaderPanelOpen, setIsReaderPanelOpen] = useState(false);
+  const [readerPanelTab, setReaderPanelTab] = useState<ReaderPanelTab>('read');
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [isPronunciationModalOpen, setIsPronunciationModalOpen] = useState(false);
 
-useEffect(() => {
-if (typeof window === "undefined") return;
-window.scrollTo({ top: 0, behavior: "auto" });
-}, [chapterNumber, tts.stop]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [chapterNumber, tts.stop]);
 
-const isSerif = settings.theme !== "paper";
-const widthStyle = useMemo(
-() =>
-({
-narrow: "640px",
-medium: "900px",
-wide: "1280px",
-}[settings.readWidth]),
-[settings.readWidth],
-);
-const totalChapters = isRawReader
-? chapterData.book?.rawChaptersTotal ?? 0
-: chapterData.book?.translatedChaptersTotal ?? 0;
-const readingTimeMinutes = chapterData.chapter?.content
-? Math.max(1, Math.ceil(chapterData.chapter.content.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length / 250))
-: 0;
+  const isSerif = settings.theme !== 'paper';
+  const widthStyle = useMemo(
+    () =>
+      ({
+        narrow: '640px',
+        medium: '900px',
+        wide: '1280px',
+      })[settings.readWidth],
+    [settings.readWidth],
+  );
+  const totalChapters = isRawReader
+    ? (chapterData.book?.rawChaptersTotal ?? 0)
+    : (chapterData.book?.translatedChaptersTotal ?? 0);
+  const readingTimeMinutes = chapterData.chapter?.content
+    ? Math.max(
+        1,
+        Math.ceil(
+          chapterData.chapter.content
+            .replace(/<[^>]+>/g, ' ')
+            .split(/\s+/)
+            .filter(Boolean).length / 250,
+        ),
+      )
+    : 0;
 
-if (chapterData.loading || authLoading || !settings.readerSettingsReady) {
-return (
-<div className="flex min-h-screen flex-col items-center justify-center bg-reader text-reader-paragraph">
-<Spinner size="lg" />
-</div>
-);
-}
+  if (chapterData.loading || authLoading || !settings.readerSettingsReady) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-reader text-reader-paragraph">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
-const openSettingsDisplay = () => {
-setReaderPanelTab("display");
-setIsReaderPanelOpen(true);
-};
+  const openSettingsDisplay = () => {
+    setReaderPanelTab('display');
+    setIsReaderPanelOpen(true);
+  };
 
-const openSettingsSpeech = () => {
-setReaderPanelTab("speech");
-setIsReaderPanelOpen(true);
-};
+  const openSettingsSpeech = () => {
+    setReaderPanelTab('speech');
+    setIsReaderPanelOpen(true);
+  };
 
-const handleOpenCatalog = () => setIsCatalogOpen(true);
-const handleCloseCatalog = () => setIsCatalogOpen(false);
-const handleOpenPronunciationRules = () => setIsPronunciationModalOpen(true);
-const handleClosePronunciationRules = () => setIsPronunciationModalOpen(false);
+  const handleOpenCatalog = () => setIsCatalogOpen(true);
+  const handleCloseCatalog = () => setIsCatalogOpen(false);
+  const handleOpenPronunciationRules = () => setIsPronunciationModalOpen(true);
+  const handleClosePronunciationRules = () => setIsPronunciationModalOpen(false);
 
-const commonHeader = (
-<ReaderHeader
-bookId={bookId}
-bookTitle={chapterData.book?.title ?? ""}
-catalogLength={catalog.catalogItems.length}
-onOpenCatalog={handleOpenCatalog}
-onOpenSettings={openSettingsDisplay}
-/>
-);
+  const commonHeader = (
+    <ReaderHeader
+      bookId={bookId}
+      bookTitle={chapterData.book?.title ?? ''}
+      catalogLength={catalog.catalogItems.length}
+      onOpenCatalog={handleOpenCatalog}
+      onOpenSettings={openSettingsDisplay}
+    />
+  );
 
-const commonCatalog = (
-<ReaderCatalog
-isOpen={isCatalogOpen}
-onClose={handleCloseCatalog}
-items={catalog.catalogItems}
-currentChapterNumber={chapterNumber}
-onSelectChapter={navigation.navigateToChapter}
-isRawReader={isRawReader}
-archivedCount={chapterData.chapters.length}
-/>
-);
+  const commonCatalog = (
+    <ReaderCatalog
+      isOpen={isCatalogOpen}
+      onClose={handleCloseCatalog}
+      items={catalog.catalogItems}
+      currentChapterNumber={chapterNumber}
+      onSelectChapter={navigation.navigateToChapter}
+      isRawReader={isRawReader}
+      archivedCount={chapterData.chapters.length}
+    />
+  );
 
-const readerError = chapterData.error || !chapterData.chapter || !chapterData.book;
+  const readerError = chapterData.error || !chapterData.chapter || !chapterData.book;
 
-if (readerError) {
-return (
-<div
-className={cn(
-"relative flex min-h-screen flex-col bg-reader text-reader-paragraph",
-isSerif ? "font-serif" : "font-sans",
-)}
->
-{commonHeader}
-{commonCatalog}
-<ReaderErrorState
-bookId={bookId}
-book={chapterData.book}
-chapterNumber={chapterNumber}
-isRawReader={isRawReader}
-error={chapterData.error}
-missingChapterTitle={catalog.missingChapterTitle}
-currentSourceUrl={catalog.currentSourceUrl}
-currentCatalogItem={catalog.currentCatalogItem}
-adminActionMessage={admin.adminActionMessage}
-adminScrapingChapter={admin.adminScrapingChapter}
-chapterHtmlPageUrl={admin.chapterHtmlPageUrl}
-chapterHtmlContent={admin.chapterHtmlContent}
-importingChapterHtml={admin.importingChapterHtml}
-readerSourceKind={catalog.readerSourceKind}
-canScrape={hasCapability(CAPABILITY.JOBS_SCRAPE)}
-onScrape={admin.handleScrapeCurrentChapterNow}
-onImport={admin.handleImportCurrentChapterHtml}
-onPageUrlChange={admin.setChapterHtmlPageUrl}
-onContentChange={admin.setChapterHtmlContent}
-/>
-</div>
-);
-}
+  if (readerError) {
+    return (
+      <div
+        className={cn(
+          'relative flex min-h-screen flex-col bg-reader text-reader-paragraph',
+          isSerif ? 'font-serif' : 'font-sans',
+        )}
+      >
+        {commonHeader}
+        {commonCatalog}
+        <ReaderErrorState
+          bookId={bookId}
+          book={chapterData.book}
+          chapterNumber={chapterNumber}
+          isRawReader={isRawReader}
+          error={chapterData.error}
+          missingChapterTitle={catalog.missingChapterTitle}
+          currentSourceUrl={catalog.currentSourceUrl}
+          currentCatalogItem={catalog.currentCatalogItem}
+          adminActionMessage={admin.adminActionMessage}
+          adminScrapingChapter={admin.adminScrapingChapter}
+          chapterHtmlPageUrl={admin.chapterHtmlPageUrl}
+          chapterHtmlContent={admin.chapterHtmlContent}
+          importingChapterHtml={admin.importingChapterHtml}
+          readerSourceKind={catalog.readerSourceKind}
+          canScrape={hasCapability(CAPABILITY.JOBS_SCRAPE)}
+          onScrape={admin.handleScrapeCurrentChapterNow}
+          onImport={admin.handleImportCurrentChapterHtml}
+          onPageUrlChange={admin.setChapterHtmlPageUrl}
+          onContentChange={admin.setChapterHtmlContent}
+        />
+      </div>
+    );
+  }
 
-const book = chapterData.book!;
-const chapter = chapterData.chapter!;
+  const book = chapterData.book!;
+  const chapter = chapterData.chapter!;
 
-return (
-<>
-<div
-className={cn(
-"relative flex min-h-screen flex-col bg-reader text-reader-paragraph",
-isSerif ? "font-serif" : "font-sans",
-)}
->
-{commonHeader}
-{commonCatalog}
+  return (
+    <>
+      <div
+        className={cn(
+          'relative flex min-h-screen flex-col bg-reader text-reader-paragraph',
+          isSerif ? 'font-serif' : 'font-sans',
+        )}
+      >
+        {commonHeader}
+        {commonCatalog}
 
-<main className="flex flex-1 justify-center px-5 py-12 pb-40 max-[860px]:px-4 max-[860px]:py-8 max-[860px]:pb-32">
-<article
-className="flex w-full flex-col gap-8 leading-[1.9] text-reader-paragraph"
-style={{ maxWidth: widthStyle }}
->
-<ReaderChapterHeader
-book={book}
-chapter={chapter}
-displayChapterTitle={catalog.displayChapterTitle}
-isRawReader={isRawReader}
-translatingRawChapter={admin.translatingRawChapter}
-onGenerateTranslation={admin.handleGenerateTranslation}
-canTranslate={hasCapability(CAPABILITY.CHAPTERS_TRANSLATE)}
-/>
-<ReaderChapterContent
-ref={readerContentRef}
-content={chapter.content}
-fontSize={settings.fontSize}
-onClick={(startBlockIndex) =>
-tts.startSpeechFromBlock(startBlockIndex, {
-continueAcrossChapters: settings.autoOpenNext,
-fromUserGesture: true,
-})
-}
-/>
-</article>
-</main>
+        <main className="flex flex-1 justify-center px-5 py-12 pb-40 max-[860px]:px-4 max-[860px]:py-8 max-[860px]:pb-32">
+          <article
+            className="flex w-full flex-col gap-8 leading-[1.9] text-reader-paragraph"
+            style={{ maxWidth: widthStyle }}
+          >
+            <ReaderChapterHeader
+              book={book}
+              chapter={chapter}
+              displayChapterTitle={catalog.displayChapterTitle}
+              isRawReader={isRawReader}
+              translatingRawChapter={admin.translatingRawChapter}
+              onGenerateTranslation={admin.handleGenerateTranslation}
+              canTranslate={hasCapability(CAPABILITY.CHAPTERS_TRANSLATE)}
+            />
+            <ReaderChapterContent
+              ref={readerContentRef}
+              content={chapter.content}
+              fontSize={settings.fontSize}
+              onClick={(startBlockIndex) =>
+                tts.startSpeechFromBlock(startBlockIndex, {
+                  continueAcrossChapters: settings.autoOpenNext,
+                  fromUserGesture: true,
+                })
+              }
+            />
+          </article>
+        </main>
 
-<SpeechWidget
-supported={tts.isSupported}
-status={tts.ttsStatus}
-error={tts.speechError}
-onPlay={tts.play}
-onPause={tts.pause}
-onStop={() => tts.stop()}
-onPrevChapter={() => navigation.navigateToChapter(catalog.previousChapterNumber)}
-onNextChapter={() => navigation.navigateToChapter(catalog.nextChapterNumber)}
-hasPrevChapter={catalog.hasPreviousChapter}
-hasNextChapter={catalog.hasNextChapter}
-voices={tts.voices}
-voiceURI={tts.voiceURI}
-onVoiceChange={tts.setVoiceURI}
-position={settings.speechPortalPosition}
-onPositionChange={settings.onPositionChange}
-togglePosition={settings.speechTogglePosition}
-onTogglePositionChange={settings.onTogglePositionChange}
-onOpenSettings={openSettingsSpeech}
-isBottomToolbarOpen={isReaderPanelOpen}
-/>
+        <SpeechWidget
+          supported={tts.isSupported}
+          status={tts.ttsStatus}
+          error={tts.speechError}
+          onPlay={tts.play}
+          onPause={tts.pause}
+          onStop={() => tts.stop()}
+          onPrevChapter={() => navigation.navigateToChapter(catalog.previousChapterNumber)}
+          onNextChapter={() => navigation.navigateToChapter(catalog.nextChapterNumber)}
+          hasPrevChapter={catalog.hasPreviousChapter}
+          hasNextChapter={catalog.hasNextChapter}
+          voices={tts.voices}
+          voiceURI={tts.voiceURI}
+          onVoiceChange={tts.setVoiceURI}
+          position={settings.speechPortalPosition}
+          onPositionChange={settings.onPositionChange}
+          togglePosition={settings.speechTogglePosition}
+          onTogglePositionChange={settings.onTogglePositionChange}
+          onOpenSettings={openSettingsSpeech}
+        />
 
-<ReaderBottomToolbar
-isOpen={isReaderPanelOpen}
-onOpenChange={setIsReaderPanelOpen}
-activeTab={readerPanelTab}
-onTabChange={setReaderPanelTab}
-onPreviousChapter={() => navigation.navigateToChapter(catalog.previousChapterNumber)}
-onNextChapter={() => navigation.navigateToChapter(catalog.nextChapterNumber)}
-onOpenCatalog={handleOpenCatalog}
-hasPreviousChapter={catalog.hasPreviousChapter}
-hasNextChapter={catalog.hasNextChapter}
-previousChapterNumber={catalog.previousChapterNumber}
-nextChapterNumber={catalog.nextChapterNumber}
-catalogItemsLength={catalog.catalogItems.length}
-bookId={bookId}
-bookTitle={book.title}
-theme={settings.theme}
-onThemeChange={settings.onThemeChange}
-fontSize={settings.fontSize}
-onFontSizeDecrease={settings.onFontSizeDecrease}
-onFontSizeIncrease={settings.onFontSizeIncrease}
-readWidth={settings.readWidth}
-onReadWidthChange={settings.onReadWidthChange}
-playbackEngine={settings.playbackEngine}
-onPlaybackEngineChange={settings.onPlaybackEngineChange}
-localTtsEnabled={allowLocalTts}
-voices={tts.voices}
-voiceURI={tts.voiceURI}
-onVoiceChange={tts.setVoiceURI}
-rate={settings.rate}
-onRateChange={settings.onRateChange}
-pitch={settings.pitch}
-onPitchChange={settings.onPitchChange}
-highlightMode={settings.highlightMode}
-onHighlightModeChange={settings.onHighlightModeChange}
-highlightParagraph={settings.highlightParagraph}
-onHighlightParagraphChange={settings.onHighlightParagraphChange}
-useCustomHighlight={settings.useCustomHighlight}
-onUseCustomHighlightChange={settings.onUseCustomHighlightChange}
-paragraphColor={settings.paragraphColor}
-onParagraphColorChange={settings.onParagraphColorChange}
-wordColor={settings.wordColor}
-onWordColorChange={settings.onWordColorChange}
-sentenceHighlightOpacity={settings.sentenceHighlightOpacity}
-onSentenceHighlightOpacityChange={settings.onSentenceHighlightOpacityChange}
-autoScrollDuringSpeech={settings.autoScrollDuringSpeech}
-onAutoScrollDuringSpeechChange={settings.onAutoScrollDuringSpeechChange}
-autoScrollBehavior={settings.autoScrollBehavior}
-onAutoScrollBehaviorChange={settings.onAutoScrollBehaviorChange}
-autoScrollOffset={settings.autoScrollOffset}
-onAutoScrollOffsetChange={settings.onAutoScrollOffsetChange}
-autoOpenNext={settings.autoOpenNext}
-onAutoOpenNextChange={settings.onAutoOpenNextChange}
-pronunciationRulesEnabled={!!user}
-onOpenPronunciationRules={handleOpenPronunciationRules}
-isRawReader={isRawReader}
-readerSourceKind={catalog.readerSourceKind}
-switchReaderSource={navigation.switchReaderSource}
-hasRawChapters={(book.rawChaptersTotal ?? 0) > 0}
-sourceUrl={chapter.sourceUrl}
-onScrollToTop={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-isLoggedIn={!!user}
-/>
+        <ReaderBottomToolbar
+          isOpen={isReaderPanelOpen}
+          onOpenChange={setIsReaderPanelOpen}
+          activeTab={readerPanelTab}
+          onTabChange={setReaderPanelTab}
+          onPreviousChapter={() => navigation.navigateToChapter(catalog.previousChapterNumber)}
+          onNextChapter={() => navigation.navigateToChapter(catalog.nextChapterNumber)}
+          onOpenCatalog={handleOpenCatalog}
+          hasPreviousChapter={catalog.hasPreviousChapter}
+          hasNextChapter={catalog.hasNextChapter}
+          previousChapterNumber={catalog.previousChapterNumber}
+          nextChapterNumber={catalog.nextChapterNumber}
+          catalogItemsLength={catalog.catalogItems.length}
+          bookId={bookId}
+          bookTitle={book.title}
+          theme={settings.theme}
+          onThemeChange={settings.onThemeChange}
+          fontSize={settings.fontSize}
+          onFontSizeDecrease={settings.onFontSizeDecrease}
+          onFontSizeIncrease={settings.onFontSizeIncrease}
+          readWidth={settings.readWidth}
+          onReadWidthChange={settings.onReadWidthChange}
+          playbackEngine={settings.playbackEngine}
+          onPlaybackEngineChange={settings.onPlaybackEngineChange}
+          localTtsEnabled={allowLocalTts}
+          voices={tts.voices}
+          voiceURI={tts.voiceURI}
+          onVoiceChange={tts.setVoiceURI}
+          rate={settings.rate}
+          onRateChange={settings.onRateChange}
+          pitch={settings.pitch}
+          onPitchChange={settings.onPitchChange}
+          highlightMode={settings.highlightMode}
+          onHighlightModeChange={settings.onHighlightModeChange}
+          highlightParagraph={settings.highlightParagraph}
+          onHighlightParagraphChange={settings.onHighlightParagraphChange}
+          useCustomHighlight={settings.useCustomHighlight}
+          onUseCustomHighlightChange={settings.onUseCustomHighlightChange}
+          paragraphColor={settings.paragraphColor}
+          onParagraphColorChange={settings.onParagraphColorChange}
+          wordColor={settings.wordColor}
+          onWordColorChange={settings.onWordColorChange}
+          sentenceHighlightOpacity={settings.sentenceHighlightOpacity}
+          onSentenceHighlightOpacityChange={settings.onSentenceHighlightOpacityChange}
+          autoScrollDuringSpeech={settings.autoScrollDuringSpeech}
+          onAutoScrollDuringSpeechChange={settings.onAutoScrollDuringSpeechChange}
+          autoScrollBehavior={settings.autoScrollBehavior}
+          onAutoScrollBehaviorChange={settings.onAutoScrollBehaviorChange}
+          autoScrollOffset={settings.autoScrollOffset}
+          onAutoScrollOffsetChange={settings.onAutoScrollOffsetChange}
+          autoOpenNext={settings.autoOpenNext}
+          onAutoOpenNextChange={settings.onAutoOpenNextChange}
+          pronunciationRulesEnabled={!!user}
+          onOpenPronunciationRules={handleOpenPronunciationRules}
+          isRawReader={isRawReader}
+          readerSourceKind={catalog.readerSourceKind}
+          switchReaderSource={navigation.switchReaderSource}
+          hasRawChapters={(book.rawChaptersTotal ?? 0) > 0}
+          sourceUrl={chapter.sourceUrl}
+          onScrollToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          isLoggedIn={!!user}
+        />
 
-<ReaderControlBar
-chapterNumber={chapter.chapterNumber}
-totalChapters={totalChapters || catalog.catalogItems.length}
-hasPreviousChapter={catalog.hasPreviousChapter}
-hasNextChapter={catalog.hasNextChapter}
-onPreviousChapter={() => navigation.navigateToChapter(catalog.previousChapterNumber)}
-onNextChapter={() => navigation.navigateToChapter(catalog.nextChapterNumber)}
-onPlay={tts.play}
-onPause={tts.pause}
-speechStatus={tts.ttsStatus}
-readingTimeMinutes={readingTimeMinutes}
-/>
+        <ReaderControlBar
+          chapterNumber={chapter.chapterNumber}
+          totalChapters={totalChapters || catalog.catalogItems.length}
+          hasPreviousChapter={catalog.hasPreviousChapter}
+          hasNextChapter={catalog.hasNextChapter}
+          onPreviousChapter={() => navigation.navigateToChapter(catalog.previousChapterNumber)}
+          onNextChapter={() => navigation.navigateToChapter(catalog.nextChapterNumber)}
+          onPlay={tts.play}
+          onPause={tts.pause}
+          speechStatus={tts.ttsStatus}
+          readingTimeMinutes={readingTimeMinutes}
+        />
 
-<PronunciationRulesModal
-open={isPronunciationModalOpen}
-onClose={handleClosePronunciationRules}
-bookTitle={book.title || ""}
-rules={pronunciation.rules}
-loading={pronunciation.loading}
-error={pronunciation.error}
-onCreate={pronunciation.create}
-onUpdate={pronunciation.update}
-onDelete={pronunciation.remove}
-/>
-</div>
-</>
-);
+        <PronunciationRulesModal
+          open={isPronunciationModalOpen}
+          onClose={handleClosePronunciationRules}
+          bookTitle={book.title || ''}
+          rules={pronunciation.rules}
+          loading={pronunciation.loading}
+          error={pronunciation.error}
+          onCreate={pronunciation.create}
+          onUpdate={pronunciation.update}
+          onDelete={pronunciation.remove}
+        />
+      </div>
+    </>
+  );
 }

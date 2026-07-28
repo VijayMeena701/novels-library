@@ -26,7 +26,9 @@ describe('ProfileForm', () => {
     await userEvent.type(screen.getByLabelText('Username'), 'NewReader');
 
     await userEvent.click(screen.getByRole('button', { name: /Save Profile/i }));
-    await waitFor(() => expect(updateUser).toHaveBeenCalledWith({ username: 'NewReader', avatarUrl: 'https://example.com/avatar.png' }));
+    await waitFor(() =>
+      expect(updateUser).toHaveBeenCalledWith({ username: 'NewReader', avatarUrl: 'https://example.com/avatar.png' }),
+    );
   });
 
   it('omits empty values when updating', async () => {

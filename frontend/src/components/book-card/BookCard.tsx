@@ -12,11 +12,7 @@ import { useLibraryToggle } from './useLibraryToggle';
 import { getAuthorName, getProgressPercent, getTotalChapters } from './utils';
 import type { BookCardProps } from './types';
 
-export function BookCard({
-  book,
-  href,
-  mode = 'profile',
-}: BookCardProps) {
+export function BookCard({ book, href, mode = 'profile' }: BookCardProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const { isBookmarked, isToggling, canToggleBookmark, handleBookmarkClick } = useLibraryToggle({
@@ -69,9 +65,7 @@ export function BookCard({
               <h3 className="line-clamp-2 text-base font-bold leading-snug tracking-tight text-primary transition-colors group-hover:text-primary">
                 {book.title}
               </h3>
-              <p className="mt-0.5 truncate text-xs font-medium text-secondary">
-                {authorName}
-              </p>
+              <p className="mt-0.5 truncate text-xs font-medium text-secondary">{authorName}</p>
             </div>
 
             <div className="mt-2 border-t border-default pt-2">
@@ -89,9 +83,7 @@ export function BookCard({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     {book.status && <StatusBadge status={book.status} />}
-                    <span className="font-mono text-[11px] font-semibold text-secondary">
-                      {progressPercent}%
-                    </span>
+                    <span className="font-mono text-[11px] font-semibold text-secondary">{progressPercent}%</span>
                   </div>
                 </div>
               )}

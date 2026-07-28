@@ -5,7 +5,11 @@ import { Modal } from '@/components/ui/modal';
 
 describe('Modal', () => {
   it('does not render when closed', () => {
-    render(<Modal open={false} onClose={vi.fn()}>Content</Modal>);
+    render(
+      <Modal open={false} onClose={vi.fn()}>
+        Content
+      </Modal>,
+    );
     expect(screen.queryByText('Content')).not.toBeInTheDocument();
   });
 
@@ -22,14 +26,22 @@ describe('Modal', () => {
 
   it('calls onClose when close button clicked', async () => {
     const onClose = vi.fn();
-    render(<Modal open title="Modal" onClose={onClose}>Body</Modal>);
+    render(
+      <Modal open title="Modal" onClose={onClose}>
+        Body
+      </Modal>,
+    );
     await userEvent.click(screen.getByLabelText('Close'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClose when backdrop is clicked', async () => {
     const onClose = vi.fn();
-    render(<Modal open onClose={onClose}>Body</Modal>);
+    render(
+      <Modal open onClose={onClose}>
+        Body
+      </Modal>,
+    );
     const backdrop = screen.getByRole('presentation');
     await userEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -37,13 +49,21 @@ describe('Modal', () => {
 
   it('does not close when modal content is clicked', async () => {
     const onClose = vi.fn();
-    render(<Modal open onClose={onClose}>Body</Modal>);
+    render(
+      <Modal open onClose={onClose}>
+        Body
+      </Modal>,
+    );
     await userEvent.click(screen.getByText('Body'));
     expect(onClose).not.toHaveBeenCalled();
   });
 
   it('supports custom size classes', () => {
-    render(<Modal open size="sm" onClose={vi.fn()}>Small</Modal>);
+    render(
+      <Modal open size="sm" onClose={vi.fn()}>
+        Small
+      </Modal>,
+    );
     expect(document.querySelector('[class*="max-w-sm"]')).toBeInTheDocument();
   });
 });

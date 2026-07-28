@@ -1,6 +1,6 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
-import { api } from "../../utils/api";
+import { api } from '../../utils/api';
 
 interface AuditLog {
   _id: string;
@@ -32,7 +32,7 @@ export default function AdminAuditLogs() {
           setTotalPages(data.totalPages);
         }
       } catch (err) {
-        if (!cancelled) console.error("Failed to load audit logs:", err);
+        if (!cancelled) console.error('Failed to load audit logs:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -74,18 +74,18 @@ export default function AdminAuditLogs() {
                     <td className="px-4 py-2 text-xs">
                       <span
                         className={`rounded px-2 py-1 text-xs ${
- log.outcome === "allowed"
-                            ? "bg-green-100 text-green-700"
-                            : log.outcome === "denied"
-                            ? "bg-red-100 text-danger"
-                            : "bg-gray-100 text-gray-700"
+                          log.outcome === 'allowed'
+                            ? 'bg-green-100 text-green-700'
+                            : log.outcome === 'denied'
+                              ? 'bg-red-100 text-danger'
+                              : 'bg-gray-100 text-gray-700'
                         }`}
                       >
                         {log.outcome}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-xs">{log.email || log.userId || "—"}</td>
-                    <td className="px-4 py-2 text-xs">{log.ip || "—"}</td>
+                    <td className="px-4 py-2 text-xs">{log.email || log.userId || '—'}</td>
+                    <td className="px-4 py-2 text-xs">{log.ip || '—'}</td>
                   </tr>
                 ))}
               </tbody>

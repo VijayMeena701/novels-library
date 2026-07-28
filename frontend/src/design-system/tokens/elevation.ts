@@ -10,5 +10,5 @@ export type ElevationToken = 0 | 1 | 2 | 3 | 4 | 5;
 export const ELEVATIONS: readonly ElevationToken[] = [0, 1, 2, 3, 4, 5];
 
 export function isElevationToken(value: number): value is ElevationToken {
-	return (ELEVATIONS as readonly number[]).includes(value);
+  return (ELEVATIONS as readonly number[]).includes(value);
 }

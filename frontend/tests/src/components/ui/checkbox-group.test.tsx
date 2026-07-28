@@ -32,7 +32,9 @@ describe('CheckboxGroup', () => {
   });
 
   it('respects maxHeight style', () => {
-    const { container } = render(<CheckboxGroup items={items} selectedKeys={[]} onToggle={vi.fn()} maxHeight="120px" />);
+    const { container } = render(
+      <CheckboxGroup items={items} selectedKeys={[]} onToggle={vi.fn()} maxHeight="120px" />,
+    );
     const root = container.firstChild as HTMLElement;
     expect(root.style.maxHeight).toBe('120px');
   });

@@ -24,41 +24,44 @@ export function useLibraryToggle({ bookId, inLibrary }: UseLibraryToggleOptions)
 
   const isBookmarked = (inLibrary && !optimisticRemoved) || optimisticAdded;
 
-  const handleBookmarkClick = useCallback(async (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    if (isToggling) return;
+  const handleBookmarkClick = useCallback(
+    async (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+      if (isToggling) return;
 
-    if (isBookmarked) {
-      if (!canRemoveFromLibrary) return;
-      setIsToggling(true);
-      try {
-        await api.deleteBook(bookId);
-        setOptimisticRemoved(true);
-        setOptimisticAdded(false);
-        showToast({ message: 'Removed from library', variant: 'success' });
-      } catch (err) {
-        console.error('Failed to remove book from library:', err);
-        showToast({ message: 'Failed to remove from library', variant: 'error' });
-      } finally {
-        setIsToggling(false);
+      if (isBookmarked) {
+        if (!canRemoveFromLibrary) return;
+        setIsToggling(true);
+        try {
+          await api.deleteBook(bookId);
+          setOptimisticRemoved(true);
+          setOptimisticAdded(false);
+          showToast({ message: 'Removed from library', variant: 'success' });
+        } catch (err) {
+          console.error('Failed to remove book from library:', err);
+          showToast({ message: 'Failed to remove from library', variant: 'error' });
+        } finally {
+          setIsToggling(false);
+        }
+      } else {
+        if (!canAddToLibrary) return;
+        setIsToggling(true);
+        try {
+          await api.addBookToLibrary(bookId);
+          setOptimisticAdded(true);
+          setOptimisticRemoved(false);
+          showToast({ message: 'Added to your library', variant: 'success' });
+        } catch (err) {
+          console.error('Failed to add book to library:', err);
+          showToast({ message: 'Failed to add to library', variant: 'error' });
+        } finally {
+          setIsToggling(false);
+        }
       }
-    } else {
-      if (!canAddToLibrary) return;
-      setIsToggling(true);
-      try {
-        await api.addBookToLibrary(bookId);
-        setOptimisticAdded(true);
-        setOptimisticRemoved(false);
-        showToast({ message: 'Added to your library', variant: 'success' });
-      } catch (err) {
-        console.error('Failed to add book to library:', err);
-        showToast({ message: 'Failed to add to library', variant: 'error' });
-      } finally {
-        setIsToggling(false);
-      }
-    }
-  }, [isBookmarked, canAddToLibrary, canRemoveFromLibrary, bookId, isToggling, showToast]);
+    },
+    [isBookmarked, canAddToLibrary, canRemoveFromLibrary, bookId, isToggling, showToast],
+  );
 
   return {
     isBookmarked,

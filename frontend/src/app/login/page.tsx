@@ -12,7 +12,13 @@ import { Spinner } from '../../components/ui/spinner';
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner size="md" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center">
+          <Spinner size="md" />
+        </div>
+      }
+    >
       <LoginContent />
     </Suspense>
   );
@@ -42,7 +48,7 @@ function LoginContent() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email || !password) {
       setError('Please fill in all required fields.');
       return;
@@ -112,7 +118,7 @@ function LoginContent() {
                 <div>
                   <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">Username</label>
                   <Input
-                    type="text" 
+                    type="text"
                     placeholder="e.g. book_reader"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -124,7 +130,7 @@ function LoginContent() {
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">Email Address</label>
                 <Input
-                  type="email" 
+                  type="email"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -135,7 +141,7 @@ function LoginContent() {
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">Password</label>
                 <Input
-                  type="password" 
+                  type="password"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -143,16 +149,8 @@ function LoginContent() {
                 />
               </div>
 
-              <Button
-                type="submit" 
-                className="mt-2 w-full"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <Spinner size="sm" />
-                ) : (
-                  isRegister ? 'Create Account' : 'Sign In'
-                )}
+              <Button type="submit" className="mt-2 w-full" disabled={submitting}>
+                {submitting ? <Spinner size="sm" /> : isRegister ? 'Create Account' : 'Sign In'}
               </Button>
             </form>
 

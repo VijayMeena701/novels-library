@@ -37,7 +37,12 @@ export default function PublicHomePage() {
 
   if (loading) {
     return (
-      <div className={cn('mx-auto w-full max-w-[1520px] px-4 sm:px-5 pt-9 pb-16', 'flex flex-1 items-center justify-center py-24')}>
+      <div
+        className={cn(
+          'mx-auto w-full max-w-[1520px] px-4 sm:px-5 pt-9 pb-16',
+          'flex flex-1 items-center justify-center py-24',
+        )}
+      >
         <div className="flex flex-col items-center gap-4">
           <Spinner size="xl" />
           <span className="text-sm text-muted">Loading the library...</span>
@@ -93,7 +98,13 @@ export default function PublicHomePage() {
           )}
           {spotlightBook && <FeaturedPick book={spotlightBook} />}
           <BookSection title="New Arrivals" books={sections.newest} viewAllHref="/books" />
-          {showLongReads && <BookSection title="Long Reads" books={sections.longReads} viewAllHref="/books?sort=translatedChaptersTotal" />}
+          {showLongReads && (
+            <BookSection
+              title="Long Reads"
+              books={sections.longReads}
+              viewAllHref="/books?sort=translatedChaptersTotal"
+            />
+          )}
           {home?.topVoted && home.topVoted.length > 0 && (
             <BookSection title="Top Voted" books={home.topVoted} viewAllHref="/books?sort=votes" />
           )}

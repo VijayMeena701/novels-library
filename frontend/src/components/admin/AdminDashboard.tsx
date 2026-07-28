@@ -1,14 +1,14 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
-import { api } from "../../utils/api";
-import { Can } from "../Can";
-import AdminAuditLogs from "@/components/admin/AdminAuditLogs";
-import AdminGroups from "@/components/admin/AdminGroups";
-import AdminResources from "@/components/admin/AdminResources";
-import AdminRoles from "@/components/admin/AdminRoles";
-import AdminUsers from "@/components/admin/AdminUsers";
+import { api } from '../../utils/api';
+import { Can } from '../Can';
+import AdminAuditLogs from '@/components/admin/AdminAuditLogs';
+import AdminGroups from '@/components/admin/AdminGroups';
+import AdminResources from '@/components/admin/AdminResources';
+import AdminRoles from '@/components/admin/AdminRoles';
+import AdminUsers from '@/components/admin/AdminUsers';
 
-type Tab = "overview" | "users" | "roles" | "groups" | "resources" | "audit";
+type Tab = 'overview' | 'users' | 'roles' | 'groups' | 'resources' | 'audit';
 
 interface Stats {
   users: number;
@@ -20,16 +20,16 @@ interface Stats {
 }
 
 const tabLabels: { [key in Tab]: string } = {
-  overview: "Overview",
-  users: "Users",
-  roles: "Roles",
-  groups: "Groups",
-  resources: "Resources",
-  audit: "Audit Logs",
+  overview: 'Overview',
+  users: 'Users',
+  roles: 'Roles',
+  groups: 'Groups',
+  resources: 'Resources',
+  audit: 'Audit Logs',
 };
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
     api
       .getAdminStats()
       .then((data) => setStats(data))
-      .catch((err) => console.error("Failed to load admin stats", err))
+      .catch((err) => console.error('Failed to load admin stats', err))
       .finally(() => setLoading(false));
   }, []);
 
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
             key={key}
             onClick={() => setTab(key as Tab)}
             className={`rounded-t-md px-4 py-2 text-sm font-semibold ${
- tab === key ? "bg-accent text-primary-foreground" : "bg-transparent text-primary hover:bg-muted"
+              tab === key ? 'bg-accent text-primary-foreground' : 'bg-transparent text-primary hover:bg-muted'
             }`}
           >
             {label}
@@ -62,29 +62,29 @@ export default function AdminDashboard() {
         ))}
       </nav>
 
-      {tab === "overview" && (
+      {tab === 'overview' && (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {loading && <p className="text-sm text-muted-foreground">Loading stats...</p>}
           {stats &&
             (
               [
-                ["Users", stats.users],
-                ["Roles", stats.roles],
-                ["Access Groups", stats.groups],
-                ["Capabilities", stats.capabilities],
-                ["Resources", stats.resources],
-                ["Audit Logs", stats.auditLogs],
+                ['Users', stats.users],
+                ['Roles', stats.roles],
+                ['Access Groups', stats.groups],
+                ['Capabilities', stats.capabilities],
+                ['Resources', stats.resources],
+                ['Audit Logs', stats.auditLogs],
               ] as [string, number][]
             ).map(([label, value]) => (
               <div
                 key={label}
                 onClick={() => {
                   const map: Record<string, Tab> = {
-                    Users: "users",
-                    Roles: "roles",
-                    "Access Groups": "groups",
-                    Resources: "resources",
-                    "Audit Logs": "audit",
+                    Users: 'users',
+                    Roles: 'roles',
+                    'Access Groups': 'groups',
+                    Resources: 'resources',
+                    'Audit Logs': 'audit',
                   };
                   if (map[label]) setTab(map[label]);
                 }}
@@ -98,11 +98,11 @@ export default function AdminDashboard() {
       )}
 
       <Can action="access" subject="admin">
-        {tab === "users" && <AdminUsers />}
-        {tab === "roles" && <AdminRoles />}
-        {tab === "groups" && <AdminGroups />}
-        {tab === "resources" && <AdminResources />}
-        {tab === "audit" && <AdminAuditLogs />}
+        {tab === 'users' && <AdminUsers />}
+        {tab === 'roles' && <AdminRoles />}
+        {tab === 'groups' && <AdminGroups />}
+        {tab === 'resources' && <AdminResources />}
+        {tab === 'audit' && <AdminAuditLogs />}
       </Can>
     </div>
   );

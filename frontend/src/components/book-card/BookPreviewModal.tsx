@@ -72,11 +72,7 @@ export function BookPreviewModal({
           />
 
           <div className="flex flex-col justify-between sm:col-span-8">
-            <BookPreviewInfo
-              book={book}
-              authorName={authorName}
-              totalChapters={totalChapters}
-            />
+            <BookPreviewInfo book={book} authorName={authorName} totalChapters={totalChapters} />
 
             <BookPreviewActions
               readButton={readButton}

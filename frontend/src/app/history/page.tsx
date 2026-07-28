@@ -69,15 +69,18 @@ export default function HistoryPage() {
     }
 
     const result = Array.from(map.values());
-    result.sort(
-      (a, b) => new Date(b.latestVisit.openedAt).getTime() - new Date(a.latestVisit.openedAt).getTime(),
-    );
+    result.sort((a, b) => new Date(b.latestVisit.openedAt).getTime() - new Date(a.latestVisit.openedAt).getTime());
     return result;
   }, [visits]);
 
   if (!user) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto flex flex-1 items-center justify-center py-24")}>
+      <div
+        className={cn(
+          'mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12',
+          'max-w-5xl mx-auto flex flex-1 items-center justify-center py-24',
+        )}
+      >
         <Card className="mx-auto max-w-md p-8 text-center">
           <h1 className="font-serif text-2xl font-medium text-primary">Reading History</h1>
           <p className="mt-2 text-sm text-muted">Sign in to view your reading history.</p>
@@ -90,12 +93,10 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "max-w-5xl mx-auto py-8")}>
+    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'max-w-5xl mx-auto py-8')}>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-serif text-2xl font-medium text-primary">Reading History</h1>
-        <p className="text-sm text-muted">
-          {pagination ? `${books.length} books · ${pagination.total} visits` : ''}
-        </p>
+        <p className="text-sm text-muted">{pagination ? `${books.length} books · ${pagination.total} visits` : ''}</p>
       </div>
 
       {loading ? (
@@ -132,15 +133,14 @@ export default function HistoryPage() {
                   )}
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <h2 className="font-serif text-lg font-bold text-primary group-hover:underline">
-                      {book.title}
-                    </h2>
+                    <h2 className="font-serif text-lg font-bold text-primary group-hover:underline">{book.title}</h2>
                     <p className="text-sm text-muted">{authorName}</p>
                     <div className="flex items-center gap-2 text-sm text-muted">
                       <Clock className="size-3.5" />
                       <span>
                         Latest: Chapter {latestVisit.chapterNumber}
-                        {latestVisit.chapterTitle ? ` - ${latestVisit.chapterTitle}` : ''} · {formatDate(latestVisit.openedAt)}
+                        {latestVisit.chapterTitle ? ` - ${latestVisit.chapterTitle}` : ''} ·{' '}
+                        {formatDate(latestVisit.openedAt)}
                       </span>
                     </div>
                   </div>
@@ -155,21 +155,13 @@ export default function HistoryPage() {
 
       {pagination && pagination.totalPages > 1 && (
         <div className="mt-6 flex items-center justify-center gap-2">
-          <Button
-            variant="secondary"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
+          <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             Previous
           </Button>
           <span className="text-sm text-muted">
             Page {pagination.page} of {pagination.totalPages}
           </span>
-          <Button
-            variant="secondary"
-            disabled={page >= pagination.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
+          <Button variant="secondary" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>
             Next
           </Button>
         </div>

@@ -13,14 +13,15 @@ export default function GenrePage({ params }: { params: Promise<{ genre: string 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getPublicCatalogBooks({ genre })
+    api
+      .getPublicCatalogBooks({ genre })
       .then(setBooks)
       .catch((err) => console.error('Failed to load genre books:', err))
       .finally(() => setLoading(false));
   }, [genre]);
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "flex flex-col gap-5")}>
+    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'flex flex-col gap-5')}>
       <div className="flex items-end justify-between gap-4 py-1">
         <div>
           <h1 className="text-[clamp(1.55rem,3vw,2.2rem)] leading-tight mb-1">{genre}</h1>
@@ -36,7 +37,9 @@ export default function GenrePage({ params }: { params: Promise<{ genre: string 
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,250px))] gap-3.5">
-          {books.map((book) => <BookCard key={book._id} book={book} mode="catalog" />)}
+          {books.map((book) => (
+            <BookCard key={book._id} book={book} mode="catalog" />
+          ))}
         </div>
       )}
     </div>

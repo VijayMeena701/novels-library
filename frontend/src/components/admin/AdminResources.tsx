@@ -1,7 +1,7 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
-import { api } from "../../utils/api";
-import { Can } from "../Can";
+import { api } from '../../utils/api';
+import { Can } from '../Can';
 
 interface Action {
   _id: string;
@@ -30,7 +30,7 @@ export default function AdminResources() {
       const data = await api.listAdminResources();
       setResources(data.resources);
     } catch (err) {
-      console.error("Failed to load resources:", err);
+      console.error('Failed to load resources:', err);
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export default function AdminResources() {
         const data = await api.listAdminResources();
         if (!cancelled) setResources(data.resources);
       } catch (err) {
-        if (!cancelled) console.error("Failed to load resources:", err);
+        if (!cancelled) console.error('Failed to load resources:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -62,7 +62,7 @@ export default function AdminResources() {
       await api.enableAdminResource(id, isEnabled);
       await fetchResources();
     } catch (err) {
-      console.error("Failed to toggle resource:", err);
+      console.error('Failed to toggle resource:', err);
     }
   };
 
@@ -80,9 +80,9 @@ export default function AdminResources() {
                 <Can action="manage" subject="resources">
                   <button
                     onClick={() => toggleEnabled(resource._id, !resource.isEnabled)}
-                    className={`rounded-md px-2 py-1 text-xs ${resource.isEnabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}
+                    className={`rounded-md px-2 py-1 text-xs ${resource.isEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}
                   >
-                    {resource.isEnabled ? "Enabled" : "Disabled"}
+                    {resource.isEnabled ? 'Enabled' : 'Disabled'}
                   </button>
                 </Can>
               </div>

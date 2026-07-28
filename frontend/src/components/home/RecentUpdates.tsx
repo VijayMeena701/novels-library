@@ -19,9 +19,15 @@ export function RecentUpdates({ books }: RecentUpdatesProps) {
       </div>
       <Card className="divide-y divide-border overflow-hidden">
         {books.map((book) => (
-          <Link key={book._id} href={`/books/${book._id}`} className="group flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-surface-raised">
+          <Link
+            key={book._id}
+            href={`/books/${book._id}`}
+            className="group flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-surface-raised"
+          >
             <div className="min-w-0">
-              <strong className="block truncate text-sm font-semibold text-primary group-hover:text-primary">{book.title}</strong>
+              <strong className="block truncate text-sm font-semibold text-primary group-hover:text-primary">
+                {book.title}
+              </strong>
               <span className="block truncate text-xs text-muted">{getAuthor(book)}</span>
             </div>
             <div className="flex shrink-0 items-center gap-4 text-xs text-muted">

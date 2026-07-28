@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { api, type AdminAuditLog } from "../../../utils/api";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Badge } from "../../../components/ui/badge";
-import { Spinner } from "../../../components/ui/spinner";
-import { Search, RefreshCw } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { api, type AdminAuditLog } from '../../../utils/api';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Badge } from '../../../components/ui/badge';
+import { Spinner } from '../../../components/ui/spinner';
+import { Search, RefreshCw } from 'lucide-react';
 
 export default function AdminAuditLogsPage() {
   const [logs, setLogs] = useState<AdminAuditLog[]>([]);
@@ -14,7 +14,7 @@ export default function AdminAuditLogsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [limit] = useState(50);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState('');
 
   const fetchLogs = async (currentPage = page) => {
     setLoading(true);
@@ -23,7 +23,7 @@ export default function AdminAuditLogsPage() {
       setLogs(data.logs);
       setTotalPages(data.totalPages);
     } catch (err) {
-      console.error("Failed to load audit logs:", err);
+      console.error('Failed to load audit logs:', err);
     } finally {
       setLoading(false);
     }
@@ -41,18 +41,18 @@ export default function AdminAuditLogsPage() {
           log.action.toLowerCase().includes(filter.toLowerCase()) ||
           log.path.toLowerCase().includes(filter.toLowerCase()) ||
           (log.email && log.email.toLowerCase().includes(filter.toLowerCase())) ||
-          log.outcome.toLowerCase().includes(filter.toLowerCase())
+          log.outcome.toLowerCase().includes(filter.toLowerCase()),
       )
     : logs;
 
   const getOutcomeVariant = (outcome: string) => {
     switch (outcome) {
-      case "allowed":
-        return "completed";
-      case "denied":
-        return "dropped";
+      case 'allowed':
+        return 'completed';
+      case 'denied':
+        return 'dropped';
       default:
-        return "default";
+        return 'default';
     }
   };
 
@@ -108,8 +108,8 @@ export default function AdminAuditLogsPage() {
                     <td className="px-4 py-3 text-xs">
                       <Badge variant={getOutcomeVariant(log.outcome)}>{log.outcome}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-xs">{log.email || log.userId || "—"}</td>
-                    <td className="px-4 py-3 text-xs">{log.ip || "—"}</td>
+                    <td className="px-4 py-3 text-xs">{log.email || log.userId || '—'}</td>
+                    <td className="px-4 py-3 text-xs">{log.ip || '—'}</td>
                   </tr>
                 ))}
                 {filteredLogs.length === 0 && (
@@ -124,13 +124,23 @@ export default function AdminAuditLogsPage() {
           </div>
 
           <div className="flex items-center justify-between">
-            <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1 || loading}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1 || loading}
+            >
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
-            <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages || loading}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || loading}
+            >
               Next
             </Button>
           </div>

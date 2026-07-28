@@ -45,9 +45,7 @@ export default function AdminReportsPage() {
   async function updateStatus(reportId: string, status: string) {
     try {
       await api.updateReportStatus(reportId, status);
-      setReports((prev) =>
-        prev.map((r) => (r._id === reportId ? { ...r, status } : r))
-      );
+      setReports((prev) => prev.map((r) => (r._id === reportId ? { ...r, status } : r)));
     } catch (err) {
       console.error('Failed to update report status:', err);
     }
@@ -68,12 +66,14 @@ export default function AdminReportsPage() {
 
   if (loading) {
     return (
-      <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-12 text-center text-sm text-muted")}>Loading reports...</div>
+      <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'py-12 text-center text-sm text-muted')}>
+        Loading reports...
+      </div>
     );
   }
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12", "py-6 md:py-8")}>
+    <div className={cn('mx-auto w-full max-w-[1520px] px-5 pt-6 pb-12', 'py-6 md:py-8')}>
       <h1 className="font-serif text-2xl font-medium text-primary mb-6">Reports & Moderation</h1>
       <Card className="divide-y divide-border overflow-hidden">
         {reports.length === 0 ? (

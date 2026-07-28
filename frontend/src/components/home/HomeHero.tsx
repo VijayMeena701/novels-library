@@ -40,9 +40,13 @@ export function HomeHero({
           Read, track, and archive web books in one place.
         </h1>
         <p className="max-w-xl break-words text-base leading-relaxed text-secondary">
-          Discover translated and raw web books, keep your reading progress, and let the background crawler archive chapters automatically.
+          Discover translated and raw web books, keep your reading progress, and let the background crawler archive
+          chapters automatically.
         </p>
-        <form className="relative mx-auto flex w-full max-w-xl flex-col gap-2 sm:mx-0 sm:flex-row" onSubmit={onSearchSubmit}>
+        <form
+          className="relative mx-auto flex w-full max-w-xl flex-col gap-2 sm:mx-0 sm:flex-row"
+          onSubmit={onSearchSubmit}
+        >
           <Input
             type="text"
             placeholder="Search books, authors, or genres..."
