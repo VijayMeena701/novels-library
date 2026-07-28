@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '../../lib/utils';
 import { Input } from '../ui/input';
@@ -27,6 +27,7 @@ export function ReaderCatalog(props: ReaderCatalogProps) {
   const { isOpen, onClose, items, currentChapterNumber, onSelectChapter, isRawReader = false, archivedCount } = props;
   const [search, setSearch] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledOnOpenRef = useRef(false);
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -44,6 +45,26 @@ export function ReaderCatalog(props: ReaderCatalogProps) {
     estimateSize: () => 80,
     overscan: 5,
   });
+
+  const currentIndex = useMemo(
+    () => filteredItems.findIndex((item) => item.chapterNumber === currentChapterNumber),
+    [filteredItems, currentChapterNumber],
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      hasScrolledOnOpenRef.current = false;
+      return;
+    }
+    if (currentIndex === -1 || hasScrolledOnOpenRef.current) return;
+
+    const rafId = requestAnimationFrame(() => {
+      virtualizer.scrollToIndex(currentIndex, { align: 'center', behavior: 'auto' });
+    });
+    hasScrolledOnOpenRef.current = true;
+
+    return () => cancelAnimationFrame(rafId);
+  }, [isOpen, currentIndex, virtualizer]);
 
   if (!isOpen) return null;
 
