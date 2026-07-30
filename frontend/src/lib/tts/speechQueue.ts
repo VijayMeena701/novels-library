@@ -96,7 +96,9 @@ export function createSpeechQueue(
   startBlockIndex: number,
   rules: PronunciationRule[],
   maxChunkLength = 1800,
+  options?: { combineBlocks?: boolean },
 ): SpeechQueueItem[] {
+  const combineBlocks = options?.combineBlocks ?? true;
   const queue: SpeechQueueItem[] = [];
   let i = startBlockIndex;
 
@@ -128,31 +130,33 @@ export function createSpeechQueue(
     const segments: SpeechQueueSegment[] = [{ blockIndex: i, text: normalized, startOffset: 0, blockStartOffset: 0 }];
     let j = i + 1;
 
-    while (j < blocks.length) {
-      const nextBlock = blocks[j];
-      const nextNormalized = normalizeBlockText(nextBlock.text);
+    if (combineBlocks) {
+      while (j < blocks.length) {
+        const nextBlock = blocks[j];
+        const nextNormalized = normalizeBlockText(nextBlock.text);
 
-      if (!nextNormalized) {
+        if (!nextNormalized) {
+          j++;
+          continue;
+        }
+
+        if (nextNormalized.length > maxChunkLength) {
+          break;
+        }
+
+        if (currentText.length + 1 + nextNormalized.length > maxChunkLength) {
+          break;
+        }
+
+        segments.push({
+          blockIndex: j,
+          text: nextNormalized,
+          startOffset: currentText.length + 1,
+          blockStartOffset: 0,
+        });
+        currentText = currentText + ' ' + nextNormalized;
         j++;
-        continue;
       }
-
-      if (nextNormalized.length > maxChunkLength) {
-        break;
-      }
-
-      if (currentText.length + 1 + nextNormalized.length > maxChunkLength) {
-        break;
-      }
-
-      segments.push({
-        blockIndex: j,
-        text: nextNormalized,
-        startOffset: currentText.length + 1,
-        blockStartOffset: 0,
-      });
-      currentText = currentText + ' ' + nextNormalized;
-      j++;
     }
 
     queue.push({

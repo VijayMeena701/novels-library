@@ -271,12 +271,16 @@ export function useReaderTts({
     [getSpeechBlocks, clearSpeakingWord],
   );
 
+  const isLocalEngine = effectivePlaybackEngineName === 'local';
+
   const createSpeechQueueFromBlock = useCallback(
     (startBlockIndex: number): SpeechQueueItem[] => {
-      const maxChunkLength = playbackEngineName === 'local' ? 280 : 1800;
-      return createSpeechQueue(getSpeechBlocks(), startBlockIndex, pronunciationRulesRef.current, maxChunkLength);
+      const maxChunkLength = isLocalEngine ? 280 : 1800;
+      return createSpeechQueue(getSpeechBlocks(), startBlockIndex, pronunciationRulesRef.current, maxChunkLength, {
+        combineBlocks: isLocalEngine,
+      });
     },
-    [getSpeechBlocks, playbackEngineName],
+    [getSpeechBlocks, isLocalEngine],
   );
 
   const stopSpeech = useCallback(
@@ -342,10 +346,16 @@ export function useReaderTts({
       playerStateRef.current.activeItem = speechItem;
 
       const firstBlockIndex = speechItem.segments[0]?.blockIndex ?? speechItem.blockIndex;
-      if (playerStateRef.current.blockIndex !== firstBlockIndex) {
-        highlightSpeechBlock(firstBlockIndex);
+
+      // System TTS starts speaking immediately, so highlight right away for
+      // instant feedback. The local engine synthesizes asynchronously, so it
+      // highlights from onStart instead to stay aligned with the audio.
+      if (!isLocalEngine) {
+        if (playerStateRef.current.blockIndex !== firstBlockIndex) {
+          highlightSpeechBlock(firstBlockIndex);
+        }
+        playerStateRef.current.blockIndex = firstBlockIndex;
       }
-      playerStateRef.current.blockIndex = firstBlockIndex;
 
       play(speechItem.spokenText, {
         onStart: () => {
@@ -376,7 +386,6 @@ export function useReaderTts({
 
           if (highlightMode !== 'word') return;
           if (event.name && event.name !== 'word') return;
-          if (queueItem.spokenText !== queueItem.text) return;
 
           highlightSpeechWord(location.blockIndex, location.charIndexInBlock);
         },
@@ -413,6 +422,7 @@ export function useReaderTts({
       highlightMode,
       highlightSpeechBlock,
       highlightSpeechWord,
+      isLocalEngine,
       isSupported,
       navigateToChapter,
       nextChapterNumber,

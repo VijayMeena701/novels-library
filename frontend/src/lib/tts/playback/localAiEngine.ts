@@ -115,7 +115,7 @@ export class LocalAIEngine implements PlaybackEngine {
   private callbacks: PlaybackEngineCallbacks | null = null;
   private wordBoundaries: WordBoundary[] = [];
   private nextBoundaryIndex = 0;
-  private boundaryInterval: ReturnType<typeof setInterval> | null = null;
+  private boundaryTimer: number | null = null;
   private startTime = 0;
   private elapsedAtPause = 0;
   private operationId = 0;
@@ -478,28 +478,50 @@ export class LocalAIEngine implements PlaybackEngine {
     if (!this.audioContext || this.wordBoundaries.length === 0) return;
 
     this.clearBoundaryTimer();
-    this.boundaryInterval = setInterval(() => {
-      if (!this.audioContext || this._state !== 'playing') return;
-      const elapsed = this.audioContext.currentTime - this.startTime;
-      while (
-        this.nextBoundaryIndex < this.wordBoundaries.length &&
-        elapsed >= this.wordBoundaries[this.nextBoundaryIndex].time
-      ) {
-        const boundary = this.wordBoundaries[this.nextBoundaryIndex];
-        callbacks.onBoundary?.({
-          name: 'word',
-          charIndex: boundary.charIndex,
-          charLength: boundary.charLength,
-        } as PlaybackBoundaryEvent);
-        this.nextBoundaryIndex++;
-      }
-    }, 30);
+    this.boundaryStep(callbacks);
+  }
+
+  private boundaryStep(callbacks: PlaybackEngineCallbacks): void {
+    this.clearBoundaryTimer();
+
+    if (!this.audioContext || this._state !== 'playing') return;
+
+    const elapsed = this.audioContext.currentTime - this.startTime;
+
+    // If the event loop fell behind, jump to the most recent due boundary
+    // instead of firing every missed word synchronously.
+    while (
+      this.nextBoundaryIndex < this.wordBoundaries.length - 1 &&
+      elapsed >= this.wordBoundaries[this.nextBoundaryIndex + 1].time
+    ) {
+      this.nextBoundaryIndex++;
+    }
+
+    if (
+      this.nextBoundaryIndex < this.wordBoundaries.length &&
+      elapsed >= this.wordBoundaries[this.nextBoundaryIndex].time
+    ) {
+      const boundary = this.wordBoundaries[this.nextBoundaryIndex];
+      callbacks.onBoundary?.({
+        name: 'word',
+        charIndex: boundary.charIndex,
+        charLength: boundary.charLength,
+      } as PlaybackBoundaryEvent);
+      this.nextBoundaryIndex++;
+    }
+
+    if (this.nextBoundaryIndex < this.wordBoundaries.length) {
+      const next = this.wordBoundaries[this.nextBoundaryIndex];
+      // Schedule a few ms early to account for timer jitter.
+      const delay = Math.max(0, (next.time - elapsed) * 1000 - 5);
+      this.boundaryTimer = window.setTimeout(() => this.boundaryStep(callbacks), delay);
+    }
   }
 
   private clearBoundaryTimer(): void {
-    if (this.boundaryInterval) {
-      clearInterval(this.boundaryInterval);
-      this.boundaryInterval = null;
+    if (this.boundaryTimer) {
+      window.clearTimeout(this.boundaryTimer);
+      this.boundaryTimer = null;
     }
   }
 

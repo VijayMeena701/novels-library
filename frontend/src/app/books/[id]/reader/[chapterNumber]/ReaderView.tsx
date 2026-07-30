@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '../../../../../lib/utils';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { type SourceKind } from '../../../../../utils/api';
 import { useAuth } from '../../../../../context/AuthContext';
@@ -94,6 +94,17 @@ export default function ReaderView({ id: bookId, chapterNumber }: ReaderViewProp
     setError: chapterData.setError,
     reloadCurrentChapter: chapterData.reloadCurrentChapter,
   });
+
+  const { startSpeechFromBlock } = tts;
+  const handleChapterContentClick = useCallback(
+    (startBlockIndex: number) => {
+      startSpeechFromBlock(startBlockIndex, {
+        continueAcrossChapters: settings.autoOpenNext,
+        fromUserGesture: true,
+      });
+    },
+    [startSpeechFromBlock, settings.autoOpenNext],
+  );
 
   const [isReaderPanelOpen, setIsReaderPanelOpen] = useState(false);
   const [readerPanelTab, setReaderPanelTab] = useState<ReaderPanelTab>('read');
@@ -244,12 +255,7 @@ export default function ReaderView({ id: bookId, chapterNumber }: ReaderViewProp
               ref={readerContentRef}
               content={chapter.content}
               fontSize={settings.fontSize}
-              onClick={(startBlockIndex) =>
-                tts.startSpeechFromBlock(startBlockIndex, {
-                  continueAcrossChapters: settings.autoOpenNext,
-                  fromUserGesture: true,
-                })
-              }
+              onClick={handleChapterContentClick}
             />
           </article>
         </main>

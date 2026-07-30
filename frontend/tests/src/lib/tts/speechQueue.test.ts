@@ -155,6 +155,19 @@ describe('createSpeechQueue', () => {
     expect(queue[0].text).toBe('Second.');
   });
 
+  it('creates one queue item per block when combineBlocks is disabled', () => {
+    const blocks = [makeBlock('First.'), makeBlock('Second.'), makeBlock('Third.')];
+    const queue = createSpeechQueue(blocks, 0, [], 1800, { combineBlocks: false });
+    expect(queue.length).toBe(3);
+    expect(queue[0].blockIndex).toBe(0);
+    expect(queue[0].text).toBe('First.');
+    expect(queue[0].segments).toHaveLength(1);
+    expect(queue[1].blockIndex).toBe(1);
+    expect(queue[1].text).toBe('Second.');
+    expect(queue[2].blockIndex).toBe(2);
+    expect(queue[2].text).toBe('Third.');
+  });
+
   it('applies pronunciation rules to spokenText while keeping text unchanged', () => {
     const blocks = [makeBlock('hello world')];
     const rules = [makeRule({ pattern: 'world', replacement: 'everyone' })];
