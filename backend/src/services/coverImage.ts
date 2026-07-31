@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { access, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { Book } from '../models/Book';
 
 const STORAGE_ROOT = path.resolve(process.env.COVER_STORAGE_DIR || path.join(process.cwd(), 'storage'));
 const COVER_DIR = path.join(STORAGE_ROOT, 'covers');
@@ -159,4 +160,44 @@ export async function syncBookCoverImage(book: any, coverUrl: string) {
   book.coverImageSize = buffer.length;
   book.coverImageToken = token;
   book.coverImageSyncedAt = new Date();
+}
+
+const COVER_SYNC_RETRY_COOLDOWN_MS = getNumberFromEnv('COVER_SYNC_RETRY_COOLDOWN_MS', 10 * 60 * 1000, 60000, 24 * 60 * 60 * 1000);
+const coverSyncInFlight = new Set<string>();
+const coverSyncLastAttempt = new Map<string, number>();
+
+// Cross-origin cover hotlinks are blocked by the frontend's
+// Cross-Origin-Embedder-Policy: require-corp, so books whose covers were never
+// synced locally must be mirrored on demand. Fire-and-forget: callers should
+// not await this.
+export function scheduleMissingCoverSyncs(books: any[]) {
+  const now = Date.now();
+
+  for (const book of books) {
+    if (!book?.coverUrl || book.coverImageToken || !book._id) {
+      continue;
+    }
+
+    const key = book._id.toString();
+    if (coverSyncInFlight.has(key) || now - (coverSyncLastAttempt.get(key) || 0) < COVER_SYNC_RETRY_COOLDOWN_MS) {
+      continue;
+    }
+
+    coverSyncInFlight.add(key);
+    coverSyncLastAttempt.set(key, now);
+
+    void (async () => {
+      try {
+        const doc = await Book.findById(book._id);
+        if (doc?.coverUrl && !doc.coverImageToken) {
+          await syncBookCoverImage(doc, doc.coverUrl);
+          await doc.save();
+        }
+      } catch (err: any) {
+        console.warn(`[Cover] Lazy cover sync failed for book ${key}: ${err.message}`);
+      } finally {
+        coverSyncInFlight.delete(key);
+      }
+    })();
+  }
 }

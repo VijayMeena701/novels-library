@@ -10,7 +10,7 @@ import { UserBook } from '../models/UserBook';
 import { BookStats } from '../models/BookStats';
 import { BookActivity } from '../models/BookActivity';
 import { Notification } from '../models/Notification';
-import { deleteCoverImageFile } from '../services/coverImage';
+import { deleteCoverImageFile, scheduleMissingCoverSyncs } from '../services/coverImage';
 import { resolveAuthorIds, toAuthorObjectId, toAuthorObjectIds } from '../services/authors';
 import { resolveGenres, resolvePublicationStatus } from '../services/taxonomy';
 import { hasCapability, CAPABILITY } from '../services/rbac';
@@ -375,6 +375,8 @@ export async function listCatalogBooksHandler(request: FastifyRequest, reply: Fa
         Book.countDocuments(filter),
       ]);
 
+      scheduleMissingCoverSyncs(books);
+
       return reply.send({
         books,
         total,
@@ -385,6 +387,7 @@ export async function listCatalogBooksHandler(request: FastifyRequest, reply: Fa
     }
 
     const books = await Book.find(filter).sort(sort).lean();
+    scheduleMissingCoverSyncs(books);
     return reply.send(books);
   } catch (err: any) {
     request.log.error(err);
@@ -419,6 +422,8 @@ export async function getCatalogBookHandler(request: FastifyRequest, reply: Fast
     if (!book) {
       return reply.status(404).send({ error: 'Book not found.' });
     }
+
+    scheduleMissingCoverSyncs([book]);
 
     const [bookStats, userVote] = await Promise.all([
       BookStats.findOne({ bookId: book._id }).lean(),
