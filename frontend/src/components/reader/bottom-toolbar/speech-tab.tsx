@@ -5,6 +5,7 @@ import { SegmentedControl } from '../../ui/segmented-control';
 import { ToggleRow } from '../../ui/toggle-row';
 import { ColorField } from '../../ui/color-field';
 import { Select } from '../../ui/input';
+import { Spinner } from '../../ui/spinner';
 import { getTheme } from '../../../design-system/themes';
 import { ENGINE_OPTIONS } from './engine-options';
 import type { PlaybackEngineName } from '../../../lib/tts/playback';
@@ -29,6 +30,9 @@ function formatMultiplier(value: number): string {
 export function SpeechTab(props: ReaderBottomToolbarProps) {
   const engineOptions =
     props.localTtsEnabled === false ? ENGINE_OPTIONS.filter((option) => option.value !== 'local') : ENGINE_OPTIONS;
+
+  const showEngineLoading = props.playbackEngine === 'local' && props.speechEngineLoading;
+  const loadProgress = typeof props.speechEngineLoadProgress === 'number' ? props.speechEngineLoadProgress : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,6 +60,32 @@ export function SpeechTab(props: ReaderBottomToolbarProps) {
           ))}
         </Select>
       </Field>
+
+      {showEngineLoading && (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-reader bg-reader p-3"
+          role="status"
+          aria-live="polite"
+        >
+          <Spinner size="sm" className="mt-0.5 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-reader-paragraph">
+              {loadProgress !== null ? `Downloading AI voice model — ${loadProgress}%` : 'Loading local AI voice…'}
+            </p>
+            <p className="mt-0.5 text-[0.68rem] leading-relaxed text-reader-muted">
+              The first load downloads the speech model and can take a minute. Later loads start from cache.
+            </p>
+            {loadProgress !== null && (
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-reader-controls">
+                <div
+                  className="h-full rounded-full bg-reader-accent transition-[width] duration-300"
+                  style={{ width: `${loadProgress}%` }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <Field label="Voice language profile" labelClassName="normal-case font-medium tracking-wide text-reader-muted">
         <Select
           value={props.voiceURI}

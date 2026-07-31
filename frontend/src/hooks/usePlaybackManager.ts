@@ -28,6 +28,10 @@ export interface UsePlaybackManagerReturn {
   voices: PlaybackVoice[];
   isSupported: boolean;
   engineName: PlaybackEngineName;
+  /** True while the engine is initializing (local AI model download/load). */
+  isInitializing: boolean;
+  /** Model download percentage (0-99) while initializing, or null when indeterminate. */
+  loadProgress: number | null;
 }
 
 function getServerVersion() {
@@ -87,5 +91,7 @@ export function usePlaybackManager({ engineName, config }: UsePlaybackManagerOpt
     voices: manager.getVoices(),
     isSupported: manager.isSupported,
     engineName: manager.engineName,
+    isInitializing: manager.isInitializing,
+    loadProgress: manager.loadProgress,
   };
 }

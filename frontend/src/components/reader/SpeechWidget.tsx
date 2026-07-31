@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils';
 import { IconButton } from '../ui/icon-button';
 import { Field } from '../ui/field';
 import { Select } from '../ui/input';
+import { Spinner } from '../ui/spinner';
 import { Draggable } from '../ui/draggable';
 import type { PlaybackVoice } from '../../lib/tts/playback';
 
@@ -21,6 +22,8 @@ export interface SpeechWidgetProps {
   supported: boolean;
   status: 'idle' | 'playing' | 'paused';
   error?: string;
+  /** True while the selected engine initializes (e.g. local AI model download). */
+  engineLoading?: boolean;
 
   onPlay: () => void;
   onPause: () => void;
@@ -63,6 +66,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
     supported,
     status,
     error,
+    engineLoading = false,
     onPlay,
     onPause,
     onStop,
@@ -84,7 +88,13 @@ export function SpeechWidget(props: SpeechWidgetProps) {
 
   const isPlaying = status === 'playing';
   const isPaused = status === 'paused';
-  const statusDotClass = isPlaying ? 'bg-success' : isPaused ? 'bg-warning' : 'bg-muted';
+  const statusDotClass = engineLoading
+    ? 'animate-pulse bg-warning'
+    : isPlaying
+      ? 'bg-success'
+      : isPaused
+        ? 'bg-warning'
+        : 'bg-muted';
 
   const safePanelPosition = useMemo(() => {
     if (typeof window === 'undefined') return position;
@@ -96,7 +106,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
     return clampPosition(togglePosition, window.innerWidth, window.innerHeight, TOGGLE_SIZE, TOGGLE_SIZE);
   }, [togglePosition]);
 
-  if (!supported) return null;
+  if (!supported && !engineLoading) return null;
 
   return (
     <>
@@ -118,7 +128,13 @@ export function SpeechWidget(props: SpeechWidgetProps) {
         <span
           className={cn('absolute right-2 top-2 size-2.5 rounded-full border-2 border-reader-bg', statusDotClass)}
         />
-        {isPlaying ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
+        {isPlaying ? (
+          <Pause className="size-5" />
+        ) : engineLoading ? (
+          <Spinner size="sm" className="border-reader-muted border-t-reader-accent" />
+        ) : (
+          <Play className="size-5 ml-0.5" />
+        )}
       </Draggable>
 
       {/* Widget Main Panel */}
@@ -141,7 +157,7 @@ export function SpeechWidget(props: SpeechWidgetProps) {
             <GripVertical className="size-4 shrink-0 text-reader-muted" />
             <span className={cn('size-2 shrink-0 rounded-full', statusDotClass)} />
             <span className="flex-1 text-[0.7rem] font-semibold tracking-wide text-reader-paragraph">
-              {status === 'idle' ? 'Ready' : isPaused ? 'Paused' : 'Reading'}
+              {engineLoading ? 'Loading AI voice…' : status === 'idle' ? 'Ready' : isPaused ? 'Paused' : 'Reading'}
             </span>
 
             {/* Settings Button (opens bottom toolbar) */}
@@ -207,10 +223,12 @@ export function SpeechWidget(props: SpeechWidgetProps) {
             />
             <IconButton
               onClick={onPlay}
-              disabled={!supported}
+              disabled={!supported || engineLoading}
               icon={isPlaying ? <RotateCcw className="size-4" /> : <Play className="size-4 ml-0.5" />}
               aria-label={isPaused ? 'Resume' : isPlaying ? 'Restart' : 'Play'}
-              title={isPaused ? 'Resume' : isPlaying ? 'Restart' : 'Play'}
+              title={
+                engineLoading ? 'Voice model is still loading' : isPaused ? 'Resume' : isPlaying ? 'Restart' : 'Play'
+              }
               variant="primary"
             />
             <IconButton

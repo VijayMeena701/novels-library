@@ -177,12 +177,60 @@ function pickWebGpuDtypes(): string[] {
   return ['fp32', 'q8', 'uint8', 'q4'];
 }
 
+interface ModelLoadProgressEvent {
+  status?: string;
+  file?: string;
+  progress?: number;
+  loaded?: number;
+  total?: number;
+}
+
+const fileProgress = new Map<string, { loaded: number; total: number }>();
+
+function reportLoadProgress(event: ModelLoadProgressEvent): void {
+  const file = event.file ?? 'model';
+  if (event.status === 'initiate') {
+    post({ id: 0, type: 'load-progress', progress: null });
+    return;
+  }
+  if (
+    event.status === 'progress' &&
+    typeof event.loaded === 'number' &&
+    typeof event.total === 'number' &&
+    event.total > 0
+  ) {
+    fileProgress.set(file, { loaded: event.loaded, total: event.total });
+  } else if (event.status === 'done' && fileProgress.has(file)) {
+    const entry = fileProgress.get(file)!;
+    fileProgress.set(file, { loaded: entry.total, total: entry.total });
+  } else {
+    return;
+  }
+
+  let loaded = 0;
+  let total = 0;
+  for (const entry of fileProgress.values()) {
+    loaded += entry.loaded;
+    total += entry.total;
+  }
+  if (total <= 0) return;
+  const percent = Math.min(99, Math.floor((loaded / total) * 100));
+  post({ id: 0, type: 'load-progress', progress: percent });
+}
+
 async function tryLoadKokoro(KokoroTTS: unknown, dtype: string, device: string): Promise<KokoroInstance | null> {
   try {
     const factory = KokoroTTS as {
-      from_pretrained: (modelId: string, options: { dtype: string; device: string }) => Promise<unknown>;
+      from_pretrained: (
+        modelId: string,
+        options: { dtype: string; device: string; progress_callback?: (event: ModelLoadProgressEvent) => void },
+      ) => Promise<unknown>;
     };
-    return (await factory.from_pretrained(MODEL_ID, { dtype, device })) as KokoroInstance;
+    return (await factory.from_pretrained(MODEL_ID, {
+      dtype,
+      device,
+      progress_callback: reportLoadProgress,
+    })) as KokoroInstance;
   } catch (error) {
     debugLog(`Kokoro load failed for ${device}/${dtype}:`, error);
     return null;

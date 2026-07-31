@@ -264,6 +264,7 @@ export default function ReaderView({ id: bookId, chapterNumber }: ReaderViewProp
           supported={tts.isSupported}
           status={tts.ttsStatus}
           error={tts.speechError}
+          engineLoading={tts.engineInitializing && tts.playbackEngineName === 'local'}
           onPlay={tts.play}
           onPause={tts.pause}
           onStop={() => tts.stop()}
@@ -306,6 +307,8 @@ export default function ReaderView({ id: bookId, chapterNumber }: ReaderViewProp
           playbackEngine={settings.playbackEngine}
           onPlaybackEngineChange={settings.onPlaybackEngineChange}
           localTtsEnabled={allowLocalTts}
+          speechEngineLoading={tts.engineInitializing}
+          speechEngineLoadProgress={tts.engineLoadProgress}
           voices={tts.voices}
           voiceURI={tts.voiceURI}
           onVoiceChange={tts.setVoiceURI}

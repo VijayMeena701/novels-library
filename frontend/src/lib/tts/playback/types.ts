@@ -59,4 +59,6 @@ export interface PlaybackEngine {
   setVoice(voiceURI: string): void;
   /** Optional callback fired when the engine's voice list changes. */
   onVoicesChanged?: (() => void) | null;
+  /** Optional callback fired while a model-backed engine downloads/loads its model. */
+  onLoadProgress?: ((progress: number | null) => void) | null;
 }

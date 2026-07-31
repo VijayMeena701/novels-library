@@ -106,6 +106,7 @@ interface SynthesisParams {
  */
 export class LocalAIEngine implements PlaybackEngine {
   readonly name = 'local' as const;
+  onLoadProgress: ((progress: number | null) => void) | null = null;
   private adapter: LocalTTSModelAdapter;
   private audioContext: AudioContext | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
@@ -133,6 +134,7 @@ export class LocalAIEngine implements PlaybackEngine {
 
   constructor(adapter?: LocalTTSModelAdapter) {
     this.adapter = adapter ?? new KokoroAdapter();
+    this.adapter.onLoadProgress = (progress) => this.onLoadProgress?.(progress);
     if (typeof window !== 'undefined') {
       const win = window as unknown as { __kokoroDiagnostic?: { bypassNext: () => void; exportLastWav: () => void } };
       win.__kokoroDiagnostic = {

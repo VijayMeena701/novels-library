@@ -19,4 +19,5 @@ export type KokoroWorkerRequest =
 export type KokoroWorkerResponse =
   | { id: number; type: 'initialized'; voices: PlaybackVoice[]; runtime: 'webgpu' | 'wasm'; dtype?: string }
   | { id: number; type: 'synthesized'; audio: ArrayBuffer; sampleRate: number }
-  | { id: number; type: 'error'; error: string };
+  | { id: number; type: 'error'; error: string }
+  | { id: number; type: 'load-progress'; progress: number | null };

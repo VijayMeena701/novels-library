@@ -60,6 +60,10 @@ export interface UseReaderTtsReturn {
   setVoiceURI: (voiceURI: string) => void;
   isSupported: boolean;
   playbackEngineName: PlaybackEngineName;
+  /** True while the selected engine initializes (e.g. local AI model download). */
+  engineInitializing: boolean;
+  /** Model download percentage (0-99) while initializing, or null when indeterminate. */
+  engineLoadProgress: number | null;
 }
 
 export function useReaderTts({
@@ -171,10 +175,11 @@ export function useReaderTts({
       : playbackEngineName;
 
   const playbackConfig = useMemo(() => ({ rate, pitch, voiceURI }), [rate, pitch, voiceURI]);
-  const { play, speakKeepAlive, pause, resume, stop, preload, voices, isSupported } = usePlaybackManager({
-    engineName: effectivePlaybackEngineName,
-    config: playbackConfig,
-  });
+  const { play, speakKeepAlive, pause, resume, stop, preload, voices, isSupported, isInitializing, loadProgress } =
+    usePlaybackManager({
+      engineName: effectivePlaybackEngineName,
+      config: playbackConfig,
+    });
 
   const effectiveVoiceURI = useMemo(() => {
     if (!voiceURI || !voices.length) return voiceURI;
@@ -633,5 +638,7 @@ export function useReaderTts({
     setVoiceURI,
     isSupported,
     playbackEngineName: effectivePlaybackEngineName,
+    engineInitializing: isInitializing,
+    engineLoadProgress: loadProgress,
   };
 }

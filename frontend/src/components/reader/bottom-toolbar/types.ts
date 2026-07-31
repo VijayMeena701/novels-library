@@ -42,6 +42,10 @@ export interface ReaderBottomToolbarProps {
   playbackEngine: PlaybackEngineName;
   onPlaybackEngineChange: (engine: PlaybackEngineName) => void;
   localTtsEnabled?: boolean;
+  /** True while the selected engine initializes (e.g. local AI model download). */
+  speechEngineLoading?: boolean;
+  /** Model download percentage (0-99) while loading, or null when indeterminate. */
+  speechEngineLoadProgress?: number | null;
   voices: PlaybackVoice[];
   voiceURI: string;
   onVoiceChange: (voiceURI: string) => void;

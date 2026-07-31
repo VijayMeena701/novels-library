@@ -38,6 +38,8 @@ export class PlaybackManager extends EventTarget {
   private _version = 0;
   private _voices: PlaybackVoice[] = [];
   private initPromise: Promise<void> | null = null;
+  private _isInitializing = false;
+  private _loadProgress: number | null = null;
 
   constructor(engineName: PlaybackEngineName, config: PlaybackConfig) {
     super();
@@ -61,6 +63,16 @@ export class PlaybackManager extends EventTarget {
     return this.engine?.isSupported ?? false;
   }
 
+  /** True while the engine is being created and initialized (e.g. model download). */
+  get isInitializing(): boolean {
+    return this._isInitializing;
+  }
+
+  /** Model download percentage (0-99) while initializing, or null when indeterminate. */
+  get loadProgress(): number | null {
+    return this._loadProgress;
+  }
+
   getVoices(): PlaybackVoice[] {
     return this._voices;
   }
@@ -72,11 +84,17 @@ export class PlaybackManager extends EventTarget {
 
   async initialize(): Promise<void> {
     if (this.initPromise) return this.initPromise;
+    this._isInitializing = true;
+    this.notify();
     this.initPromise = (async () => {
       try {
         this.engine = await createPlaybackEngine(this._engineName);
         this.engine.onVoicesChanged = () => {
           this._voices = this.engine!.getVoices();
+          this.notify();
+        };
+        this.engine.onLoadProgress = (progress) => {
+          this._loadProgress = progress;
           this.notify();
         };
         await this.engine.initialize();
@@ -87,6 +105,8 @@ export class PlaybackManager extends EventTarget {
         this.engine = null;
         this._voices = [];
       } finally {
+        this._isInitializing = false;
+        this._loadProgress = null;
         this.notify();
       }
     })();

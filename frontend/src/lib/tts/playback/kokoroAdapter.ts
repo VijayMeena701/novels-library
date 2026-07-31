@@ -17,6 +17,8 @@ export interface LocalTTSModelAdapter {
     text: string,
     options: LocalTTSModelSynthesizeOptions,
   ): Promise<{ data: Float32Array; sampleRate: number }>;
+  /** Fired with the model download percentage (0-99) or null while preparing. */
+  onLoadProgress?: ((progress: number | null) => void) | null;
 }
 
 interface PendingRequest {
@@ -40,6 +42,7 @@ const FALLBACK_VOICES: PlaybackVoice[] = [
  */
 export class KokoroAdapter implements LocalTTSModelAdapter {
   readonly name = 'kokoro';
+  onLoadProgress: ((progress: number | null) => void) | null = null;
   private worker: Worker | null = null;
   private voices: PlaybackVoice[] = [];
   private initPromise: Promise<void> | null = null;
@@ -70,6 +73,10 @@ export class KokoroAdapter implements LocalTTSModelAdapter {
 
   private handleMessage = (event: MessageEvent<KokoroWorkerResponse>): void => {
     const response = event.data;
+    if (response.type === 'load-progress') {
+      this.onLoadProgress?.(response.progress);
+      return;
+    }
     if (response.type === 'synthesized') {
       debugLog('KokoroAdapter: received synthesized audio', {
         byteLength: response.audio.byteLength,
