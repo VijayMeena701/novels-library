@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, Literata } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '../context/AuthContext';
 import { FeatureFlagsProvider } from '../context/FeatureFlagsContext';
@@ -7,6 +8,21 @@ import { ReaderThemeProvider } from '../context/ReaderThemeContext';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import Header from '../components/Header';
 import { QueryProvider } from '../components/providers/QueryProvider';
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const literata = Literata({
+  subsets: ['latin'],
+  weight: ['400', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-literata',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Books Library',
@@ -25,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={`h-full ${inter.variable} ${literata.variable}`}>
       <body className="min-h-screen">
         <QueryProvider>
           <ToastProvider>

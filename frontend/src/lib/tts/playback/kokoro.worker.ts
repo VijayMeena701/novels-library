@@ -157,6 +157,25 @@ function getVoices(): PlaybackVoice[] {
 
 let currentDtype = 'q8';
 let webgpuFailed = false;
+let forcedDevice: 'webgpu' | 'wasm' | null = null;
+let forcedDtype: string | null = null;
+
+type DeviceClass = 'dgpu' | 'constrained' | 'software';
+
+const MOBILE_UA_PATTERN = /android|iphone|ipad|ipod|mobile/i;
+
+function isMobileDevice(): boolean {
+  return MOBILE_UA_PATTERN.test(navigator.userAgent ?? '');
+}
+
+function classifyAdapter(info: GPUAdapterInfoLike): DeviceClass {
+  const haystack = `${info.vendor ?? ''} ${info.architecture ?? ''} ${info.description ?? ''}`.toLowerCase();
+  if (/swiftshader|llvmpipe|softpipe|software/.test(haystack)) return 'software';
+  if (isMobileDevice()) return 'constrained';
+  if (/nvidia|geforce|rtx|gtx|amd|radeon/.test(haystack)) return 'dgpu';
+  // Unknown/integrated GPUs get the conservative path to avoid freezing the device.
+  return 'constrained';
+}
 
 async function getAdapterInfo(adapter: GPUAdapterLike): Promise<GPUAdapterInfoLike> {
   if (adapter.info) return adapter.info;
@@ -170,11 +189,26 @@ async function getAdapterInfo(adapter: GPUAdapterLike): Promise<GPUAdapterInfoLi
   return {};
 }
 
-function pickWebGpuDtypes(): string[] {
-  // kokoro-js recommends fp32 for WebGPU. fp16 / q4f16 can load successfully
-  // on adapters that report shader-f16 (e.g. NVIDIA discrete) but may generate
-  // a silent/invalid waveform. Prefer fp32, then quantized fallbacks.
-  return ['fp32', 'q8', 'uint8', 'q4'];
+function pickWebGpuDtypes(deviceClass: DeviceClass): string[] {
+  // kokoro-js recommends fp32 for WebGPU, but fp32 weights + shaders are heavy
+  // enough to freeze integrated/mobile GPUs. Only use fp32 on known discrete GPUs.
+  // fp16 / q4f16 can load successfully on adapters that report shader-f16 but may
+  // generate a silent/invalid waveform, and uint8/q4 quantize aggressively enough
+  // to sound robotic, so q8 is the preferred lower-bit fallback.
+  if (deviceClass === 'dgpu') return ['fp32', 'q8', 'q4'];
+  if (deviceClass === 'constrained') return ['q8', 'q4'];
+  return [];
+}
+
+function configureWasmThreads(env: { backends: { onnx?: Record<string, unknown> } }): void {
+  const onnxEnv = (env.backends.onnx ?? {}) as Record<string, unknown>;
+  const wasmEnv = { ...((onnxEnv.wasm as Record<string, unknown>) ?? {}) };
+  // transformers.js defaults to using every core, which starves the rest of the
+  // device (especially on Android). Cap threads so inference stays background work.
+  const cores = typeof navigator.hardwareConcurrency === 'number' ? navigator.hardwareConcurrency : 4;
+  wasmEnv.numThreads = Math.max(1, Math.min(isMobileDevice() ? 2 : 4, cores));
+  onnxEnv.wasm = wasmEnv;
+  env.backends.onnx = onnxEnv;
 }
 
 interface ModelLoadProgressEvent {
@@ -246,7 +280,24 @@ async function loadModel(): Promise<void> {
     const { env } = await import('@huggingface/transformers');
     const gpu = (navigator as unknown as { gpu?: GPULike }).gpu;
 
-    if (gpu && !webgpuFailed) {
+    configureWasmThreads(env);
+
+    // Manual override (from initialize request) is tried first so a specific
+    // device/dtype combo can be tested per-device.
+    if (forcedDevice && forcedDtype) {
+      if (forcedDevice === 'wasm' || gpu) {
+        tts = await tryLoadKokoro(KokoroTTS, forcedDtype, forcedDevice);
+        if (tts) {
+          runtime = forcedDevice;
+          currentDtype = forcedDtype;
+          debugLog(`Kokoro loaded with forced ${forcedDevice}/${forcedDtype}`);
+          return;
+        }
+        debugLog(`Forced ${forcedDevice}/${forcedDtype} failed, falling back to auto selection`);
+      }
+    }
+
+    if (gpu && !webgpuFailed && forcedDevice !== 'wasm') {
       let adapter: GPUAdapterLike | null = null;
       let powerPreference: 'high-performance' | 'low-power' = 'high-performance';
 
@@ -262,6 +313,7 @@ async function loadModel(): Promise<void> {
 
       if (adapter) {
         const info = await getAdapterInfo(adapter);
+        const deviceClass = classifyAdapter(info);
         debugLog(
           'WebGPU adapter:',
           info.vendor,
@@ -271,28 +323,35 @@ async function loadModel(): Promise<void> {
           powerPreference,
           'supportsF16:',
           adapter.features.has('shader-f16'),
+          'deviceClass:',
+          deviceClass,
         );
 
-        const onnxEnv = (env.backends.onnx ?? {}) as Record<string, unknown>;
-        onnxEnv.webgpu = { ...((onnxEnv.webgpu as Record<string, unknown>) ?? {}), adapter, powerPreference };
-        env.backends.onnx = onnxEnv;
+        const dtypes = pickWebGpuDtypes(deviceClass);
 
-        const dtypes = pickWebGpuDtypes();
+        if (dtypes.length > 0) {
+          const onnxEnv = (env.backends.onnx ?? {}) as Record<string, unknown>;
+          onnxEnv.webgpu = { ...((onnxEnv.webgpu as Record<string, unknown>) ?? {}), adapter, powerPreference };
+          env.backends.onnx = onnxEnv;
 
-        for (const dtype of dtypes) {
-          tts = await tryLoadKokoro(KokoroTTS, dtype, 'webgpu');
-          if (tts) {
-            runtime = 'webgpu';
-            currentDtype = dtype;
-            debugLog(`Kokoro loaded on WebGPU with dtype=${dtype}`);
-            return;
+          for (const dtype of dtypes) {
+            tts = await tryLoadKokoro(KokoroTTS, dtype, 'webgpu');
+            if (tts) {
+              runtime = 'webgpu';
+              currentDtype = dtype;
+              debugLog(`Kokoro loaded on WebGPU with dtype=${dtype} (deviceClass=${deviceClass})`);
+              return;
+            }
           }
+        } else {
+          debugLog('Skipping WebGPU on software adapter');
         }
         webgpuFailed = true;
       }
     }
 
-    for (const dtype of ['q8', 'q4']) {
+    const wasmDtypes = forcedDtype && forcedDevice !== 'webgpu' ? [forcedDtype, 'q8', 'q4'] : ['q8', 'q4'];
+    for (const dtype of [...new Set(wasmDtypes)]) {
       tts = await tryLoadKokoro(KokoroTTS, dtype, 'wasm');
       if (tts) {
         runtime = 'wasm';
@@ -410,6 +469,11 @@ workerScope.addEventListener('message', (event: MessageEvent<KokoroWorkerRequest
   const request = event.data;
   setKokoroDebug(request.debug ?? false);
   if (request.type === 'initialize') {
+    forcedDevice = request.device === 'webgpu' || request.device === 'wasm' ? request.device : null;
+    forcedDtype = typeof request.dtype === 'string' && request.dtype.length > 0 ? request.dtype : null;
+    if (forcedDevice || forcedDtype) {
+      debugLog('Kokoro runtime override:', forcedDevice ?? 'auto', forcedDtype ?? 'auto');
+    }
     requestQueue.unshift(request);
   } else {
     requestQueue.push(request);

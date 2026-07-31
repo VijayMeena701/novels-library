@@ -26,6 +26,21 @@ interface PendingRequest {
   reject: (error: Error) => void;
 }
 
+function resolveRuntimeOverrides(): { device?: 'webgpu' | 'wasm'; dtype?: string } {
+  if (typeof window === 'undefined') return {};
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const device = params.get('kokoro-device') ?? window.localStorage.getItem('kokoro.device');
+    const dtype = params.get('kokoro-dtype') ?? window.localStorage.getItem('kokoro.dtype');
+    return {
+      ...(device === 'webgpu' || device === 'wasm' ? { device } : {}),
+      ...(dtype ? { dtype } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
 const FALLBACK_VOICES: PlaybackVoice[] = [
   { voiceURI: 'af_heart', name: 'Heart', lang: 'en-US' },
   { voiceURI: 'af_bella', name: 'Bella', lang: 'en-US' },
@@ -64,7 +79,7 @@ export class KokoroAdapter implements LocalTTSModelAdapter {
     this.worker.addEventListener('message', this.handleMessage);
     this.worker.addEventListener('error', this.handleWorkerError);
 
-    const response = await this.request({ type: 'initialize', debug: isKokoroDebug() });
+    const response = await this.request({ type: 'initialize', debug: isKokoroDebug(), ...resolveRuntimeOverrides() });
     if (response.type !== 'initialized') {
       throw new Error('Kokoro worker returned an invalid initialization response.');
     }
