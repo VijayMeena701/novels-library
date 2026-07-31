@@ -8,15 +8,31 @@ export const redisClient: Redis | null = await (async (): Promise<Redis | null> 
     return null;
   }
 
+  let hasConnected = false;
+
   const client = new Redis(redisUrl, {
     lazyConnect: true,
-    retryStrategy: () => null,
+    keepAlive: 30000,
+    retryStrategy: (times) => {
+      if (!hasConnected) {
+        return null;
+      }
+      return Math.min(times * 200, 5000);
+    },
     showFriendlyErrorStack: config.nodeEnv !== 'production',
+  });
+
+  client.on('connect', () => {
+    hasConnected = true;
   });
 
   client.on('error', (err) => {
     console.error('[Redis] Error:', err);
     // suppress unhandled error events; connection failures are logged in the connect try/catch
+  });
+
+  client.on('reconnecting', (delay: number) => {
+    console.warn(`[Redis] Connection lost, reconnecting in ${delay}ms`);
   });
 
   try {
